@@ -1,0 +1,26 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/xuhao/nettest/spdnet/spdnet/examples/testConsole.cpp
+stdio.h
+-
+iostream
+-
+stdio.h
+-
+string.h
+-
+arpa/inet.h
+-
+memory
+-
+thread
+-
+gperftools/profiler.h
+-
+

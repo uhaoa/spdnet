@@ -1,0 +1,1 @@
+/usr/bin/c++    -std=c++11 -fPIC -O3 -g -ggdb -Wall -DNDEBUG    CMakeFiles/ttcp_server.dir/ttcp_server.cpp.o  -o ttcp_server -rdynamic -lpthread ../lib/libspdnet.so -ltcmalloc -lprofiler -lunwind -lpthread -ltcmalloc -Wl,-rpath,/home/xuhao/nettest/spdnet/spdnet/lib 

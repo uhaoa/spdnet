@@ -1,0 +1,7 @@
+/home/xuhao/code/spdnet/tests/CMakeFiles/edit_cache.dir
+/home/xuhao/code/spdnet/tests/CMakeFiles/test_connect.dir
+/home/xuhao/code/spdnet/tests/CMakeFiles/test.dir
+/home/xuhao/code/spdnet/tests/CMakeFiles/testserver.dir
+/home/xuhao/code/spdnet/tests/CMakeFiles/testclient.dir
+/home/xuhao/code/spdnet/tests/CMakeFiles/rebuild_cache.dir
+/home/xuhao/code/spdnet/tests/CMakeFiles/testconsole.dir
