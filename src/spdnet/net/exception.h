@@ -9,16 +9,16 @@ namespace spdnet
 {
 namespace net
 {
-    class SpdCommonException : public std::runtime_error
+    class SpdnetException : public std::runtime_error
     {
     public:   
-        explicit SpdCommonException(const std::string& msg)
+        explicit SpdnetException(const std::string& msg)
             :std::runtime_error(msg)
         {
                 
         }
 
-        explicit SpdCommonException(const char* msg)
+        explicit SpdnetException(const char* msg)
             :std::runtime_error(msg)
         {
                 

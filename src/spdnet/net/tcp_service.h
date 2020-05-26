@@ -14,74 +14,21 @@ namespace spdnet
 {
 namespace net
 {
-    class TcpService : public base::NonCopyable , public std::enable_shared_from_this<TcpService>
+    class TcpService : public base::NonCopyable
     {
-	 private:
-         struct ServiceParam
-         {
-               size_t             max_recv_buff_size() const { return max_recv_buff_size_ ; }
-               bool               nodelay() const { return nodelay_ ; }
-               const EventLoop::TcpEnterCallback& enter_callback() const { return enter_callback_ ;}
-
-               size_t             max_recv_buff_size_ = 128;
-               bool               nodelay_ = false ;
-               EventLoop::TcpEnterCallback enter_callback_ ; 
-         }; 
-	public:
-		using Ptr = std::shared_ptr<TcpService>;
-		class ServiceParamBuilder
-		{
-		public:
-			ServiceParamBuilder()
-			{
-				params_ = std::make_shared<ServiceParam>(); 
-			}
-			ServiceParamBuilder&  WithMaxRecvBuffSize(size_t size)
-			{
-				params_->max_recv_buff_size_ = size;
-				return *this;
-			}
-			ServiceParamBuilder& WithNoDelay() {
-				params_->nodelay_ = true; 
-				return *this; 
-			}
-			ServiceParamBuilder& WithTcpEnterCallback(EventLoop::TcpEnterCallback&& enter_callback) {
-				params_->enter_callback_ = std::move(enter_callback);
-				return *this; 
-			}
-			std::shared_ptr<ServiceParam> GetParams() {
-				return params_; 
-			}
-		private:
-			std::shared_ptr<ServiceParam>     params_;
-		};
      public:
 
-		 TcpService() noexcept;
+		TcpService() noexcept;
         ~TcpService() noexcept;
 
-        static Ptr Create() ; 
-
-		void StartServer(const std::string& ip, int port, std::shared_ptr<ServiceParam> params);
-        void LaunchWorkerThread(size_t num);
-        void Stop(); 
-
-        EventLoop::Ptr GetRandomEventLoop(); 
-        
-      void AddTcpConnection(TcpSocket::Ptr , const EventLoop::TcpEnterCallback& enter_callback); 
+		void addTcpConnection(std::shared_ptr<TcpSocket> tcp_socket , const TcpConnection::TcpEnterCallback& enter_callback);
+		void runThread(size_t thread_num);
+		EventLoop::Ptr getEventLoop();
      private:
-        int Listen();
+		void stop();
      private:
-        std::string                       ip_ ; 
-        int                               port_ ; 
-        int                               listen_epoll_fd_;
-        std::shared_ptr<bool>             run_listen_ ; 
-        std::shared_ptr<bool>             run_loop_ ; 
-        std::shared_ptr<std::thread>      listen_thread_ ; 
-        std::mutex                        service_lock_ ; 
-        std::shared_ptr<ServiceParam>     params_ ;     
-
-        std::vector<EventLoop::Ptr>            loops ; 
+        std::shared_ptr<bool>				   run_loop_ ; 
+        std::vector<EventLoop::Ptr>            loops_ ; 
         std::mt19937                           random_ ; 
     } ; 
 }

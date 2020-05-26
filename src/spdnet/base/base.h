@@ -25,5 +25,10 @@
 
 
 
+#if defined(_MSC_VER)
+#define THREAD_LOCAL __declspec(thread)
+#else
+#define THREAD_LOCAL __thread
+#endif
 
 #endif  // SPDNET_BASE_BASE_H

@@ -7,63 +7,35 @@ namespace spdnet
 {
     namespace base
     {
-        /**
-		 * \brief 初始化
-		 * \param 
-		 * \return 
-		*/
-        bool InitSocketEnv() ; 
-        /**
-		 * \brief 禁用Nagle算法
-		 * \param fd
-		 * \return 
-		*/
-        int  SetSocketNoDelay(int fd); 
-        /**
-		 * \brief 设置阻塞模式
-		 * \param fd
-		 * \return 
-		*/
-        bool SetSocketBlock(int fd);
-        /**
-		 * \brief 设置非阻塞模式
-		 * \param fd
-		 * \return 
-		*/
-        bool SetSocketNonBlock(int fd);
-        /**
-		 * \brief 设置socket内核发送缓冲区大小
-		 * \param fd
-		 * \return 
-		*/
-        int SetSocketSendBufSize(int fd , int size) ;
-        /**
-		 * \brief 设置socket内核接受缓冲区大小
-		 * \param fd
-		 * \return 
-		*/
-        int SetSocketRecvBufSize(int fd , int size) ;
-        /**
-		 * \brief 关闭socket描述符
-		 * \param fd
-		 * \return 
-		*/
-        void CloseSocket(int fd);
+		// 初始化相关环境
+        bool initSocketEnv() ; 
+		
+		// 禁用Nagle算法
+        int  socketNoDelay(int fd); 
+	
+		// 设置阻塞模式
+        bool socketBlock(int fd);
 
-        /**
-		 * \brief 获取sock的ip字符串
-		 * \param 
-		 * \return ip
-		*/
+		// 设置非阻塞模式
+        bool socketNonBlock(int fd);
+
+		// 设置socket内核发送缓冲区大小
+        int socketSendBufSize(int fd , int size) ;
+	
+		// 设置socket内核接受缓冲区大小
+        int socketRecvBufSize(int fd , int size) ;
+	
+		// 关闭socket描述符
+        void closeSocket(int fd);
+
+		// 获取sock的ip字符串
         std::string getIPFromSockaddr(const struct sockaddr* from) ; 
-        /**
-		 * \brief 获取sock的ip字符串
-		 * \param 
-		 * \return ip
-		*/
+
+		// 获取sock的ip字符串
         std::string getIPFromSockFd(int fd) ;
 
-    
+		// 检查自连接 
+		bool checkSelfConnect(int fd); 
     }
 }
 

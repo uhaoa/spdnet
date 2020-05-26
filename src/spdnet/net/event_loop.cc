@@ -19,7 +19,7 @@ namespace net
     {
         auto event_fd = ::eventfd(0 , EFD_CLOEXEC | EFD_NONBLOCK );
         wake_up_.reset(new WakeupChannel(event_fd));
-        LinkChannel(event_fd , wake_up_.get());
+        linkChannel(event_fd , wake_up_.get());
         event_entries_.resize(1024) ; 
     }
 
@@ -29,61 +29,60 @@ namespace net
         epoll_fd_ = -1 ;  
     }
 
-    EventLoop::Ptr EventLoop::Create(unsigned int wait_timeout_ms)
+    EventLoop::Ptr EventLoop::create(unsigned int wait_timeout_ms)
     {
         return std::make_shared<EventLoop>(wait_timeout_ms);
     }
 
-    void EventLoop::RunInEventLoop(AsynLoopTask&& task)
+    void EventLoop::runInEventLoop(AsynLoopTask&& task)
     {
-        if(IsInLoopThread()){
+        if(isInLoopThread()){
             task();
         }
         else
         {
-            std::lock_guard<std::mutex> lck(task_mutex_);
-            async_tasks.emplace_back(std::move(task));
-
+			{
+				std::lock_guard<std::mutex> lck(task_mutex_);
+				async_tasks.emplace_back(std::move(task));
+			}
             // wakeup 
-            wake_up_->Wakeup();
+            wake_up_->wakeup();
         }
         
     }
 
-    void EventLoop::RunAfterEventLoop(AfterLoopTask&& task)
+    void EventLoop::runAfterEventLoop(AfterLoopTask&& task)
     {
-        assert(IsInLoopThread());
-        if(!IsInLoopThread())
+        assert(isInLoopThread());
+        if(!isInLoopThread())
         {
-            throw SpdCommonException("call RunAfterEventLoop() must in the loop thread!");
+            throw SpdnetException("call runAfterEventLoop() must in the loop thread!");
         }
         after_loop_tasks.emplace_back(std::move(task));
     }
 
-    void EventLoop::ExecAsyncTasks()
+    void EventLoop::execAsyncTasks()
     {
         {
             std::lock_guard<std::mutex> lck(task_mutex_);
             tmp_async_tasks.swap(async_tasks);
         }
-        for(auto& task : tmp_async_tasks)
-        {
+        for(auto& task : tmp_async_tasks) {
             task();
         }
         tmp_async_tasks.clear();
     }
 
-    void EventLoop::ExecAfterTasks()
-    {
-        tmp_after_loop_tasks.swap(after_loop_tasks); 
-        for(auto& task : tmp_after_loop_tasks)
-        {
-            task();
-        }
-        tmp_after_loop_tasks.clear();
-    }
+	void EventLoop::execAfterTasks()
+	{
+		tmp_after_loop_tasks.swap(after_loop_tasks);
+		for (auto& task : tmp_after_loop_tasks) {
+			task();
+		}
+		tmp_after_loop_tasks.clear();
+	}
 
-    TcpConnection::Ptr EventLoop::GetTcpConnection(int fd)
+    TcpConnection::Ptr EventLoop::getTcpConnection(int fd)
     {
         auto iter = tcp_connections_.find(fd);
         if(iter != tcp_connections_.end())
@@ -92,12 +91,12 @@ namespace net
             return nullptr ; 
     }
 
-    void EventLoop::AddTcpConnection(TcpConnection::Ptr connection)
+    void EventLoop::addTcpConnection(TcpConnection::Ptr connection)
     {
-        tcp_connections_[connection->GetSocketFd()] = std::move(connection);
+        tcp_connections_[connection->getSocketFd()] = std::move(connection);
     }
 
-    void EventLoop::RemoveTcpConnection(int fd)
+    void EventLoop::removeTcpConnection(int fd)
     {
         auto iter = tcp_connections_.find(fd);
         if(iter != tcp_connections_.end())
@@ -109,32 +108,30 @@ namespace net
         }
     }
 
-    void EventLoop::OnTcpConnectionEnter(TcpConnection::Ptr tcp_connection , const TcpEnterCallback& enter_callback)
+    void EventLoop::onTcpConnectionEnter(TcpConnection::Ptr tcp_connection , const TcpConnection::TcpEnterCallback& enter_callback)
     {
-        assert(IsInLoopThread());
+        assert(isInLoopThread());
 
-        if(!LinkChannel(tcp_connection->GetSocketFd() , tcp_connection.get())){
+        if(!linkChannel(tcp_connection->getSocketFd() , tcp_connection.get())) {
             // error
             return ; 
         }
-        assert(nullptr == GetTcpConnection(tcp_connection->GetSocketFd()));
+        assert(nullptr == getTcpConnection(tcp_connection->getSocketFd()));
         if(nullptr != enter_callback)
-        {
             enter_callback(tcp_connection);
-        }
 
-        AddTcpConnection(std::move(tcp_connection));
+        addTcpConnection(std::move(tcp_connection));
     }
 
-    bool EventLoop::LinkChannel(int fd , const Channel* channel)
+    bool EventLoop::linkChannel(int fd , const Channel* channel , uint32_t events)
     {
         struct epoll_event event { 0  , {nullptr}} ;
-        event.events =  EPOLLET | EPOLLIN | EPOLLRDHUP;
-        event.data.ptr = (void*)(channel) ; 
+		event.events = events; 
+        event.data.ptr = (void*)(channel) ;
         return ::epoll_ctl(epoll_fd_ , EPOLL_CTL_ADD , fd , &event) == 0 ; 
     }
 
-    void EventLoop::Run(std::shared_ptr<bool> is_run)
+    void EventLoop::run(std::shared_ptr<bool> is_run)
     {
         loop_thread_ = std::make_shared<std::thread>([is_run , this]() {
             thread_id_ = current_thread::tid();
@@ -150,17 +147,17 @@ namespace net
 
                     if(event & EPOLLRDHUP)
                     {
-                        channel->TryRecv();
-                        channel->OnClose();
+                        channel->tryRecv();
+                        channel->onClose();
                         continue;
                     }
                     if(event & EPOLLIN)
                     {
-                        channel->TryRecv();     
+                        channel->tryRecv();     
                     }
                     if(event & EPOLLOUT)
                     {
-                        channel->TrySend();
+                        channel->trySend();
                     }
                 }
 
@@ -168,8 +165,8 @@ namespace net
                     event_entries_.resize(event_entries_.size() * 2); 
                 }
 
-                ExecAsyncTasks();
-                ExecAfterTasks();
+                execAsyncTasks();
+                execAfterTasks();
                 
             }
         });

@@ -5,58 +5,37 @@
 #include <thread>
 #include <mutex>
 #include <functional>
+#include <unordered_map>
 #include <spdnet/base/noncopyable.h>
 #include <spdnet/net/socket.h>
+#include <spdnet/net/tcp_connection.h>
 
 namespace spdnet
 {
 namespace net
 {
-    class AsyncConnectAddr ; 
-    class ConnectorContext;
+	class TcpService;
+	class ConnectSession;
 
-    class AsyncConnector : public base::NonCopyable , public std::enable_shared_from_this<AsyncConnector>
+    class AsyncConnector : public base::NonCopyable
     {
      public:
-        using Ptr = std::shared_ptr<AsyncConnector> ; 
-        using AsyncTask = std::function<void()> ; 
-        using SuccessCallback = std::function<void(TcpSocket::Ptr)> ; 
+		friend ConnectSession; 
         using FailedCallback  = std::function<void()> ; 
-        
-        class ConnectOptions
-        {
-            public:
-                class Options ; 
-                using ConnectOptionsFunc = std::function<void(Options& option)> ; 
 
-                static ConnectOptionsFunc WithAddr(const std::string& ip , int port);
-                static ConnectOptionsFunc WithSuccessCallback(SuccessCallback&&);
-                static ConnectOptionsFunc WithFailedCallback(FailedCallback&&);
-                
-        } ;
+		AsyncConnector(TcpService& service);
+		~AsyncConnector();
 
-        void AsyncConnect(const std::vector<ConnectOptions::ConnectOptionsFunc>& options); 
-        void StartWorkerThread();    
-        void ProcessAyncTask();
-        static Ptr Create();
-
-     private:
-
-        AsyncConnector();
-        virtual ~AsyncConnector();
-
-        std::shared_ptr<bool> is_run_ ; 
-        std::shared_ptr<std::thread> thread_ ; 
-
-        std::mutex              async_tasks_guard_; 
-        std::vector<AsyncTask>  async_tasks_ ; 
-
-        std::shared_ptr<ConnectorContext>  context_ ;
+        void asyncConnect(const std::string& ip , int port , TcpConnection::TcpEnterCallback&& success_cb , FailedCallback&& failed_cb);
+	private:
+        bool removeSession(int fd) ; 
+    private:
+		TcpService& service_; 
+		std::mutex session_guard_;
+		std::unordered_map<int, std::shared_ptr<ConnectSession>> connect_sessions_;
     };
 
 
 }
 }
-
-
 #endif  // SPDNET_NET_CONNECTOR_H_

@@ -12,15 +12,10 @@ namespace net
     {
     public:
         virtual ~Channel()noexcept {}
-    /* 
-        explicit Channel(int fd , EventLoop* loop)noexcept ; 
-        virtual ~Channel()noexcept ; 
-    */
     private:
-        virtual void TrySend() = 0;
-        virtual void TryRecv() = 0;
-        virtual void OnClose() = 0; 
-
+        virtual void trySend() = 0;
+        virtual void tryRecv() = 0;
+        virtual void onClose() = 0; 
         friend class EventLoop;
     };
 
@@ -29,18 +24,18 @@ namespace net
     {
      public:
         explicit WakeupChannel(int fd)noexcept ; 
-        bool Wakeup()
+        bool wakeup()
         {
             int data = 1 ; 
             return write(fd_ , &data , sizeof(data)) == 0;
         }
      private:
-        void TrySend() override 
+        void trySend() override 
         {
 
         }
 
-        void TryRecv() override 
+        void tryRecv() override 
         {
             char buf[1024]{0} ; 
             while(true)
@@ -51,7 +46,7 @@ namespace net
             }
         }
 
-        void OnClose() override 
+        void onClose() override 
         {
 
         }

@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <iostream>                                       s
+#include <iostream>                                      
 #include <spdnet/net/connector.h>
 #include <spdnet/net/socket.h>
 #include <spdnet/net/tcp_service.h>
@@ -46,11 +46,11 @@ int main(int argc , char* argv[])
     signal(SIGUSR1, gprofStartAndStop);
 
     std::atomic_int cur_client_num = ATOMIC_VAR_INIT(0) ;
-    spdnet::net::TcpService::Ptr service = spdnet::net::TcpService::Create();	
-	service->LaunchWorkerThread(atoi(argv[3])) ;
-    auto connector = spdnet::net::AsyncConnector::Create() ; 
-	connector->StartWorkerThread();
-   
+
+	spdnet::net::TcpService service; 
+	service.runThread(atoi(argv[3]));
+	spdnet::net::AsyncConnector connector(service);
+
     auto session_msg = std::make_shared<SessionMessage>(); 
     int number = atoi(argv[5]) ; 
     int length = atoi(argv[6]) ; 
@@ -63,36 +63,34 @@ int main(int argc , char* argv[])
     for(int i = 0 ; i < length ; i++)
         msg->data[i] = "0123456789ABCDEF"[i % 16] ; 
     cur_client_num = atoi(argv[4]); 
-    for(int i = 0 ; i < atoi(argv[4]) ; i++)
-    {
-        std::shared_ptr<int> number_ptr = std::make_shared<int>(number); 
-        connector->AsyncConnect({spdnet::net::AsyncConnector::ConnectOptions::WithAddr(argv[1] , atoi(argv[2])) , 
-							spdnet::net::AsyncConnector::ConnectOptions::WithSuccessCallback([service ,session_msg , msg ,  number_ptr , length, &cur_client_num](spdnet::net::TcpSocket::Ptr socket){
-									service->AddTcpConnection(std::move(socket) , [session_msg , msg ,  number_ptr , length , &cur_client_num](spdnet::net::TcpConnection::Ptr new_conn){
-										new_conn->SetDataCallback([new_conn , msg , number_ptr , length , &cur_client_num](const char* data , size_t len)mutable->size_t{
-											if(len >= static_cast<size_t>(sizeof(int))) {
-                                                if(--*number_ptr > 0)
-                                                    new_conn->Send((char*)msg , length + sizeof(int)); 
-                                                else {
-                                                    new_conn->PostDisconnect(); 
-                                                    --cur_client_num  ; 
-                                                }
-                                                return sizeof(int) ; 
-                                            }      
-                                            return 0 ; 
-										}) ; 
-										new_conn->SetDisconnectCallback([](spdnet::net::TcpConnection::Ptr connection){
-											std::cout << "tcp connection disconnect " << std::endl;
 
-										}); 
-										new_conn->Send((char*)&*session_msg , sizeof(SessionMessage)); 
-									}) ; 
-							}) ,spdnet::net::AsyncConnector::ConnectOptions::WithFailedCallback([](){
-									std::cout << "connect failed " << std::endl;
-							}) }) ; 
+	for (int i = 0; i < cur_client_num; i++)
+	{
+		std::shared_ptr<int> number_ptr = std::make_shared<int>(number);
+		connector.asyncConnect(argv[1], atoi(argv[2]), [&service, session_msg, msg, number_ptr, length, &cur_client_num](spdnet::net::TcpConnection::Ptr new_conn) {
+			new_conn->setDataCallback([new_conn, msg, number_ptr, length, &cur_client_num](const char* data, size_t len) mutable->size_t {
+				if (len >= static_cast<size_t>(sizeof(int))) {
+					if (--*number_ptr > 0)
+						new_conn->send((char*)msg, length + sizeof(int));
+					else {
+						new_conn->postDisconnect();
+						--cur_client_num;
+					}
+					return sizeof(int);
+				}
+				return 0;
+				});
+			new_conn->setDisconnectCallback([](spdnet::net::TcpConnection::Ptr connection) {
+				std::cout << "tcp connection disconnect " << std::endl;
 
-        
-    }
+			});
+			new_conn->send((char*) &*session_msg, sizeof(SessionMessage));
+		},
+		// failed cb
+		[]() {
+			std::cout << "connect failed " << std::endl;
+		});
+	}
 
 
     std::chrono::steady_clock::time_point   start_time = std::chrono::steady_clock::now();
@@ -114,7 +112,6 @@ int main(int argc , char* argv[])
     if(cost_second > 0)
         std::cout << total_len / cost_second << " Mib/s" << std::endl; 
 	free(msg);
-    service->Stop();
 	return 0; 
 
 } 

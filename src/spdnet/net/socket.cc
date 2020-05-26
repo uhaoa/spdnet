@@ -7,73 +7,69 @@ namespace spdnet
 {
 namespace net
 {
-    ListenSocket::ListenSocket(int fd):
-            fd_(fd)
+    ListenSocket::ListenSocket(int fd)
+      :fd_(fd) , 
+	   idle_fd_(::open("/dev/null", O_RDONLY | O_CLOEXEC))
     {
 
     }
 
     ListenSocket::~ListenSocket()
     {
-        base::CloseSocket(fd_); 
+        base::closeSocket(fd_); 
     }
 
-    ListenSocket::Ptr ListenSocket::Create(int fd)
-    {
-        return Ptr(new ListenSocket(fd)); 
-    }
-
-    TcpSocket::Ptr ListenSocket::Accept() noexcept
+	std::shared_ptr<TcpSocket> ListenSocket::accept()
     {   
-        int acceptFd  = ::accept(fd_ , nullptr , nullptr); 
-        if(acceptFd == -1)
+        int accept_fd  = ::accept(fd_ , nullptr , nullptr); 
+        if(accept_fd == -1)
         {
+			if (errno == EMFILE) {
+				::close(idle_fd_);
+				accept_fd = ::accept(fd_, nullptr, nullptr);
+				::close(accept_fd);
+				idle_fd_ = open("/dev/null", O_RDONLY | O_CLOEXEC);
+			}
+				
             return nullptr ; 
         }
-
-        return TcpSocket::Create(acceptFd) ; 
+		return std::make_shared<TcpSocket>(accept_fd);
     }
 
-    TcpSocket::TcpSocket(int fd):
-        fd_(fd)
+    TcpSocket::TcpSocket(int fd)
+		: fd_(fd)
     {
 
     }
     
     TcpSocket::~TcpSocket()
     {
-        base::CloseSocket(sock_fd()) ; 
+        base::closeSocket(sock_fd()) ; 
     }
 
-    TcpSocket::Ptr TcpSocket::Create(int fd) 
+    void TcpSocket::setNoDelay()noexcept
     {
-        return Ptr(new TcpSocket(fd)); 
+        base::socketNoDelay(sock_fd());
     }
 
-
-    void TcpSocket::SetNoDelay()noexcept
+    bool TcpSocket::setNonblock() noexcept
     {
-        base::SetSocketNoDelay(sock_fd());
+        return base::socketNonBlock(sock_fd());
     }
 
-    bool TcpSocket::SetNonblock() noexcept
-    {
-        return base::SetSocketNonBlock(sock_fd());
-    }
-
-    void TcpSocket::SetSendSize()noexcept
+    void TcpSocket::setSendSize()noexcept
     {
 
     }
 
-    void TcpSocket::SetRecvSize()noexcept
+    void TcpSocket::setRecvSize()noexcept
     {
 
     }
 
-    bool ListenSocket::SetNonblock() 
+    bool ListenSocket::setNonblock() noexcept
     {
-        return base::SetSocketNonBlock(sock_fd());
+        return base::socketNonBlock(sock_fd());
     }
 
 

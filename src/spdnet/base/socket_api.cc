@@ -7,68 +7,73 @@ namespace spdnet
 {
 namespace base
 {
-        bool InitSocketEnv() 
+        bool initSocketEnv() 
         {
             bool ret = true;       
             signal(SIGPIPE, SIG_IGN);
             return true; 
         }
 
-        int SetSocketNoDelay(int fd)
+        int socketNoDelay(int fd)
         {
             int on = 1 ; 
-            return setsockopt(fd , IPPROTO_TCP , TCP_NODELAY , (const char*)&on , sizeof(on)) ; 
+            return ::setsockopt(fd , IPPROTO_TCP , TCP_NODELAY , (const char*)&on , sizeof(on)) ;
         }
 
-        bool SetSocketBlock(int fd)
+        bool socketBlock(int fd)
         {
             unsigned long  mode = 0 ;     
-            return ioctl(fd, FIONBIO, &mode) != -1 ; 
+            return ::ioctl(fd, FIONBIO, &mode) != -1 ;
         }
 
-        bool SetSocketNonBlock(int fd)
+        bool socketNonBlock(int fd)
         {
             unsigned long  mode = 1 ;     
-            return ioctl(fd, FIONBIO, &mode) != -1 ; 
+            return ::ioctl(fd, FIONBIO, &mode) != -1 ;
         }
 
-        int SetSocketSendBufSize(int fd , int size)
+        int socketSendBufSize(int fd , int size)
         {
-            return setsockopt(fd, SOL_SOCKET, SO_SNDBUF, (const char*)&size, sizeof(size));
+            return ::setsockopt(fd, SOL_SOCKET, SO_SNDBUF, (const char*)&size, sizeof(size));
         }
 
-        int SetSocketRecvBufSize(int fd , int size)
+        int socketRecvBufSize(int fd , int size)
         {
-            return setsockopt(fd, SOL_SOCKET, SO_RCVBUF, (const char*)&size, sizeof(size));
+            return ::setsockopt(fd, SOL_SOCKET, SO_RCVBUF, (const char*)&size, sizeof(size));
         }
 
-        void CloseSocket(int fd)
+        void closeSocket(int fd)
         {       
-            close(fd) ;    
+            ::close(fd) ;    
         } 
 
-        std::string GetIPFromSockaddr(const struct sockaddr* from) 
+        std::string getIPFromSockaddr(const struct sockaddr* from) 
         {
             char tmp[64]{0} ; 
             sockaddr_in* pSin = (sockaddr_in*)&from;
-            inet_ntop(AF_INET , (const void*)&pSin->sin_addr , tmp ,  sizeof(tmp) ) ;
+			::inet_ntop(AF_INET , (const void*)&pSin->sin_addr , tmp ,  sizeof(tmp) ) ;
             return tmp ;  
         }     
 
-        std::string GetIPFromSockFd(int fd) {
+        std::string getIPFromSockFd(int fd) {
             struct sockaddr_in addr;
             socklen_t len = sizeof(addr);
-            if (getpeername(fd, (struct sockaddr*)&addr, &len) == 0)
+            if (::getpeername(fd, (struct sockaddr*)&addr, &len) == 0)
             {
                 return getIPFromSockaddr((const struct sockaddr*)&addr);
             }
             return ""; 
         }  
 
-         std::string getIPFromSockaddr(const struct sockaddr* from)
-         {
-             return ""; 
-         }
+		bool checkSelfConnect(int fd)
+		{
+			struct sockaddr_in local_addr { 0 }, remote_addr{ 0 };
+			socklen_t addr_len = static_cast<socklen_t>(sizeof(local_addr));
+			::getsockname(fd, (struct sockaddr*)(&local_addr), &addr_len);
+			::getpeername(fd, (struct sockaddr*)(&remote_addr), &addr_len);
 
+			return local_addr.sin_port == remote_addr.sin_port &&
+				local_addr.sin_addr.s_addr == remote_addr.sin_addr.s_addr;
+		}
 }
 }

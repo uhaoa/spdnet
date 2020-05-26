@@ -22,34 +22,33 @@ class EventLoop : public base::NonCopyable
         using Ptr = std::shared_ptr<EventLoop> ; 
         using AsynLoopTask = std::function<void()> ;     
         using AfterLoopTask = std::function<void()>; 
-        using TcpEnterCallback = std::function<void (TcpConnection::Ptr)> ; 
     public: 
         EventLoop(unsigned int)noexcept; 
         virtual ~EventLoop()noexcept;
-        void Run(std::shared_ptr<bool>);
-        static Ptr Create(unsigned int loop_timeout_ms);
-        inline bool   IsInLoopThread()const
+        void run(std::shared_ptr<bool>);
+        static Ptr create(unsigned int loop_timeout_ms);
+        inline bool   isInLoopThread()const
         {
             return thread_id_ == current_thread::tid();    
         }
 
-        void RunInEventLoop(AsynLoopTask&& task);
-        void RunAfterEventLoop(AfterLoopTask&& task);
+        void runInEventLoop(AsynLoopTask&& task);
+        void runAfterEventLoop(AfterLoopTask&& task);
 
-        bool LinkChannel(int fd , const Channel* channel);
-        void OnTcpConnectionEnter(TcpConnection::Ptr tcp_connection , const TcpEnterCallback& enter_callback);
-        TcpConnection::Ptr GetTcpConnection(int fd) ;
-        void AddTcpConnection(TcpConnection::Ptr);
-        void RemoveTcpConnection(int fd);
-        const std::shared_ptr<std::thread>& GetLoopThread()const {
+        bool linkChannel(int fd , const Channel* channel ,  uint32_t events = EPOLLET | EPOLLIN | EPOLLRDHUP);
+        void onTcpConnectionEnter(TcpConnection::Ptr tcp_connection , const TcpConnection::TcpEnterCallback& enter_callback);
+        TcpConnection::Ptr getTcpConnection(int fd) ;
+        void addTcpConnection(TcpConnection::Ptr);
+        void removeTcpConnection(int fd);
+        const std::shared_ptr<std::thread>& getLoopThread()const {
             return loop_thread_ ; 
         } 
         int epoll_fd()const{
             return epoll_fd_;
         }
     private:
-        void ExecAsyncTasks();
-        void ExecAfterTasks();
+        void execAsyncTasks();
+        void execAfterTasks();
 
     private:
         int epoll_fd_ ;

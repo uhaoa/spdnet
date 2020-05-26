@@ -2,6 +2,7 @@
 #define SPDNET_NET_TCP_CONNECTION_H_
 #include <memory>
 #include <deque>
+#include <mutex>
 #include <spdnet/base/noncopyable.h>
 #include <spdnet/net/socket.h>
 #include <spdnet/net/channel.h>
@@ -20,65 +21,53 @@ namespace net
         using Ptr = std::shared_ptr<TcpConnection> ; 
         using EventLoopPtr = std::shared_ptr<EventLoop> ; 
         using TcpDisconnectCallback = std::function<void(Ptr)> ;  
-        using TcpDataCallback   = std::function<size_t(const char* , size_t len)> ;  
-        using MessagePtr = std::shared_ptr<std::string> ; 
+        using TcpDataCallback   = std::function<size_t(const char* , size_t len)> ;
+		using TcpEnterCallback = std::function<void(TcpConnection::Ptr)>;
 
-        TcpConnection(TcpSocket::Ptr socket , EventLoopPtr) ; 
+        TcpConnection(std::shared_ptr<TcpSocket> socket , EventLoopPtr) ; 
 
-        void TrySend() override ; 
-        void TryRecv() override ;
-        void OnClose() override ; 
-        void PostShutDown();
-        void PostDisconnect(); 
-        void ExecShutDownInLoop();
+        void trySend() override ; 
+        void tryRecv() override ;
+        void onClose() override ; 
 
-        void SetDisconnectCallback(TcpDisconnectCallback&& callback);
-        void SetDataCallback(TcpDataCallback&& callback);
-        void SetMaxRecvBufferSize(size_t len){
+        void postShutDown();
+        void postDisconnect(); 
+        void execShutDownInLoop();
+
+        void setDisconnectCallback(TcpDisconnectCallback&& callback);
+        void setDataCallback(TcpDataCallback&& callback);
+        void setMaxRecvBufferSize(size_t len){
            max_recv_buffer_size_ = len ; 
         }
-        void GrowRecvBufferSize() ; 
-        void AddWriteEvent();
-        void RemoveWriteEvent();
-        void Send(const char* data , size_t len);
+        void setNodelay() {
+            socket_->setNoDelay();
+        }
+        void regWriteEvent();
+        void unregWriteEvent();
+        void send(const char* data , size_t len);
      public:
-        static Ptr Create(TcpSocket::Ptr socket , EventLoopPtr loop) ; 
+        static Ptr create(std::shared_ptr<TcpSocket> socket , EventLoopPtr loop) ;
 
      private:
-        void ExecFlushAfterLoop();
-        void FlushBufferBySend();
-        void FlushBufferByWriteV();
-        int GetSocketFd()const{
+        void flushBuffer();
+        int getSocketFd()const{
            return socket_->sock_fd();
         }
 
-        class BufferDeleter
-        {
-           public:
-               void operator()(struct buffer_s* buffer){
-                  ox_buffer_delete(buffer) ; 
-               }
-        };
-
      private:
-        TcpSocket::Ptr                    socket_ ; 
+        std::shared_ptr<TcpSocket>        socket_ ; 
         EventLoopPtr                      loop_owner_ ; 
         TcpDisconnectCallback             disconnect_callback_ ; 
         TcpDataCallback                   data_callback_ ; 
         size_t                            max_recv_buffer_size_ = 64 * 1024; 
-        std::unique_ptr<struct buffer_s , BufferDeleter>  recv_buffer_ ; 
-        std::unique_ptr<struct buffer_s , BufferDeleter>  send_buffer_ ; 
-        volatile bool                              closed = false;
+        Buffer							  recv_buffer_ ; 
+        Buffer							  send_buffer_ ;
+        Buffer							  pending_buffer_;
+		std::mutex                        send_guard_;
+        volatile bool                     has_closed = false;
 
-        struct PendingMessage
-        {
-            MessagePtr  data_ ; 
-            size_t     left_size_ ; 
-        };
-
-		std::deque<PendingMessage>  send_list_ ;
-        bool						is_post_flush_; 
-        bool						is_can_write_;
+		volatile bool						is_post_flush_;
+		volatile bool						is_can_write_;
          
     } ; 
 

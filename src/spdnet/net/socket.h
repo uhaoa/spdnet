@@ -11,60 +11,37 @@ namespace net
 
     class TcpSocket : public base::NonCopyable
     {
-    private :
-        class TcpSocketDeleter{
-        public:
-            void operator()(TcpSocket* ptr)const
-            {
-                delete ptr ; 
-            }
-        } ; 
-    public :
-        using Ptr = std::unique_ptr<TcpSocket , TcpSocketDeleter> ; 
     public:
-        static Ptr Create(int fd) ; 
-    public:
-        void SetNoDelay() noexcept; 
-        bool SetNonblock() noexcept ; 
-        void SetSendSize() noexcept ; 
-        void SetRecvSize() noexcept ; 
+		explicit TcpSocket(int fd);
+		virtual ~TcpSocket();
+
+        void setNoDelay() noexcept; 
+        bool setNonblock() noexcept ; 
+        void setSendSize() noexcept ; 
+        void setRecvSize() noexcept ; 
 
         int sock_fd()const {
             return fd_ ; 
         }
         
-    protected :
-        explicit TcpSocket(int fd);
-        virtual ~TcpSocket();
     private:
         int fd_ ; 
     };
 
     class ListenSocket : public base::NonCopyable 
     {
-    private:
-        class ListenSocketDeleter{
-        public:
-            void operator()(ListenSocket* ptr)const
-            {
-                delete ptr ; 
-            }
-        };
-    public:
-        using Ptr = std::unique_ptr<ListenSocket , ListenSocketDeleter> ; 
-        static Ptr Create(int fd); 
     public: 
-        TcpSocket::Ptr Accept() noexcept; 
-        bool SetNonblock() ; 
+		explicit ListenSocket(int fd);
+		virtual ~ListenSocket();
+
+		std::shared_ptr<TcpSocket> accept();
+        bool setNonblock() noexcept;
         int sock_fd()const {
             return fd_ ; 
         }
-        
-    protected:
-        explicit ListenSocket(int fd);
-        virtual ~ListenSocket() ; 
     private: 
         int fd_ ; 
+		int idle_fd_; 
     } ; 
 }
 }
