@@ -1,1 +1,0 @@
-/usr/bin/c++    -std=c++11 -fPIC -O3 -g -ggdb -Wall -DNDEBUG    CMakeFiles/testserver.dir/testserver.cpp.o  -o testserver -rdynamic -lpthread ../lib/libspdnet.so -ltcmalloc -lpthread -ltcmalloc -Wl,-rpath,/home/xuhao/nettest/spdnet/spdnet/lib 
