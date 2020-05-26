@@ -6,7 +6,7 @@
 #include <spdnet/base/socket_api.h>
 #include <iostream>
 #include <algorithm>
-#include <spdnet/net/tcp_service.h>
+#include <spdnet/net/event_service.h>
 
 namespace spdnet
 {
@@ -16,7 +16,7 @@ namespace net
 	class ConnectSession : public Channel
 	{
 	public:
-		ConnectSession(int fd , AsyncConnector& connector , EventLoop::Ptr loop_owner , TcpConnection::TcpEnterCallback&& enter_cb , AsyncConnector::FailedCallback&& failed_cb)
+		ConnectSession(int fd , AsyncConnector& connector , EventLoop::Ptr loop_owner , TcpSession::TcpEnterCallback&& enter_cb , AsyncConnector::FailedCallback&& failed_cb)
 			:fd_(fd) , 
 			 connector_(connector) ,
 			 loop_owner_(loop_owner) , 
@@ -53,8 +53,8 @@ namespace net
 			cancelEvent();
 
 			auto socket = std::make_shared<TcpSocket>(fd_);
-			auto new_conn = TcpConnection::create(std::move(socket) , loop_owner_);
-			loop_owner_->onTcpConnectionEnter(new_conn , enter_cb_);
+			auto new_conn = TcpSession::create(std::move(socket) , loop_owner_);
+			loop_owner_->onTcpSessionEnter(new_conn , enter_cb_);
 		}
 
 		void tryRecv() override
@@ -78,11 +78,11 @@ namespace net
 		int fd_ {0};
 		AsyncConnector& connector_; 
 		EventLoop::Ptr loop_owner_;
-		TcpConnection::TcpEnterCallback enter_cb_;
+		TcpSession::TcpEnterCallback enter_cb_;
 		AsyncConnector::FailedCallback failed_cb_;
 	};
 
-	AsyncConnector::AsyncConnector(TcpService& service)
+	AsyncConnector::AsyncConnector(EventService& service)
 		: service_(service)
 	{
 
@@ -99,7 +99,7 @@ namespace net
 		return connect_sessions_.erase(fd) > 0;
 	}
 
-	void AsyncConnector::asyncConnect(const std::string& ip, int port, TcpConnection::TcpEnterCallback&& enter_cb, FailedCallback&& failed_cb)
+	void AsyncConnector::asyncConnect(const std::string& ip, int port, TcpSession::TcpEnterCallback&& enter_cb, FailedCallback&& failed_cb)
 	{
 		struct sockaddr_in server_addr = { 0 };
 		spdnet::base::initSocketEnv();
@@ -117,7 +117,7 @@ namespace net
 				goto FAILED;
 
 			auto socket = std::make_shared<TcpSocket>(client_fd);
-			service_.addTcpConnection(socket, enter_cb);
+			service_.addTcpSession(socket, enter_cb);
 		}
 		else if (errno != EINPROGRESS) {
 			goto FAILED;

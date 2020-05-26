@@ -2,7 +2,7 @@
 #include <iostream>                                      
 #include <spdnet/net/connector.h>
 #include <spdnet/net/socket.h>
-#include <spdnet/net/tcp_service.h>
+#include <spdnet/net/event_service.h>
 #include <atomic>
 #include <gperftools/profiler.h>
 
@@ -47,7 +47,7 @@ int main(int argc , char* argv[])
 
     std::atomic_int cur_client_num = ATOMIC_VAR_INIT(0) ;
 
-	spdnet::net::TcpService service; 
+	spdnet::net::EventService service; 
 	service.runThread(atoi(argv[3]));
 	spdnet::net::AsyncConnector connector(service);
 
@@ -67,7 +67,7 @@ int main(int argc , char* argv[])
 	for (int i = 0; i < cur_client_num; i++)
 	{
 		std::shared_ptr<int> number_ptr = std::make_shared<int>(number);
-		connector.asyncConnect(argv[1], atoi(argv[2]), [&service, session_msg, msg, number_ptr, length, &cur_client_num](spdnet::net::TcpConnection::Ptr new_conn) {
+		connector.asyncConnect(argv[1], atoi(argv[2]), [&service, session_msg, msg, number_ptr, length, &cur_client_num](spdnet::net::TcpSession::Ptr new_conn) {
 			new_conn->setDataCallback([new_conn, msg, number_ptr, length, &cur_client_num](const char* data, size_t len) mutable->size_t {
 				if (len >= static_cast<size_t>(sizeof(int))) {
 					if (--*number_ptr > 0)
@@ -80,7 +80,7 @@ int main(int argc , char* argv[])
 				}
 				return 0;
 				});
-			new_conn->setDisconnectCallback([](spdnet::net::TcpConnection::Ptr connection) {
+			new_conn->setDisconnectCallback([](spdnet::net::TcpSession::Ptr connection) {
 				std::cout << "tcp connection disconnect " << std::endl;
 
 			});

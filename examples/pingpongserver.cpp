@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <iostream>
-#include <spdnet/net/tcp_service.h>    
+#include <spdnet/net/event_service.h>    
 #include <spdnet/net/acceptor.h>    
 #include <atomic>
 #include <gperftools/profiler.h>
@@ -31,10 +31,10 @@ int main(int argc , char* argv[])
         exit(-1); 
     }
 	signal(SIGUSR1, gprofStartAndStop);
-	spdnet::net::TcpService service;
+	spdnet::net::EventService service;
 	service.runThread(atoi(argv[2]));
 	spdnet::net::TcpAcceptor acceptor(service);
-	acceptor.start("0.0.0.0", atoi(argv[1]), [](spdnet::net::TcpConnection::Ptr new_conn) {
+	acceptor.start("0.0.0.0", atoi(argv[1]), [](spdnet::net::TcpSession::Ptr new_conn) {
 		total_client_num++;
 		new_conn->setDataCallback([new_conn](const char* data, size_t len)->size_t {
 			new_conn->send(data, len);
@@ -42,7 +42,7 @@ int main(int argc , char* argv[])
 			total_packet_num++;
 			return len;
 			});
-		new_conn->setDisconnectCallback([](spdnet::net::TcpConnection::Ptr connection) {
+		new_conn->setDisconnectCallback([](spdnet::net::TcpSession::Ptr connection) {
 			total_client_num--;
 		});
 		new_conn->setNodelay();

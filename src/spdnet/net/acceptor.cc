@@ -7,13 +7,13 @@
 #include <iostream>
 #include <algorithm>
 #include <spdnet/net/exception.h>
-#include <spdnet/net/tcp_service.h>
+#include <spdnet/net/event_service.h>
 
 namespace spdnet
 {
 namespace net
 {
-		TcpAcceptor::TcpAcceptor(TcpService& service)
+		TcpAcceptor::TcpAcceptor(EventService& service)
 			:service_(service) , 
 			 epoll_fd_(epoll_create(1))
 		{
@@ -27,7 +27,7 @@ namespace net
 				listen_thread_->join();
 		}
 
-		void TcpAcceptor::start(const std::string& ip , int port , TcpConnection::TcpEnterCallback&& cb) 
+		void TcpAcceptor::start(const std::string& ip , int port , TcpSession::TcpEnterCallback&& cb) 
 		{
 			ip_ = ip ; 
         	port_ = port ; 
@@ -57,7 +57,7 @@ namespace net
 						if(ret == 1 && ev.events & EPOLLIN) {
 							auto tcp_socket = listen_socket->accept() ; 
 							if(nullptr != tcp_socket) {
-								this->service_.addTcpConnection(std::move(tcp_socket), enter_callback);
+								this->service_.addTcpSession(std::move(tcp_socket), enter_callback);
 							}
 						}
 

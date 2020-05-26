@@ -7,23 +7,23 @@
 #include <functional>
 #include <spdnet/base/noncopyable.h>
 #include <spdnet/net/socket.h>
-#include <spdnet/net/tcp_connection.h>
+#include <spdnet/net/tcp_session.h>
 namespace spdnet
 {
 namespace net
 {
-	class TcpService; 
+	class EventService; 
     class TcpAcceptor : public base::NonCopyable 
     {
      public:
-		 TcpAcceptor(TcpService& service);
+		 TcpAcceptor(EventService& service);
 		~TcpAcceptor();
 
-        void start(const std::string& ip , int port , TcpConnection::TcpEnterCallback&& cb) ; 
+        void start(const std::string& ip , int port , TcpSession::TcpEnterCallback&& cb) ; 
     private:
         int createListenSocket() ; 
     private:
-		TcpService& service_; 
+		EventService& service_; 
 	    std::string ip_ ; 
         int port_ ; 
         int epoll_fd_;

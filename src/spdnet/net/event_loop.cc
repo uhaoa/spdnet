@@ -82,45 +82,45 @@ namespace net
 		tmp_after_loop_tasks.clear();
 	}
 
-    TcpConnection::Ptr EventLoop::getTcpConnection(int fd)
+    TcpSession::Ptr EventLoop::getTcpSession(int fd)
     {
-        auto iter = tcp_connections_.find(fd);
-        if(iter != tcp_connections_.end())
+        auto iter = tcp_sessions_.find(fd);
+        if(iter != tcp_sessions_.end())
             return iter->second; 
         else 
             return nullptr ; 
     }
 
-    void EventLoop::addTcpConnection(TcpConnection::Ptr connection)
+    void EventLoop::addTcpSession(TcpSession::Ptr connection)
     {
-        tcp_connections_[connection->getSocketFd()] = std::move(connection);
+        tcp_sessions_[connection->getSocketFd()] = std::move(connection);
     }
 
-    void EventLoop::removeTcpConnection(int fd)
+    void EventLoop::removeTcpSession(int fd)
     {
-        auto iter = tcp_connections_.find(fd);
-        if(iter != tcp_connections_.end())
+        auto iter = tcp_sessions_.find(fd);
+        if(iter != tcp_sessions_.end())
         {
-            tcp_connections_.erase(iter);
+            tcp_sessions_.erase(iter);
         }   
         else{
             assert(false);
         }
     }
 
-    void EventLoop::onTcpConnectionEnter(TcpConnection::Ptr tcp_connection , const TcpConnection::TcpEnterCallback& enter_callback)
+    void EventLoop::onTcpSessionEnter(TcpSession::Ptr tcp_session , const TcpSession::TcpEnterCallback& enter_callback)
     {
         assert(isInLoopThread());
 
-        if(!linkChannel(tcp_connection->getSocketFd() , tcp_connection.get())) {
+        if(!linkChannel(tcp_session->getSocketFd() , tcp_session.get())) {
             // error
             return ; 
         }
-        assert(nullptr == getTcpConnection(tcp_connection->getSocketFd()));
+        assert(nullptr == getTcpSession(tcp_session->getSocketFd()));
         if(nullptr != enter_callback)
-            enter_callback(tcp_connection);
+            enter_callback(tcp_session);
 
-        addTcpConnection(std::move(tcp_connection));
+        addTcpSession(std::move(tcp_session));
     }
 
     bool EventLoop::linkChannel(int fd , const Channel* channel , uint32_t events)

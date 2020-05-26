@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <iostream>
-#include <spdnet/net/tcp_service.h>    
+#include <spdnet/net/event_service.h>    
 #include <atomic>
 #include <gperftools/profiler.h>
 #include <cassert>
@@ -50,11 +50,11 @@ int main(int argc , char* argv[])
     }
 	signal(SIGUSR1, gprofStartAndStop);
 
-	spdnet::net::TcpService service; 
+	spdnet::net::EventService service; 
 	service.runThread(atoi(argv[2])); 
 	spdnet::net::TcpAcceptor acceptor(service);
 
-	acceptor.start("0.0.0.0", atoi(argv[1]), [](spdnet::net::TcpConnection::Ptr new_conn) {
+	acceptor.start("0.0.0.0", atoi(argv[1]), [](spdnet::net::TcpSession::Ptr new_conn) {
 		total_client_num++;
 		bool session_recv = false;
 		auto session_ptr = std::make_shared<SessionMessage>();
@@ -104,7 +104,7 @@ int main(int argc , char* argv[])
 			}
 			return 0;
 			});
-		new_conn->setDisconnectCallback([](spdnet::net::TcpConnection::Ptr connection) {
+		new_conn->setDisconnectCallback([](spdnet::net::TcpSession::Ptr connection) {
 			total_client_num--;
 		});
 	});

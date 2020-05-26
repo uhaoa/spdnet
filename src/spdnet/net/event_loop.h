@@ -7,7 +7,7 @@
 #include <spdnet/base/noncopyable.h>
 #include <spdnet/base/base.h>
 #include <spdnet/base/current_thread.h>
-#include <spdnet/net/tcp_connection.h>
+#include <spdnet/net/tcp_session.h>
 
 namespace spdnet
 {
@@ -36,10 +36,10 @@ class EventLoop : public base::NonCopyable
         void runAfterEventLoop(AfterLoopTask&& task);
 
         bool linkChannel(int fd , const Channel* channel ,  uint32_t events = EPOLLET | EPOLLIN | EPOLLRDHUP);
-        void onTcpConnectionEnter(TcpConnection::Ptr tcp_connection , const TcpConnection::TcpEnterCallback& enter_callback);
-        TcpConnection::Ptr getTcpConnection(int fd) ;
-        void addTcpConnection(TcpConnection::Ptr);
-        void removeTcpConnection(int fd);
+        void onTcpSessionEnter(TcpSession::Ptr tcp_session , const TcpSession::TcpEnterCallback& enter_callback);
+        TcpSession::Ptr getTcpSession(int fd) ;
+        void addTcpSession(TcpSession::Ptr);
+        void removeTcpSession(int fd);
         const std::shared_ptr<std::thread>& getLoopThread()const {
             return loop_thread_ ; 
         } 
@@ -62,7 +62,7 @@ class EventLoop : public base::NonCopyable
         unsigned int                  wait_timeout_ms_ ; 
         std::vector<epoll_event>      event_entries_ ; 
         std::unique_ptr<WakeupChannel>      wake_up_ ; 
-        std::unordered_map<int, TcpConnection::Ptr> tcp_connections_ ;
+        std::unordered_map<int, TcpSession::Ptr> tcp_sessions_ ;
 } ; 
 
 }
