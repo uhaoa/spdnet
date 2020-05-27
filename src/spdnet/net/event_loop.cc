@@ -54,10 +54,6 @@ namespace net
     void EventLoop::runAfterEventLoop(AfterLoopTask&& task)
     {
         assert(isInLoopThread());
-        if(!isInLoopThread())
-        {
-            throw SpdnetException("call runAfterEventLoop() must in the loop thread!");
-        }
         after_loop_tasks.emplace_back(std::move(task));
     }
 
