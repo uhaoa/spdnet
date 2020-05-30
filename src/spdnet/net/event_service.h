@@ -27,7 +27,7 @@ namespace net
      private:
 	void stop();
      private:
-        std::shared_ptr<bool>				   run_loop_ ; 
+        std::shared_ptr<bool>		       run_loop_ ; 
         std::vector<EventLoop::Ptr>            loops_ ; 
         std::mt19937                           random_ ; 
     } ; 
