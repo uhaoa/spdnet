@@ -112,10 +112,10 @@ namespace net
         {
 			size_t valid_count = recv_buffer_.getWriteValidCount(); 
 			struct iovec vec[2];
-			vec[0].iov_base = stack_buffer;
-			vec[0].iov_len = sizeof(stack_buffer);
-			vec[1].iov_base = recv_buffer_.getWritePtr();
-			vec[1].iov_len = valid_count;
+			vec[0].iov_base = recv_buffer_.getWritePtr();
+			vec[0].iov_len = valid_count;
+			vec[1].iov_base = stack_buffer;
+			vec[1].iov_len = sizeof(stack_buffer);
 
 
 			size_t try_recv_len = valid_count + sizeof(stack_buffer);
