@@ -2,7 +2,7 @@
 #include <iostream>
 #include <spdnet/net/event_service.h>    
 #include <atomic>
-#include <gperftools/profiler.h>
+//#include <gperftools/profiler.h>
 #include <cassert>
 #include <memory>
 #include <string.h>
@@ -11,6 +11,7 @@
 std::atomic_llong total_recv_size = ATOMIC_VAR_INIT(0) ; 
 std::atomic_llong total_client_num = ATOMIC_VAR_INIT(0);
 std::atomic_llong total_packet_num = ATOMIC_VAR_INIT(0);
+/*
 void gprofStartAndStop(int signum) {
     static int isStarted = 0;
     if (signum != SIGUSR1) return;
@@ -26,7 +27,7 @@ void gprofStartAndStop(int signum) {
         printf("ProfilerStop success\n");
     }
 }
-
+*/
 struct SessionMessage
 {
       int number;
@@ -48,7 +49,7 @@ int main(int argc , char* argv[])
         fprintf(stderr , "usage : <port> <thread num>\n");
         exit(-1); 
     }
-	signal(SIGUSR1, gprofStartAndStop);
+	//signal(SIGUSR1, gprofStartAndStop);
 
 	spdnet::net::EventService service; 
 	service.runThread(atoi(argv[2])); 

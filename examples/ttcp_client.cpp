@@ -4,7 +4,7 @@
 #include <spdnet/net/socket.h>
 #include <spdnet/net/event_service.h>
 #include <atomic>
-#include <gperftools/profiler.h>
+//#include <gperftools/profiler.h>
 
 struct SessionMessage
 {
@@ -18,6 +18,7 @@ struct PayloadMessage
     char data[0] ; 
 };
 
+/*
 void gprofStartAndStop(int signum) {
     static int isStarted = 0;
     if (signum != SIGUSR1) return;
@@ -34,7 +35,7 @@ void gprofStartAndStop(int signum) {
     }
 }
 
-
+*/
 
 int main(int argc , char* argv[])
 {
@@ -43,7 +44,7 @@ int main(int argc , char* argv[])
         fprintf(stderr , "usage: <host> <port> <thread num> <session num> <number> <length>\n");
         exit(-1); 
     }
-    signal(SIGUSR1, gprofStartAndStop);
+   // signal(SIGUSR1, gprofStartAndStop);
 
     std::atomic_int cur_client_num = ATOMIC_VAR_INIT(0) ;
 

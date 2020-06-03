@@ -26,7 +26,7 @@ file(GLOB_RECURSE ALL_SRC
 include_directories("${PROJECT_SOURCE_DIR}/src/")
 add_library(spdnet SHARED ${ALL_SRC})
 find_package(Threads REQUIRED)
-target_link_libraries(spdnet pthread tcmalloc)
+target_link_libraries(spdnet pthread)
 install(TARGETS spdnet DESTINATION lib)
 
 file(GLOB SPDNET_NET_PUBLIC_HEADERS ${PROJECT_SOURCE_DIR}/src/spdnet/net/*.h)
