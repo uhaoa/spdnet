@@ -57,7 +57,7 @@ int main(int argc , char* argv[])
         std::cout << "total recv : " << (total_recv_size / 1024) / 1024 << " M /s, of client num:" << total_client_num << std::endl;
         std::cout << "packet num:" << total_packet_num << std::endl;
         total_packet_num = 0;
-		total_recv_size = 0;
+	total_recv_size = 0;
     }
 
 	getchar();
