@@ -39,9 +39,9 @@ namespace net
 
 			int result = 0 ; 
 			socklen_t result_len = sizeof(result);
-			if (getsockopt(fd_, SOL_SOCKET, SO_ERROR, &result, &result_len) == -1 
+			if (SPDNET_PREDICT_FALSE(getsockopt(fd_, SOL_SOCKET, SO_ERROR, &result, &result_len) == -1
 				|| result != 0
-				|| spdnet::base::checkSelfConnect(fd_))
+				|| spdnet::base::checkSelfConnect(fd_)))
 			{
 				if (failed_cb_ != nullptr)
 					failed_cb_();

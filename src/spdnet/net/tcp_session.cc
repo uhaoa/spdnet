@@ -65,7 +65,7 @@ namespace net
 		assert(loop_owner_->isInLoopThread());
 		{
 			std::lock_guard<std::mutex> lck(send_guard_);
-			if (pending_buffer_.getLength() == 0) {
+			if (SPDNET_PREDICT_TRUE(pending_buffer_.getLength() == 0)) {
 				pending_buffer_.swap(send_buffer_);
 			}
 			else {
@@ -78,7 +78,7 @@ namespace net
 			return;
 
 		size_t send_len = ::send(socket_->sock_fd() , pending_buffer_.getDataPtr() ,static_cast<int>(pending_buffer_.getLength()) , 0);
-		if (send_len < 0) {
+		if (SPDNET_PREDICT_FALSE(send_len < 0)) {
 			if (errno == EAGAIN) {
 				regWriteEvent();
 				is_can_write_ = false;
@@ -126,17 +126,17 @@ namespace net
                 break;
             }
 			size_t stack_len = 0;
-			if (recv_len > (int)valid_count) {
+			if (SPDNET_PREDICT_FALSE(recv_len > (int)valid_count)) {
 				recv_buffer_.addWritePos(valid_count);
 				stack_len = recv_len - valid_count;
 			}
 			else
 				recv_buffer_.addWritePos(recv_len);
 
-            if(nullptr != data_callback_) {
+            if(SPDNET_PREDICT_TRUE(nullptr != data_callback_)) {
                 size_t len = data_callback_(recv_buffer_.getDataPtr() , recv_buffer_.getLength());
                 assert(len <= recv_buffer_.getLength()) ;
-                if(len == recv_buffer_.getLength()){
+                if(SPDNET_PREDICT_TRUE(len == recv_buffer_.getLength())){
 					recv_buffer_.removeLength(len);
 					if (stack_len > 0) {
 						len = data_callback_(stack_buffer, stack_len);
@@ -162,7 +162,7 @@ namespace net
 
             }
 
-			if (recv_len >= (int)recv_buffer_.getCapacity()/* + (int)(sizeof(stack_buffer))*/) {
+			if (SPDNET_PREDICT_FALSE(recv_len >= (int)recv_buffer_.getCapacity()/* + (int)(sizeof(stack_buffer))*/)) {
 				size_t grow_len = 0; 
 				if (recv_buffer_.getCapacity() * 2 <= max_recv_buffer_size_)
 					grow_len = recv_buffer_.getCapacity();

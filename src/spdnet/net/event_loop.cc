@@ -36,7 +36,7 @@ namespace net
 
     void EventLoop::runInEventLoop(AsynLoopTask&& task)
     {
-        if(isInLoopThread()){
+        if(SPDNET_PREDICT_FALSE(isInLoopThread())){
             task();
         }
         else
@@ -141,13 +141,13 @@ namespace net
                     auto channel = static_cast<Channel*>(event_entries_[i].data.ptr);
                     auto event   = event_entries_[i].events ; 
 
-                    if(event & EPOLLRDHUP)
+                    if(SPDNET_PREDICT_FALSE(event & EPOLLRDHUP))
                     {
                         channel->tryRecv();
                         channel->onClose();
                         continue;
                     }
-                    if(event & EPOLLIN)
+                    if(SPDNET_PREDICT_TRUE(event & EPOLLIN))
                     {
                         channel->tryRecv();     
                     }
@@ -157,7 +157,7 @@ namespace net
                     }
                 }
 
-                if(num_events == static_cast<int>(event_entries_.size())){
+                if(SPDNET_PREDICT_FALSE(num_events == static_cast<int>(event_entries_.size()))){
                     event_entries_.resize(event_entries_.size() * 2); 
                 }
 

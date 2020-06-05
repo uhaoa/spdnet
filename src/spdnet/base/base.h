@@ -17,18 +17,26 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 
-    //#define sErrno errno
-    //#define SOCKET_ERROR (-1)
-    //#define  (-1)
-    //using sock = int ; 
-    //using THREAD_ID_T = int ; 
-
-
 
 #if defined(_MSC_VER)
 #define THREAD_LOCAL __declspec(thread)
 #else
 #define THREAD_LOCAL __thread
 #endif
+
+
+#ifdef __GNUC__
+#define SPDNET_PREDICT_TRUE(x) (__builtin_expect(!!(x), 1))
+#else
+#define SPDNET_PREDICT_TRUE(x) (x)
+#endif
+
+
+#ifdef __GNUC__
+#define SPDNET_PREDICT_FALSE(x) (__builtin_expect(x, 0))
+#else
+#define SPDNET_PREDICT_FALSE(x) (x)
+#endif
+
 
 #endif  // SPDNET_BASE_BASE_H
