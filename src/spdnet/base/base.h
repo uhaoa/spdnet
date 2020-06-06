@@ -2,10 +2,10 @@
 #define SPDNET_BASE_BASE_H
 
 #include<netdb.h>
-#include<errno.h>
+#include<cerrno>
 #include<fcntl.h>
 #include<unistd.h>
-#include<signal.h>
+#include<csignal>
 #include<sys/uio.h>
 #include<sys/ioctl.h>
 #include <sys/epoll.h>

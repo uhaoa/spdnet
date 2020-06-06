@@ -32,7 +32,7 @@ install(TARGETS spdnet DESTINATION lib)
 file(GLOB SPDNET_NET_PUBLIC_HEADERS ${PROJECT_SOURCE_DIR}/src/spdnet/net/*.h)
 install (FILES ${SPDNET_NET_PUBLIC_HEADERS} DESTINATION "include/spdnet/net")
 
-option(BUILD_EXAMPLES "build examples" OFF)
+option(BUILD_EXAMPLES "build examples" ON)
 if (BUILD_EXAMPLES)
      add_subdirectory(examples)
 endif(BUILD_EXAMPLES)
