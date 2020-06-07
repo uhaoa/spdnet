@@ -83,7 +83,7 @@ namespace spdnet {
                         break;
                 }
                 assert(cnt > 0);
-                const int send_len = writev(socket_->sock_fd(), iov, static_cast<int>(cnt));
+                const int send_len = ::writev(socket_->sock_fd(), iov, static_cast<int>(cnt));
                 if (SPDNET_PREDICT_FALSE(send_len < 0)) {
                     if (errno == EAGAIN) {
                         regWriteEvent();
