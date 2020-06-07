@@ -3,12 +3,12 @@
 
 #include <memory>
 #include <deque>
-#include <mutex>
 #include <functional>
 #include <spdnet/base/noncopyable.h>
 #include <spdnet/net/socket.h>
 #include <spdnet/net/channel.h>
 #include <spdnet/base/buffer.h>
+#include <spdnet/base/spin_lock.h>
 
 namespace spdnet {
     namespace net {
@@ -75,9 +75,9 @@ namespace spdnet {
             TcpDataCallback data_callback_;
             size_t max_recv_buffer_size_ = 64 * 1024;
             Buffer recv_buffer_;
-            Buffer send_buffer_;
-            Buffer pending_buffer_;
-            std::mutex send_guard_;
+            std::deque<Buffer *> send_buffer_list_;
+            std::deque<Buffer *> pending_buffer_list_;
+            SpinLock send_guard_;
             volatile bool has_closed = false;
 
             volatile bool is_post_flush_;

@@ -1,4 +1,4 @@
-#include <stdio.h>
+#include <cstdio>
 #include <iostream>
 #include <spdnet/net/event_service.h>
 #include <spdnet/net/acceptor.h>

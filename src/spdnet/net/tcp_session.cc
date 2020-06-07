@@ -21,23 +21,26 @@ namespace spdnet {
         void TcpSession::regWriteEvent() {
             struct epoll_event event{0, {nullptr}};
             event.events = EPOLLET | EPOLLIN | EPOLLOUT | EPOLLRDHUP;
-            event.data.ptr = (Channel *) (this);
+            event.data.ptr = (Channel * )(this);
             ::epoll_ctl(loop_owner_->epoll_fd(), EPOLL_CTL_MOD, socket_->sock_fd(), &event);
         }
 
         void TcpSession::unregWriteEvent() {
             struct epoll_event event{0, {nullptr}};
             event.events = EPOLLET | EPOLLIN | EPOLLRDHUP;
-            event.data.ptr = (Channel *) (this);
+            event.data.ptr = (Channel * )(this);
             ::epoll_ctl(loop_owner_->epoll_fd(), EPOLL_CTL_MOD, socket_->sock_fd(), &event);
         }
 
         void TcpSession::send(const char *data, size_t len) {
             if (len <= 0)
                 return;
+            auto buffer = loop_owner_->getBufferBySize(len);
+            assert(buffer);
+            buffer->write(data, len);
             {
-                std::lock_guard<std::mutex> lck(send_guard_);
-                send_buffer_.write(data, len);
+                std::lock_guard<SpinLock> lck(send_guard_);
+                send_buffer_list_.push_back(buffer);
             }
             if (is_post_flush_) {
                 return;
@@ -56,34 +59,59 @@ namespace spdnet {
             bool force_close = false;
             assert(loop_owner_->isInLoopThread());
             {
-                std::lock_guard<std::mutex> lck(send_guard_);
-                if (SPDNET_PREDICT_TRUE(pending_buffer_.getLength() == 0)) {
-                    pending_buffer_.swap(send_buffer_);
+                std::lock_guard<SpinLock> lck(send_guard_);
+                if (SPDNET_PREDICT_TRUE(pending_buffer_list_.empty())) {
+                    pending_buffer_list_.swap(send_buffer_list_);
                 } else {
-                    pending_buffer_.write(send_buffer_.getDataPtr(), send_buffer_.getLength());
-                    send_buffer_.clear();
+                    for (const auto buffer : send_buffer_list_)
+                        pending_buffer_list_.push_back(buffer);
+                    send_buffer_list_.clear();
                 }
             }
 
-            if (pending_buffer_.getLength() == 0)
-                return;
-
-            size_t send_len = ::send(socket_->sock_fd(), pending_buffer_.getDataPtr(),
-                                     static_cast<int>(pending_buffer_.getLength()), 0);
-            if (SPDNET_PREDICT_FALSE(send_len < 0)) {
-                if (errno == EAGAIN) {
-                    regWriteEvent();
-                    is_can_write_ = false;
-                } else {
-                    force_close = true;
+            constexpr size_t MAX_IOVEC = 1024;
+            struct iovec iov[MAX_IOVEC];
+            while (!pending_buffer_list_.empty()) {
+                size_t cnt = 0;
+                size_t prepare_send_len = 0;
+                for (const auto buffer : pending_buffer_list_) {
+                    iov[cnt].iov_base = buffer->getDataPtr();
+                    iov[cnt].iov_len = buffer->getLength();
+                    prepare_send_len += buffer->getLength();
+                    cnt++;
+                    if (cnt >= MAX_IOVEC)
+                        break;
                 }
-            } else {
-                pending_buffer_.removeLength(send_len);
-                if (pending_buffer_.getLength() == 0)
-                    pending_buffer_.adjustToHead();
+                assert(cnt > 0);
+                const int send_len = writev(socket_->sock_fd(), iov, static_cast<int>(cnt));
+                if (SPDNET_PREDICT_FALSE(send_len < 0)) {
+                    if (errno == EAGAIN) {
+                        regWriteEvent();
+                        is_can_write_ = false;
+                    } else {
+                        force_close = true;
+                    }
+                } else {
+                    size_t tmp_len = send_len;
+                    for (auto iter = pending_buffer_list_.begin(); iter != pending_buffer_list_.end();) {
+                        auto buffer = *iter;
+                        if (SPDNET_PREDICT_TRUE(buffer->getLength() <= tmp_len)) {
+                            tmp_len -= buffer->getLength();
+                            buffer->clear();
+                            loop_owner_->releaseBuffer(buffer);
+                            iter = pending_buffer_list_.erase(iter);
+                        } else {
+                            buffer->removeLength(tmp_len);
+                            break;
+                        }
+
+                    }
+                }
             }
-            if (force_close)
+
+            if (force_close) {
                 onClose();
+            }
         }
 
         void TcpSession::trySend() {

@@ -7,6 +7,8 @@
 namespace spdnet::base {
     class Buffer {
     public:
+        static constexpr size_t min_buffer_size = 1024;
+
         ~Buffer() {
             if (data_ != nullptr) {
                 free(data_);
@@ -14,7 +16,9 @@ namespace spdnet::base {
             }
         }
 
-        explicit Buffer(size_t buffer_size = 1024) {
+        explicit Buffer(size_t buffer_size = min_buffer_size) {
+            if (buffer_size < min_buffer_size)
+                buffer_size = min_buffer_size;
             if ((data_ = (char *) malloc(sizeof(char) * buffer_size)) != nullptr)
                 data_size_ = buffer_size;
         }
@@ -107,6 +111,14 @@ namespace spdnet::base {
                 return nullptr;
         }
 
+        void setNext(Buffer *next) {
+            next_ = next;
+        }
+
+        Buffer *getNext() const {
+            return next_;
+        }
+
     private:
 
         void init() {
@@ -119,6 +131,8 @@ namespace spdnet::base {
 
         size_t write_pos_{0};
         size_t read_pos_{0};
+
+        Buffer *next_{nullptr};
     };
 
 }
