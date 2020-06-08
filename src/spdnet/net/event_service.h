@@ -10,6 +10,7 @@
 #include <spdnet/base/base.h>
 #include <spdnet/net/socket.h>
 #include <spdnet/net/event_loop.h>
+#include <spdnet/net/env_init.h>
 
 namespace spdnet {
     namespace net {
@@ -34,6 +35,7 @@ namespace spdnet {
             std::shared_ptr<bool> run_loop_;
             std::vector<EventLoop::Ptr> loops_;
             std::mt19937 random_;
+            EnvInit env_;
         };
     }
 }

@@ -93,7 +93,6 @@ namespace spdnet {
 
         void AsyncConnector::asyncConnect(const EndPoint &addr, TcpSession::TcpEnterCallback &&enter_cb,
                                           FailedCallback &&failed_cb) {
-            spdnet::base::initSocketEnv();
             int client_fd = ::socket(addr.family(), SOCK_STREAM, 0);
             if (client_fd == -1)
                 return;
