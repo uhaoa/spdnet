@@ -91,19 +91,14 @@ namespace spdnet {
             return connect_sessions_.erase(fd) > 0;
         }
 
-        void AsyncConnector::asyncConnect(const std::string &ip, int port, TcpSession::TcpEnterCallback &&enter_cb,
+        void AsyncConnector::asyncConnect(const EndPoint &addr, TcpSession::TcpEnterCallback &&enter_cb,
                                           FailedCallback &&failed_cb) {
-            struct sockaddr_in server_addr = {0};
             spdnet::base::initSocketEnv();
-            int client_fd = socket(PF_INET, SOCK_STREAM, 0);
+            int client_fd = ::socket(addr.family(), SOCK_STREAM, 0);
             if (client_fd == -1)
                 return;
             spdnet::base::socketNonBlock(client_fd);
-            server_addr.sin_family = AF_INET;
-            inet_pton(AF_INET, ip.c_str(), &server_addr.sin_addr.s_addr);
-            server_addr.sin_port = htons(port);
-
-            int ret = ::connect(client_fd, (struct sockaddr *) &server_addr, sizeof(struct sockaddr));
+            int ret = ::connect(client_fd, addr.socket_addr(), addr.socket_addr_len());
             if (ret == 0) {
                 if (spdnet::base::checkSelfConnect(client_fd))
                     goto FAILED;

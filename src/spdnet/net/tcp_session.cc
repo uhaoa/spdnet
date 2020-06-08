@@ -21,14 +21,14 @@ namespace spdnet {
         void TcpSession::regWriteEvent() {
             struct epoll_event event{0, {nullptr}};
             event.events = EPOLLET | EPOLLIN | EPOLLOUT | EPOLLRDHUP;
-            event.data.ptr = (Channel * )(this);
+            event.data.ptr = (Channel *) (this);
             ::epoll_ctl(loop_owner_->epoll_fd(), EPOLL_CTL_MOD, socket_->sock_fd(), &event);
         }
 
         void TcpSession::unregWriteEvent() {
             struct epoll_event event{0, {nullptr}};
             event.events = EPOLLET | EPOLLIN | EPOLLRDHUP;
-            event.data.ptr = (Channel * )(this);
+            event.data.ptr = (Channel *) (this);
             ::epoll_ctl(loop_owner_->epoll_fd(), EPOLL_CTL_MOD, socket_->sock_fd(), &event);
         }
 
@@ -83,7 +83,7 @@ namespace spdnet {
                         break;
                 }
                 assert(cnt > 0);
-                const int send_len = writev(socket_->sock_fd(), iov, static_cast<int>(cnt));
+                const int send_len = ::writev(socket_->sock_fd(), iov, static_cast<int>(cnt));
                 if (SPDNET_PREDICT_FALSE(send_len < 0)) {
                     if (errno == EAGAIN) {
                         regWriteEvent();

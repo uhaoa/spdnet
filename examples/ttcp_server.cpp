@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
     service.runThread(atoi(argv[2]));
     spdnet::net::TcpAcceptor acceptor(service);
 
-    acceptor.start("0.0.0.0", atoi(argv[1]), [](spdnet::net::TcpSession::Ptr new_conn) {
+    acceptor.start(spdnet::net::EndPoint::ipv4("0.0.0.0", atoi(argv[1])), [](spdnet::net::TcpSession::Ptr new_conn) {
         total_client_num++;
         bool session_recv = false;
         auto session_ptr = std::make_shared<SessionMessage>();

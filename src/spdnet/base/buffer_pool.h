@@ -13,13 +13,13 @@ namespace spdnet::base {
         static constexpr size_t max_pool_size = 32;
 
         BufferPool() {
-            for (int i = 0; i < max_pool_size; i++) {
+            for (size_t i = 0; i < max_pool_size; i++) {
                 pool_[i] = nullptr;
             }
         }
 
         ~BufferPool() {
-            for (int i = 0; i < max_pool_size; i++) {
+            for (size_t i = 0; i < max_pool_size; i++) {
                 Buffer *ptr = pool_[i].load(std::memory_order_relaxed);
                 while (ptr) {
                     Buffer *next = ptr->getNext();

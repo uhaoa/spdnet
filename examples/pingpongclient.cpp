@@ -16,7 +16,8 @@ int main(int argc, char *argv[]) {
     spdnet::net::AsyncConnector connector(service);
 
     for (int i = 0; i < atoi(argv[5]); i++) {
-        connector.asyncConnect(argv[1], atoi(argv[2]), [send_data](spdnet::net::TcpSession::Ptr new_conn) {
+        connector.asyncConnect(spdnet::net::EndPoint::ipv4(argv[1], atoi(argv[2])),
+                               [send_data](spdnet::net::TcpSession::Ptr new_conn) {
                                    //std::cout << "connect success " << std::endl;
                                    new_conn->setDataCallback([new_conn](const char *data, size_t len) -> size_t {
                                        new_conn->send(data, len);
