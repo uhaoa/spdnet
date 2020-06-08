@@ -60,8 +60,6 @@ namespace spdnet {
 
 
         int TcpAcceptor::createListenSocket(const EndPoint &addr) {
-            base::initSocketEnv();
-
             int fd = ::socket(addr.family(), SOCK_STREAM, 0);
             if (fd == -1) {
                 return -1;

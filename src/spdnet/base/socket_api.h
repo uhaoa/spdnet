@@ -5,9 +5,6 @@
 #include <string>
 
 namespace spdnet::base {
-    // 初始化相关环境
-    bool initSocketEnv();
-
     // 禁用Nagle算法
     int socketNoDelay(int fd);
 

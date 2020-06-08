@@ -3,11 +3,6 @@
 #include <arpa/inet.h>
 
 namespace spdnet::base {
-    bool initSocketEnv() {
-        signal(SIGPIPE, SIG_IGN);
-        return true;
-    }
-
     int socketNoDelay(int fd) {
         int on = 1;
         return ::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (const char *) &on, sizeof(on));
