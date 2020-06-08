@@ -28,17 +28,9 @@ namespace spdnet {
 
             TcpSession(std::shared_ptr<TcpSocket> socket, EventLoopPtr);
 
-            void trySend() override;
-
-            void tryRecv() override;
-
-            void onClose() override;
-
             void postShutDown();
 
             void postDisconnect();
-
-            void execShutDownInLoop();
 
             void setDisconnectCallback(TcpDisconnectCallback &&callback);
 
@@ -63,7 +55,15 @@ namespace spdnet {
 
         private:
             void flushBuffer();
+			
+            void trySend() override;
 
+            void tryRecv() override;
+
+            void onClose() override;
+			
+			void execShutDownInLoop();
+			
             int getSocketFd() const {
                 return socket_->sock_fd();
             }
