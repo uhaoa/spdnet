@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <spdnet/net/exception.h>
 #include <spdnet/net/event_service.h>
+#include <spdnet/net/end_point.h>
 
 namespace spdnet {
     namespace net {
@@ -23,11 +24,8 @@ namespace spdnet {
                 listen_thread_->join();
         }
 
-        void TcpAcceptor::start(const std::string &ip, int port, TcpSession::TcpEnterCallback &&cb) {
-            ip_ = ip;
-            port_ = port;
-
-            const int listen_fd = createListenSocket();
+        void TcpAcceptor::start(const EndPoint &addr, TcpSession::TcpEnterCallback &&cb) {
+            const int listen_fd = createListenSocket(addr);
             if (listen_fd == -1) {
                 throw SpdnetException(std::string("listen error : ") + std::to_string(errno));
             }
@@ -61,29 +59,21 @@ namespace spdnet {
         }
 
 
-        int TcpAcceptor::createListenSocket() {
+        int TcpAcceptor::createListenSocket(const EndPoint &addr) {
             base::initSocketEnv();
 
-            struct sockaddr_in addr{0};
-            int fd = socket(AF_INET, SOCK_STREAM, 0);
+            int fd = ::socket(addr.family(), SOCK_STREAM, 0);
             if (fd == -1) {
                 return -1;
             }
 
-            addr.sin_family = AF_INET;
-            addr.sin_port = htons(port_);
-            addr.sin_addr.s_addr = INADDR_ANY;
-            if (inet_pton(AF_INET, ip_.c_str(), &addr.sin_addr) == 0) {
-                base::closeSocket(fd);
-                return -1;
-            }
             int reuse_on = 1;
             if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const char *) &reuse_on, sizeof(int)) < 0) {
                 base::closeSocket(fd);
                 return -1;
             }
 
-            int ret = bind(fd, (struct sockaddr *) &addr, sizeof(addr));
+            int ret = ::bind(fd, addr.socket_addr(), addr.socket_addr_len());
             if (ret == -1 || listen(fd, 512) == -1) {
                 base::closeSocket(fd);
                 return -1;

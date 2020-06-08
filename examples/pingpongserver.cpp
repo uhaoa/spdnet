@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
     spdnet::net::EventService service;
     service.runThread(atoi(argv[2]));
     spdnet::net::TcpAcceptor acceptor(service);
-    acceptor.start("0.0.0.0", atoi(argv[1]), [](spdnet::net::TcpSession::Ptr new_conn) {
+    acceptor.start(spdnet::net::EndPoint::ipv4("0.0.0.0", atoi(argv[1])), [](spdnet::net::TcpSession::Ptr new_conn) {
         total_client_num++;
         new_conn->setDataCallback([new_conn](const char *data, size_t len) -> size_t {
             new_conn->send(data, len);

@@ -21,14 +21,14 @@ namespace spdnet {
         void TcpSession::regWriteEvent() {
             struct epoll_event event{0, {nullptr}};
             event.events = EPOLLET | EPOLLIN | EPOLLOUT | EPOLLRDHUP;
-            event.data.ptr = (Channel * )(this);
+            event.data.ptr = (Channel *) (this);
             ::epoll_ctl(loop_owner_->epoll_fd(), EPOLL_CTL_MOD, socket_->sock_fd(), &event);
         }
 
         void TcpSession::unregWriteEvent() {
             struct epoll_event event{0, {nullptr}};
             event.events = EPOLLET | EPOLLIN | EPOLLRDHUP;
-            event.data.ptr = (Channel * )(this);
+            event.data.ptr = (Channel *) (this);
             ::epoll_ctl(loop_owner_->epoll_fd(), EPOLL_CTL_MOD, socket_->sock_fd(), &event);
         }
 

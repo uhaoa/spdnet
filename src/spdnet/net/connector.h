@@ -10,6 +10,7 @@
 #include <spdnet/base/noncopyable.h>
 #include <spdnet/net/socket.h>
 #include <spdnet/net/tcp_session.h>
+#include <spdnet/net/end_point.h>
 
 namespace spdnet {
     namespace net {
@@ -26,7 +27,7 @@ namespace spdnet {
 
             ~AsyncConnector();
 
-            void asyncConnect(const std::string &ip, int port, TcpSession::TcpEnterCallback &&success_cb,
+            void asyncConnect(const EndPoint &addr, TcpSession::TcpEnterCallback &&success_cb,
                               FailedCallback &&failed_cb);
 
         private:

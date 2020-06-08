@@ -9,6 +9,7 @@
 #include <spdnet/base/noncopyable.h>
 #include <spdnet/net/socket.h>
 #include <spdnet/net/tcp_session.h>
+#include <spdnet/net/end_point.h>
 
 namespace spdnet {
     namespace net {
@@ -20,15 +21,13 @@ namespace spdnet {
 
             ~TcpAcceptor();
 
-            void start(const std::string &ip, int port, TcpSession::TcpEnterCallback &&cb);
+            void start(const EndPoint &addr, TcpSession::TcpEnterCallback &&cb);
 
         private:
-            int createListenSocket();
+            int createListenSocket(const EndPoint &addr);
 
         private:
             EventService &service_;
-            std::string ip_;
-            int port_;
             int epoll_fd_;
             std::shared_ptr<bool> run_listen_;
             std::shared_ptr<std::thread> listen_thread_;

@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
 
     for (int i = 0; i < cur_client_num; i++) {
         std::shared_ptr<int> number_ptr = std::make_shared<int>(number);
-        connector.asyncConnect(argv[1], atoi(argv[2]),
+        connector.asyncConnect(spdnet::net::EndPoint::ipv4(argv[1], atoi(argv[2])),
                                [&service, session_msg, msg, number_ptr, length, &cur_client_num](
                                        spdnet::net::TcpSession::Ptr new_conn) {
                                    new_conn->setDataCallback(
