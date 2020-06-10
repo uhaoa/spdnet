@@ -39,9 +39,11 @@ namespace spdnet {
             assert(buffer);
             buffer->write(data, len);
             {
-                std::lock_guard<SpinLock> lck(send_guard_);
-                send_buffer_list_.push_back(buffer);
+                std::lock_guard<SpinLock> lck(desciptor_data_.send_guard_);
+                desciptor_data_.send_buffer_list_.push_back(buffer);
             }
+
+            /*
             if (is_post_flush_) {
                 return;
             }
@@ -53,6 +55,7 @@ namespace spdnet {
                     this_ptr->is_post_flush_ = false;
                 }
             });
+            */
         }
 
         void TcpSession::flushBuffer() {
@@ -196,22 +199,18 @@ namespace spdnet {
         }
 
         void TcpSession::onClose() {
-            if (has_closed)
-                return;
             assert(loop_owner_->isInLoopThread());
-            has_closed = true;
             auto loop = loop_owner_;
             auto callback = disconnect_callback_;
-            Ptr connection = shared_from_this();
+            Ptr session = shared_from_this();
             std::shared_ptr<TcpSocket> socket = std::move(socket_);
-            loop_owner_->runAfterEventLoop([loop, callback, connection, socket]() {
+            loop_owner_->runAfterEventLoop([loop, callback, session, socket]() {
                 if (callback)
-                    callback(connection);
+                    callback(session);
                 loop->removeTcpSession(socket->sock_fd());
                 struct epoll_event ev{0, {nullptr}};
                 ::epoll_ctl(loop->epoll_fd(), EPOLL_CTL_DEL, socket->sock_fd(), &ev);
             });
-            is_can_write_ = false;
             disconnect_callback_ = nullptr;
             data_callback_ = nullptr;
             socket_.reset();

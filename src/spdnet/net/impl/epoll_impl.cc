@@ -7,6 +7,7 @@
 #include <spdnet/base/current_thread.h>
 #include <spdnet/net/channel.h>
 #include <spdnet/net/exception.h>
+#include <spdnet/net/tcp_session.h>
 
 namespace spdnet {
 	namespace net {
@@ -36,22 +37,204 @@ namespace spdnet {
 				return ::epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, fd, &event) == 0;
 			}
 
+            void EpollImpl::send(TcpSession::Ptr session) {
+                if (session_ptr->desciptor_data().is_post_flush_) {
+                    return;
+                }
+                session->desciptor_data().is_post_flush_ = true;
+                loop_owner_->runInEventLoop([session_ptr = session , this]() {
+                    if (session_ptr->desciptor_data().is_can_write_) {
+                        this->flushBuffer(session_ptr);
+                        session_ptr->desciptor_data().is_post_flush_ = false;
+                    }
+                });
+            }
+
+            void EpollImpl::regWriteEvent(TcpSession::Ptr session) {
+                struct epoll_event event{0, {   nullptr}};
+                event.events = EPOLLET | EPOLLIN | EPOLLOUT | EPOLLRDHUP;
+                event.data.ptr = session.get();
+                ::epoll_ctl(loop_owner_->epoll_fd(), EPOLL_CTL_MOD, data.fd_, &event);
+            }
+
+            void EpollImpl::close(TcpSession::Ptr session)
+            {
+                auto& data = session->desciptor_data();
+                if (data.has_closed_)
+                    return;
+                data.has_closed_ = true;
+                data.is_can_write_ = false;
+                loop_owner_->runAfterEventLoop([loop, callback, session, socket]() {
+                    if (callback)
+                        callback(session);
+                    loop->removeTcpSession(socket->sock_fd());
+                    struct epoll_event ev{0, {nullptr}};
+                    ::epoll_ctl(loop->epoll_fd(), EPOLL_CTL_DEL, socket->sock_fd(), &ev);
+                });
+                session->onClose();
+            }
+
+            void EpollImpl::onSessionEnter(TcpSession::Ptr session)
+            {
+
+            }
+
+            void EpollImpl::flushBuffer(TcpSession::Ptr session)
+            {
+                auto& data = session->desciptor_data();
+                bool force_close = false;
+                assert(loop_owner_->isInLoopThread());
+                {
+                    std::lock_guard<SpinLock> lck(data.send_guard_);
+                    if (SPDNET_PREDICT_TRUE(data.pending_buffer_list_.empty())) {
+                        data.pending_buffer_list_.swap(data.send_buffer_list_);
+                    } else {
+                        for (const auto buffer : data.send_buffer_list_)
+                            data.pending_buffer_list_.push_back(buffer);
+                        data.send_buffer_list_.clear();
+                    }
+                }
+
+                constexpr size_t MAX_IOVEC = 1024;
+                struct iovec iov[MAX_IOVEC];
+                while (!data.pending_buffer_list_.empty()) {
+                    size_t cnt = 0;
+                    size_t prepare_send_len = 0;
+                    for (const auto buffer : data.pending_buffer_list_) {
+                        iov[cnt].iov_base = buffer->getDataPtr();
+                        iov[cnt].iov_len = buffer->getLength();
+                        prepare_send_len += buffer->getLength();
+                        cnt++;
+                        if (cnt >= MAX_IOVEC)
+                            break;
+                    }
+                    assert(cnt > 0);
+                    const int send_len = ::writev(data.fd_, iov, static_cast<int>(cnt));
+                    if (SPDNET_PREDICT_FALSE(send_len < 0)) {
+                        if (errno == EAGAIN) {
+                            regWriteEvent(session);
+                            data.is_can_write_ = false;
+                        } else {
+                            force_close = true;
+                        }
+                    } else {
+                        size_t tmp_len = send_len;
+                        for (auto iter = data.pending_buffer_list_.begin(); iter != data.pending_buffer_list_.end();) {
+                            auto buffer = *iter;
+                            if (SPDNET_PREDICT_TRUE(buffer->getLength() <= tmp_len)) {
+                                tmp_len -= buffer->getLength();
+                                buffer->clear();
+                                loop_owner_->releaseBuffer(buffer);
+                                iter = data.pending_buffer_list_.erase(iter);
+                            } else {
+                                buffer->removeLength(tmp_len);
+                                break;
+                            }
+
+                        }
+                    }
+                }
+
+                if (force_close) {
+                    close(session);
+                }
+            }
+
+            void EpollImpl::recv(TcpSession::Ptr session)
+            {
+                auto& data = session->desciptor_data();
+                char stack_buffer[65536];
+                bool force_close = false;
+                auto& recv_buffer = data.recv_buffer_;
+                while (true) {
+                    size_t valid_count = recv_buffer.getWriteValidCount();
+                    struct iovec vec[2];
+                    vec[0].iov_base = recv_buffer.getWritePtr();
+                    vec[0].iov_len = valid_count;
+                    vec[1].iov_base = stack_buffer;
+                    vec[1].iov_len = sizeof(stack_buffer);
+
+
+                    size_t try_recv_len = valid_count + sizeof(stack_buffer);
+
+                    int recv_len = static_cast<int>(::readv(data.fd_, vec, 2));
+                    if (SPDNET_PREDICT_FALSE(recv_len == 0 || (recv_len < 0 && errno != EAGAIN))) {
+                        force_close = true;
+                        break;
+                    }
+                    size_t stack_len = 0;
+                    if (SPDNET_PREDICT_FALSE(recv_len > (int) valid_count)) {
+                        recv_buffer.addWritePos(valid_count);
+                        stack_len = recv_len - valid_count;
+                    } else
+                        recv_buffer.addWritePos(recv_len);
+
+                    if (SPDNET_PREDICT_TRUE(nullptr != data.data_callback_)) {
+                        size_t len = data.data_callback_(recv_buffer.getDataPtr(), recv_buffer.getLength());
+                        assert(len <= recv_buffer.getLength());
+                        if (SPDNET_PREDICT_TRUE(len == recv_buffer.getLength())) {
+                            recv_buffer.removeLength(len);
+                            if (stack_len > 0) {
+                                len = data.data_callback_(stack_buffer, stack_len);
+                                assert(len <= stack_len);
+                                if (len < stack_len) {
+                                    recv_buffer.write(stack_buffer + len, stack_len - len);
+                                } else if (len > stack_len) {
+                                    force_close = true;
+                                    break;
+                                }
+                            }
+                        } else if (len < recv_buffer.getLength()) {
+                            recv_buffer.removeLength(len);
+                            if (stack_len > 0)
+                                recv_buffer.write(stack_buffer, stack_len);
+                        } else {
+                            force_close = true;
+                            break;
+                        }
+
+                    }
+
+                    if (SPDNET_PREDICT_FALSE(
+                            recv_len >= (int) recv_buffer.getCapacity()/* + (int)(sizeof(stack_buffer))*/)) {
+                        size_t grow_len = 0;
+                        if (recv_buffer.getCapacity() * 2 <= max_recv_buffer_size_)
+                            grow_len = recv_buffer.getCapacity();
+                        else
+                            grow_len = max_recv_buffer_size_ - recv_buffer.getCapacity();
+
+                        if (grow_len > 0)
+                            recv_buffer_.grow(grow_len);
+                    }
+
+                    if (SPDNET_PREDICT_FALSE(recv_buffer.getWriteValidCount() == 0 || recv_buffer.getLength() == 0))
+                        recv_buffer.adjustToHead();
+
+                    if (recv_len < static_cast<int>(try_recv_len))
+                        break;
+                }
+
+                if (force_close)
+                    close(session);
+            }
+
 			void EpollImpl::runOnce() {
 				int num_events = ::epoll_wait(epoll_fd_, event_entries_.data(), event_entries_.size(), wait_timeout_ms_);
 				for (int i = 0; i < num_events; i++) {
-					auto channel = static_cast<Channel*>(event_entries_[i].data.ptr);
+					auto ptr = static_cast<session*>(event_entries_[i].data.ptr);
+                    auto session = ptr->shared_from_this();
 					auto event = event_entries_[i].events;
 
 					if (SPDNET_PREDICT_FALSE(event & EPOLLRDHUP)) {
-						channel->tryRecv();
-						channel->onClose();
+						recv(session);
+                        close(session);
 						continue;
 					}
 					if (SPDNET_PREDICT_TRUE(event & EPOLLIN)) {
-						channel->tryRecv();
+                        recv(session);
 					}
 					if (event & EPOLLOUT) {
-						channel->trySend();
+						send(session);
 					}
 				}
 

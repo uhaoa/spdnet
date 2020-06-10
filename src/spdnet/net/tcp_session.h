@@ -13,12 +13,14 @@
 namespace spdnet {
     namespace net {
         using namespace base;
-
+        using namespace impl;
         class EventLoop;
+        class DescriptorData;
 
         class TcpSession : public Channel, public base::NonCopyable, public std::enable_shared_from_this<TcpSession> {
         public:
             friend class EventLoop;
+            friend class EpollImpl;
 
             using Ptr = std::shared_ptr<TcpSession>;
             using EventLoopPtr = std::shared_ptr<EventLoop>;
@@ -68,6 +70,10 @@ namespace spdnet {
                 return socket_->sock_fd();
             }
 
+            DescriptorData& desciptor_data() {
+                return *desciptor_data_.get() ;
+            }
+
         private:
             std::shared_ptr<TcpSocket> socket_;
             EventLoopPtr loop_owner_;
@@ -79,6 +85,10 @@ namespace spdnet {
             std::deque<Buffer *> pending_buffer_list_;
             SpinLock send_guard_;
             volatile bool has_closed = false;
+
+            /////////////////////////////////
+            std::unique_ptr<DescriptorData> desciptor_data_ ;
+            /////////////////////////////////
 
             volatile bool is_post_flush_;
             volatile bool is_can_write_;
