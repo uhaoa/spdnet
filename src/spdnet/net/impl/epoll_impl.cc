@@ -12,6 +12,41 @@
 namespace spdnet {
 	namespace net {
 		namespace impl {
+
+			class EpollImpl::TcpSessionChannel : public Channel
+			{
+			public:
+				EpollImpl::TcpSessionChannel(TcpSession::Ptr session , EpollImpl::Ptr impl)
+					: session_(session) , impl_ptr_(impl)
+				{
+
+				}
+				void trySend() override {
+					impl_ptr_->flushBuffer(session_); 
+				}
+
+				void tryRecv() override {
+					impl_ptr_->recv(session_); 
+				}
+
+				void onClose() override {
+					impl_ptr_->close(session);
+				}
+			private:
+				TcpSession::Ptr session_; 
+				EpollImpl::Ptr impl_ptr_;
+			};
+
+			struct EpollImpl::AcceptorChannel :public Channel
+			{
+
+			};
+
+			struct EpollImpl::ConnectorChannel : public Channel
+			{
+
+			};
+
 			EpollImpl::EpollImpl(unsigned int wait_timeout_ms) noexcept
 				: epoll_fd_(::epoll_create(1)),
 				wait_timeout_ms_(wait_timeout_ms) {
@@ -76,7 +111,8 @@ namespace spdnet {
 
             void EpollImpl::onSessionEnter(TcpSession::Ptr session)
             {
-
+				TcpSessionChannel* channel = new TcpSessionChannel(session , this);
+				linkEvent(session->getSocketFd(), channel, EPOLLET | EPOLLIN | EPOLLRDHUP); 
             }
 
             void EpollImpl::flushBuffer(TcpSession::Ptr session)
@@ -142,80 +178,84 @@ namespace spdnet {
 
             void EpollImpl::recv(TcpSession::Ptr session)
             {
-                auto& data = session->desciptor_data();
-                char stack_buffer[65536];
-                bool force_close = false;
-                auto& recv_buffer = data.recv_buffer_;
-                while (true) {
-                    size_t valid_count = recv_buffer.getWriteValidCount();
-                    struct iovec vec[2];
-                    vec[0].iov_base = recv_buffer.getWritePtr();
-                    vec[0].iov_len = valid_count;
-                    vec[1].iov_base = stack_buffer;
-                    vec[1].iov_len = sizeof(stack_buffer);
+				auto& data = session->desciptor_data();
+				char stack_buffer[65536];
+				bool force_close = false;
+				auto& recv_buffer = data.recv_buffer_;
+				while (true) {
+					size_t valid_count = recv_buffer.getWriteValidCount();
+					struct iovec vec[2];
+					vec[0].iov_base = recv_buffer.getWritePtr();
+					vec[0].iov_len = valid_count;
+					vec[1].iov_base = stack_buffer;
+					vec[1].iov_len = sizeof(stack_buffer);
 
 
-                    size_t try_recv_len = valid_count + sizeof(stack_buffer);
+					size_t try_recv_len = valid_count + sizeof(stack_buffer);
 
-                    int recv_len = static_cast<int>(::readv(data.fd_, vec, 2));
-                    if (SPDNET_PREDICT_FALSE(recv_len == 0 || (recv_len < 0 && errno != EAGAIN))) {
-                        force_close = true;
-                        break;
-                    }
-                    size_t stack_len = 0;
-                    if (SPDNET_PREDICT_FALSE(recv_len > (int) valid_count)) {
-                        recv_buffer.addWritePos(valid_count);
-                        stack_len = recv_len - valid_count;
-                    } else
-                        recv_buffer.addWritePos(recv_len);
+					int recv_len = static_cast<int>(::readv(data.fd_, vec, 2));
+					if (SPDNET_PREDICT_FALSE(recv_len == 0 || (recv_len < 0 && errno != EAGAIN))) {
+						force_close = true;
+						break;
+					}
+					size_t stack_len = 0;
+					if (SPDNET_PREDICT_FALSE(recv_len > (int) valid_count)) {
+						recv_buffer.addWritePos(valid_count);
+						stack_len = recv_len - valid_count;
+					}
+					else
+						recv_buffer.addWritePos(recv_len);
 
-                    if (SPDNET_PREDICT_TRUE(nullptr != data.data_callback_)) {
-                        size_t len = data.data_callback_(recv_buffer.getDataPtr(), recv_buffer.getLength());
-                        assert(len <= recv_buffer.getLength());
-                        if (SPDNET_PREDICT_TRUE(len == recv_buffer.getLength())) {
-                            recv_buffer.removeLength(len);
-                            if (stack_len > 0) {
-                                len = data.data_callback_(stack_buffer, stack_len);
-                                assert(len <= stack_len);
-                                if (len < stack_len) {
-                                    recv_buffer.write(stack_buffer + len, stack_len - len);
-                                } else if (len > stack_len) {
-                                    force_close = true;
-                                    break;
-                                }
-                            }
-                        } else if (len < recv_buffer.getLength()) {
-                            recv_buffer.removeLength(len);
-                            if (stack_len > 0)
-                                recv_buffer.write(stack_buffer, stack_len);
-                        } else {
-                            force_close = true;
-                            break;
-                        }
+					if (SPDNET_PREDICT_TRUE(nullptr != data.data_callback_)) {
+						size_t len = data.data_callback_(recv_buffer.getDataPtr(), recv_buffer.getLength());
+						assert(len <= recv_buffer.getLength());
+						if (SPDNET_PREDICT_TRUE(len == recv_buffer.getLength())) {
+							recv_buffer.removeLength(len);
+							if (stack_len > 0) {
+								len = data.data_callback_(stack_buffer, stack_len);
+								assert(len <= stack_len);
+								if (len < stack_len) {
+									recv_buffer.write(stack_buffer + len, stack_len - len);
+								}
+								else if (len > stack_len) {
+									force_close = true;
+									break;
+								}
+							}
+						}
+						else if (len < recv_buffer.getLength()) {
+							recv_buffer.removeLength(len);
+							if (stack_len > 0)
+								recv_buffer.write(stack_buffer, stack_len);
+						}
+						else {
+							force_close = true;
+							break;
+						}
 
-                    }
+					}
 
-                    if (SPDNET_PREDICT_FALSE(
-                            recv_len >= (int) recv_buffer.getCapacity()/* + (int)(sizeof(stack_buffer))*/)) {
-                        size_t grow_len = 0;
-                        if (recv_buffer.getCapacity() * 2 <= max_recv_buffer_size_)
-                            grow_len = recv_buffer.getCapacity();
-                        else
-                            grow_len = max_recv_buffer_size_ - recv_buffer.getCapacity();
+					if (SPDNET_PREDICT_FALSE(
+						recv_len >= (int)recv_buffer.getCapacity()/* + (int)(sizeof(stack_buffer))*/)) {
+						size_t grow_len = 0;
+						if (recv_buffer.getCapacity() * 2 <= max_recv_buffer_size_)
+							grow_len = recv_buffer.getCapacity();
+						else
+							grow_len = max_recv_buffer_size_ - recv_buffer.getCapacity();
 
-                        if (grow_len > 0)
-                            recv_buffer_.grow(grow_len);
-                    }
+						if (grow_len > 0)
+							recv_buffer_.grow(grow_len);
+					}
 
-                    if (SPDNET_PREDICT_FALSE(recv_buffer.getWriteValidCount() == 0 || recv_buffer.getLength() == 0))
-                        recv_buffer.adjustToHead();
+					if (SPDNET_PREDICT_FALSE(recv_buffer.getWriteValidCount() == 0 || recv_buffer.getLength() == 0))
+						recv_buffer.adjustToHead();
 
-                    if (recv_len < static_cast<int>(try_recv_len))
-                        break;
-                }
+					if (recv_len < static_cast<int>(try_recv_len))
+						break;
+				}
 
-                if (force_close)
-                    close(session);
+				if (force_close)
+					close(session);
             }
 
 			void EpollImpl::runOnce() {

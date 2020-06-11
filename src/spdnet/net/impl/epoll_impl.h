@@ -17,20 +17,12 @@ namespace spdnet::net::impl {
     class Channel;
     class WakeupChannel;
 
-    struct DescriptorData : public base::NonCopyable
-    {
-        int fd_;
-        Buffer recv_buffer_;
-        std::deque<Buffer *> send_buffer_list_;
-        std::deque<Buffer *> pending_buffer_list_;
-        SpinLock send_guard_;
-        volatile bool has_closed_{false};
-        volatile bool is_post_flush_{false};
-        volatile bool is_can_write_{true};
-    };
-
     class EpollImpl : public base::NonCopyable {
     public:
+		struct DescriptorData;
+		using ImplDataType = DescriptorData;
+		using ImplDataTypePtr = ImplDataType*; 
+		using Ptr = EpollImpl*; 
         explicit EpollImpl(unsigned int) noexcept;
 
         virtual ~EpollImpl() noexcept;
@@ -40,19 +32,21 @@ namespace spdnet::net::impl {
         }
 
         void onSessionEnter(TcpSession::Ptr session);
+		void asyncConnect(ConnectSession::Ptr session);
 		void runOnce();
 		void send(TcpSession::Ptr session);
 	private:
 		bool linkEvent(int fd, const Channel* channel, uint32_t events);
-		void flushBuffer(TcpSession::Ptr session);
-        void regWriteEvent(TcpSession::Ptr session);
-        void prepareClose(TcpSession::Ptr session);
-        void recv(TcpSession::Ptr session);
+		void flushBuffer(ImplDataTypePtr& session);
+        void regWriteEvent(ImplDataTypePtr& session);
+        void prepareClose(ImplDataTypePtr& session);
+        void recv(ImplDataTypePtr& session);
 	private:
         int epoll_fd_;
         int thread_id_;
 		unsigned int wait_timeout_ms_;
 		std::vector<epoll_event> event_entries_;
+		EventLoopPtr loop_owner_;
 		/*
         std::mutex task_mutex_;
         std::vector<AsynLoopTask> async_tasks;
@@ -67,6 +61,21 @@ namespace spdnet::net::impl {
         BufferPool buffer_pool_;
 		*/
     };
+
+	class TcpSessionChannel; 
+	struct EpollImpl::DescriptorData : public base::NonCopyable
+	{
+		int fd_;
+		Buffer recv_buffer_;
+		std::deque<Buffer*> send_buffer_list_;
+		std::deque<Buffer*> pending_buffer_list_;
+		SpinLock send_guard_;
+		volatile bool has_closed_{ false };
+		volatile bool is_post_flush_{ false };
+		volatile bool is_can_write_{ true };
+		TcpSessionChannel* channel_{nullptr}
+	};
+
 
 }
 #endif  // SPDNET_NET_EPOLL_IMPL_H_
