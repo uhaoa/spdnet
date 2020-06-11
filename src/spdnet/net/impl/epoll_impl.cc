@@ -11,11 +11,11 @@
 
 namespace spdnet {
 	namespace net {
-		namespace impl {
 
 			class EpollImpl::TcpSessionChannel : public Channel
 			{
 			public:
+			    using Ptr = TcpSessionChannel*;
 				EpollImpl::TcpSessionChannel(TcpSession::Ptr session , EpollImpl::Ptr impl)
 					: session_(session) , impl_ptr_(impl)
 				{
@@ -47,6 +47,23 @@ namespace spdnet {
 
 			};
 
+			struct EpollImpl::SocketData : public base::NonCopyable
+            {
+                SocketData(TcpSession::Ptr session , EpollImpl::Ptr impl)
+                    :channel_(session , impl)
+                {
+
+                }
+                Buffer recv_buffer_;
+                std::deque<Buffer*> send_buffer_list_;
+                std::deque<Buffer*> pending_buffer_list_;
+                SpinLock send_guard_;
+                volatile bool has_closed_{ false };
+                volatile bool is_post_flush_{ false };
+                volatile bool is_can_write_{ true };
+                TcpSessionChannel channel_{nullptr}
+            };
+
 			EpollImpl::EpollImpl(unsigned int wait_timeout_ms) noexcept
 				: epoll_fd_(::epoll_create(1)),
 				wait_timeout_ms_(wait_timeout_ms) {
@@ -65,7 +82,14 @@ namespace spdnet {
 				return std::make_shared<EpollImpl>(wait_timeout_ms);
 			}
 
-			bool EpollImpl::linkEvent(int fd, const Channel* channel, uint32_t events) {
+            void EpollImpl::recycle_socket_data(void* ptr)
+            {
+                auto socket_data = (SocketData*)ptr;
+                delete socket_data;
+            }
+
+
+            bool EpollImpl::linkEvent(int fd, const Channel* channel, uint32_t events) {
 				struct epoll_event event { 0, { nullptr } };
 				event.events = events;
 				event.data.ptr = (void*)(channel);
@@ -283,6 +307,5 @@ namespace spdnet {
 				}
 
 			}
-		}
 	}
 }

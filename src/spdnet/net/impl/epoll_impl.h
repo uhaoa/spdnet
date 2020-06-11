@@ -11,7 +11,7 @@
 #include <spdnet/base/base.h>
 #include <spdnet/net/tcp_session.h>
 
-namespace spdnet::net::impl {
+namespace spdnet::net {
     using namespace base;
     using namespace net;
     class Channel;
@@ -19,10 +19,9 @@ namespace spdnet::net::impl {
 
     class EpollImpl : public base::NonCopyable {
     public:
-		struct DescriptorData;
+		struct SocketData;
 		using ImplDataType = DescriptorData;
-		using ImplDataTypePtr = ImplDataType*; 
-		using Ptr = EpollImpl*; 
+		using ImplDataTypePtr = ImplDataType*;
         explicit EpollImpl(unsigned int) noexcept;
 
         virtual ~EpollImpl() noexcept;
@@ -35,6 +34,7 @@ namespace spdnet::net::impl {
 		void asyncConnect(ConnectSession::Ptr session);
 		void runOnce();
 		void send(TcpSession::Ptr session);
+        void recycle_socket_data(void* ptr);
 	private:
 		bool linkEvent(int fd, const Channel* channel, uint32_t events);
 		void flushBuffer(ImplDataTypePtr& session);
@@ -63,18 +63,7 @@ namespace spdnet::net::impl {
     };
 
 	class TcpSessionChannel; 
-	struct EpollImpl::DescriptorData : public base::NonCopyable
-	{
-		int fd_;
-		Buffer recv_buffer_;
-		std::deque<Buffer*> send_buffer_list_;
-		std::deque<Buffer*> pending_buffer_list_;
-		SpinLock send_guard_;
-		volatile bool has_closed_{ false };
-		volatile bool is_post_flush_{ false };
-		volatile bool is_can_write_{ true };
-		TcpSessionChannel* channel_{nullptr}
-	};
+
 
 
 }

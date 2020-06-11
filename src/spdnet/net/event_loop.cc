@@ -18,6 +18,7 @@ namespace spdnet {
             wake_up_.reset(new WakeupChannel(event_fd));
             linkChannel(event_fd, wake_up_.get());
             event_entries_.resize(1024);
+            io_impl_.reset(new EpollImpl);
         }
 
         EventLoop::~EventLoop() noexcept {

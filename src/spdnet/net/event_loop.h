@@ -11,13 +11,11 @@
 #include <spdnet/base/current_thread.h>
 #include <spdnet/net/tcp_session.h>
 #include <spdnet/base/buffer_pool.h>
-#include <spdnet/net/impl/epoll_impl.h>
 
 namespace spdnet::net {
     using namespace base;
-    using namespace impl;
     class Channel;
-
+    class EpollImpl;
     class WakeupChannel;
 
     class EventLoop : public base::NonCopyable {
@@ -67,7 +65,9 @@ namespace spdnet::net {
         void releaseBuffer(Buffer *buffer) {
             buffer_pool_.releaseBuffer(buffer);
         }
-
+        EpollImpl* getImpl() {
+            return io_impl_.get();
+        }
     private:
         void execAsyncTasks();
 
@@ -76,7 +76,7 @@ namespace spdnet::net {
     private:
         int epoll_fd_;
         int thread_id_;
-        EpollImpl io_impl_;
+        std::unique_ptr<EpollImpl> io_impl_;
         std::mutex task_mutex_;
         std::vector<AsynLoopTask> async_tasks;
         std::vector<AsynLoopTask> tmp_async_tasks;
