@@ -30,7 +30,7 @@ namespace spdnet::base {
             }
         }
 
-        void releaseBuffer(Buffer *buffer) {
+        void recycleBuffer(Buffer *buffer) {
             assert(buffer != nullptr);
             uint32_t index = getIndex(buffer->getCapacity());
             auto &pool_head = pool_[index];
@@ -42,7 +42,7 @@ namespace spdnet::base {
                     ptr, buffer, std::memory_order_release, std::memory_order_relaxed));
         }
 
-        Buffer *getBufferBySize(size_t size) {
+        Buffer *allocBufferBySize(size_t size) {
             size_t index = getIndex(size);
             assert(index < pool_.size());
             auto &pool_head = pool_[index];

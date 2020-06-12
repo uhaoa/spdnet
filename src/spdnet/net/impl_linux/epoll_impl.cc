@@ -3,57 +3,24 @@
 #include <unistd.h>
 #include <cassert>
 #include <sys/epoll.h>
-#include <spdnet/net/impl/epoll_impl.h>
+#include <spdnet/net/impl_linux/epoll_impl.h>
 #include <spdnet/base/current_thread.h>
-#include <spdnet/net/channel.h>
+#include <spdnet/net/impl_linux/channel.h>
 #include <spdnet/net/exception.h>
 #include <spdnet/net/tcp_session.h>
 
 namespace spdnet {
 	namespace net {
-
-			class EpollImpl::TcpSessionChannel : public Channel
-			{
-			public:
-			    using Ptr = TcpSessionChannel*;
-				EpollImpl::TcpSessionChannel(TcpSession::Ptr session , EpollImpl::Ptr impl)
-					: session_(session) , impl_ptr_(impl)
-				{
-
-				}
-				void trySend() override {
-					impl_ptr_->flushBuffer(session_); 
-				}
-
-				void tryRecv() override {
-					impl_ptr_->recv(session_); 
-				}
-
-				void onClose() override {
-					impl_ptr_->close(session);
-				}
-			private:
-				TcpSession::Ptr session_; 
-				EpollImpl::Ptr impl_ptr_;
-			};
-
-			struct EpollImpl::AcceptorChannel :public Channel
-			{
-
-			};
-
-			struct EpollImpl::ConnectorChannel : public Channel
-			{
-
-			};
-
-			struct EpollImpl::SocketData : public base::NonCopyable
+			struct EpollImpl::IoPrivateData : public base::NonCopyable
             {
-                SocketData(TcpSession::Ptr session , EpollImpl::Ptr impl)
-                    :channel_(session , impl)
+				IoPrivateData(TcpSession::Ptr session)
+                    :channel_(session , session->loop_owner_)
                 {
 
                 }
+				IoPrivateData& visit(void* ptr) {
+					return *(IoPrivateData*)ptr;
+				}
                 Buffer recv_buffer_;
                 std::deque<Buffer*> send_buffer_list_;
                 std::deque<Buffer*> pending_buffer_list_;
@@ -61,33 +28,45 @@ namespace spdnet {
                 volatile bool has_closed_{ false };
                 volatile bool is_post_flush_{ false };
                 volatile bool is_can_write_{ true };
-                TcpSessionChannel channel_{nullptr}
+				TcpSessionChannel channel_;
             };
 
-			EpollImpl::EpollImpl(unsigned int wait_timeout_ms) noexcept
-				: epoll_fd_(::epoll_create(1)),
-				wait_timeout_ms_(wait_timeout_ms) {
+			EpollImpl::EpollImpl(EventLoop& loop_owner) noexcept
+				: epoll_fd_(::epoll_create(1)) , loop_owner_(loop_owner)
+			{
 				auto event_fd = ::eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
 				wake_up_.reset(new WakeupChannel(event_fd));
 				linkEvent(event_fd, wake_up_.get());
 				event_entries_.resize(1024);
 			}
 
-			EpollImpl::~EpollImpl() noexcept {
+			EpollImpl::~EpollImpl() noexcept
+			{
 				::close(epoll_fd_);
 				epoll_fd_ = -1;
 			}
 
-			EpollImpl::Ptr EpollImpl::create(unsigned int wait_timeout_ms) {
-				return std::make_shared<EpollImpl>(wait_timeout_ms);
-			}
-
-            void EpollImpl::recycle_socket_data(void* ptr)
+            void EpollImpl::recycle_private_data(void* ptr)
             {
-                auto socket_data = (SocketData*)ptr;
-                delete socket_data;
+                auto private_data = (IoPrivateData*)ptr;
+                delete private_data;
             }
 
+			void EpollImpl::addWriteEvent(TcpSession::Ptr session) {
+				auto& data = IoPrivateData::visit(session->private_data_.get());
+				struct epoll_event event { 0, { nullptr } };
+				event.events = EPOLLET | EPOLLIN | EPOLLOUT | EPOLLRDHUP;
+				event.data.ptr = &data.channel_;
+				::epoll_ctl(epoll_fd_, EPOLL_CTL_MOD, sockfd, &event);
+			}
+
+			void EpollImpl::cancelWriteEvent(TcpSession::Ptr session) {
+				auto& data = IoPrivateData::visit(session->private_data_.get());
+				struct epoll_event event { 0, { nullptr } };
+				event.events = EPOLLET | EPOLLIN | EPOLLRDHUP;
+				event.data.ptr = &data.channel_;
+				::epoll_ctl(epoll_fd_, EPOLL_CTL_MOD, sockfd, &event);
+			}
 
             bool EpollImpl::linkEvent(int fd, const Channel* channel, uint32_t events) {
 				struct epoll_event event { 0, { nullptr } };
@@ -97,33 +76,28 @@ namespace spdnet {
 			}
 
             void EpollImpl::send(TcpSession::Ptr session) {
-                if (session_ptr->desciptor_data().is_post_flush_) {
+				auto& data = IoPrivateData::visit(session->private_data_.get());
+                if (data.is_post_flush_) {
                     return;
                 }
-                session->desciptor_data().is_post_flush_ = true;
-                loop_owner_->runInEventLoop([session_ptr = session , this]() {
-                    if (session_ptr->desciptor_data().is_can_write_) {
+				data.is_post_flush_ = true;
+                loop_owner_.runInEventLoop([session_ptr = session , this]() {
+					auto& data = IoPrivateData::visit(session->private_data_.get());
+                    if (data.is_can_write_) {
                         this->flushBuffer(session_ptr);
-                        session_ptr->desciptor_data().is_post_flush_ = false;
+						data.is_post_flush_ = false;
                     }
                 });
             }
 
-            void EpollImpl::regWriteEvent(TcpSession::Ptr session) {
-                struct epoll_event event{0, {   nullptr}};
-                event.events = EPOLLET | EPOLLIN | EPOLLOUT | EPOLLRDHUP;
-                event.data.ptr = session.get();
-                ::epoll_ctl(loop_owner_->epoll_fd(), EPOLL_CTL_MOD, data.fd_, &event);
-            }
-
-            void EpollImpl::close(TcpSession::Ptr session)
+            void EpollImpl::closeSession(TcpSession::Ptr session)
             {
-                auto& data = session->desciptor_data();
+				auto& data = IoPrivateData::visit(session->private_data_.get());
                 if (data.has_closed_)
                     return;
                 data.has_closed_ = true;
                 data.is_can_write_ = false;
-                loop_owner_->runAfterEventLoop([loop, callback, session, socket]() {
+                loop_owner_.runAfterEventLoop([loop, callback, session, socket]() {
                     if (callback)
                         callback(session);
                     loop->removeTcpSession(socket->sock_fd());
@@ -133,17 +107,33 @@ namespace spdnet {
                 session->onClose();
             }
 
-            void EpollImpl::onSessionEnter(TcpSession::Ptr session)
+			void EpollImpl::shutdownSession(TcpSession::Ptr session)
+			{
+				auto& data = IoPrivateData::visit(session->private_data_.get());
+				if (data.has_closed_)
+					return;
+				assert(loop_owner_.isInLoopThread());
+				::shutdown(session->sock_fd(), SHUT_WR);
+				data.is_can_write_ = false;
+			}
+
+            void EpollImpl::onTcpSessionEnter(TcpSession::Ptr session)
             {
-				TcpSessionChannel* channel = new TcpSessionChannel(session , this);
-				linkEvent(session->getSocketFd(), channel, EPOLLET | EPOLLIN | EPOLLRDHUP); 
+				auto data_ptr = std::make_unique<IoPrivateData>(session); 
+				linkEvent(session->sock_fd(), &data_ptr->channel_, EPOLLET | EPOLLIN | EPOLLRDHUP);
+				session->private_data_ = std::move(data_ptr);
             }
+
+			void EpollImpl::asyncConnect(ConnectSession::Ptr session)
+			{
+				//
+			}
 
             void EpollImpl::flushBuffer(TcpSession::Ptr session)
             {
-                auto& data = session->desciptor_data();
+				auto& data = IoPrivateData::visit(session->private_data_.get());
                 bool force_close = false;
-                assert(loop_owner_->isInLoopThread());
+                assert(loop_owner_.isInLoopThread());
                 {
                     std::lock_guard<SpinLock> lck(data.send_guard_);
                     if (SPDNET_PREDICT_TRUE(data.pending_buffer_list_.empty())) {
@@ -172,7 +162,7 @@ namespace spdnet {
                     const int send_len = ::writev(data.fd_, iov, static_cast<int>(cnt));
                     if (SPDNET_PREDICT_FALSE(send_len < 0)) {
                         if (errno == EAGAIN) {
-                            regWriteEvent(session);
+							addWriteEvent(session->sock_fd(), &data.channel_); 
                             data.is_can_write_ = false;
                         } else {
                             force_close = true;
@@ -184,7 +174,7 @@ namespace spdnet {
                             if (SPDNET_PREDICT_TRUE(buffer->getLength() <= tmp_len)) {
                                 tmp_len -= buffer->getLength();
                                 buffer->clear();
-                                loop_owner_->releaseBuffer(buffer);
+                                loop_owner_.recycleBuffer(buffer);
                                 iter = data.pending_buffer_list_.erase(iter);
                             } else {
                                 buffer->removeLength(tmp_len);
@@ -196,13 +186,13 @@ namespace spdnet {
                 }
 
                 if (force_close) {
-                    close(session);
+					closeSession(session);
                 }
             }
 
-            void EpollImpl::recv(TcpSession::Ptr session)
+            void EpollImpl::doRecv(TcpSession::Ptr session)
             {
-				auto& data = session->desciptor_data();
+				auto& data = IoPrivateData::visit(session->private_data_.get());
 				char stack_buffer[65536];
 				bool force_close = false;
 				auto& recv_buffer = data.recv_buffer_;
@@ -279,26 +269,25 @@ namespace spdnet {
 				}
 
 				if (force_close)
-					close(session);
+					closeSession(session);
             }
 
-			void EpollImpl::runOnce() {
-				int num_events = ::epoll_wait(epoll_fd_, event_entries_.data(), event_entries_.size(), wait_timeout_ms_);
+			void EpollImpl::runOnce(uint32_t timeout) {
+				int num_events = ::epoll_wait(epoll_fd_, event_entries_.data(), event_entries_.size(), timeout);
 				for (int i = 0; i < num_events; i++) {
-					auto ptr = static_cast<session*>(event_entries_[i].data.ptr);
-                    auto session = ptr->shared_from_this();
+					auto channel = static_cast<Channel*>(event_entries_[i].data.ptr);
 					auto event = event_entries_[i].events;
 
 					if (SPDNET_PREDICT_FALSE(event & EPOLLRDHUP)) {
-						recv(session);
-                        close(session);
+						channel->tryRecv();
+						channel->onClose();
 						continue;
 					}
 					if (SPDNET_PREDICT_TRUE(event & EPOLLIN)) {
-                        recv(session);
+						channel->tryRecv();
 					}
 					if (event & EPOLLOUT) {
-						send(session);
+						channel->trySend();
 					}
 				}
 

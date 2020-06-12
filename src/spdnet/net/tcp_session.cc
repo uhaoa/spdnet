@@ -6,54 +6,26 @@
 #
 namespace spdnet {
     namespace net {
-        TcpSession::TcpSession(std::shared_ptr<TcpSocket> socket, EventLoopPtr loop)
+        TcpSession::TcpSession(std::shared_ptr<TcpSocket> socket, std::shared_ptr <EventLoop> loop)
                 : socket_(std::move(socket)),
                   loop_owner_(loop){
 
         }
 
-        TcpSession::Ptr TcpSession::create(std::shared_ptr<TcpSocket> socket, EventLoopPtr loop) {
+        TcpSession::Ptr TcpSession::create(std::shared_ptr<TcpSocket> socket, std::shared_ptr <EventLoop> loop) {
             return std::make_shared<TcpSession>(std::move(socket), loop);
-        }
-
-        void TcpSession::regWriteEvent() {
-            struct epoll_event event{0, {nullptr}};
-            event.events = EPOLLET | EPOLLIN | EPOLLOUT | EPOLLRDHUP;
-            event.data.ptr = (Channel *) (this);
-            ::epoll_ctl(loop_owner_->epoll_fd(), EPOLL_CTL_MOD, socket_->sock_fd(), &event);
-        }
-
-        void TcpSession::unregWriteEvent() {
-            struct epoll_event event{0, {nullptr}};
-            event.events = EPOLLET | EPOLLIN | EPOLLRDHUP;
-            event.data.ptr = (Channel *) (this);
-            ::epoll_ctl(loop_owner_->epoll_fd(), EPOLL_CTL_MOD, socket_->sock_fd(), &event);
         }
 
         void TcpSession::send(const char *data, size_t len) {
             if (len <= 0)
                 return;
-            auto buffer = loop_owner_->getBufferBySize(len);
+            auto buffer = loop_owner_->allocBufferBySize(len);
             assert(buffer);
             buffer->write(data, len);
-            {
-                std::lock_guard<SpinLock> lck(desciptor_data_.send_guard_);
-                desciptor_data_.send_buffer_list_.push_back(buffer);
-            }
-
-            /*
-            if (is_post_flush_) {
-                return;
-            }
-            is_post_flush_ = true;
-            auto this_ptr = shared_from_this();
-            loop_owner_->runInEventLoop([this_ptr]() {
-                if (this_ptr->is_can_write_) {
-                    this_ptr->flushBuffer();
-                    this_ptr->is_post_flush_ = false;
-                }
-            });
-            */
+			{
+				std::lock_guard<SpinLock> lck(desciptor_data_.send_guard_);
+				desciptor_data_.send_buffer_list_.push_back(buffer);
+			}
         }
 
 
@@ -79,7 +51,7 @@ namespace spdnet {
             auto loop = loop_owner_;
             auto this_ptr = shared_from_this();
             loop_owner_->runInEventLoop([loop, this_ptr]() {
-                this_ptr->onClose();
+				loop->getImpl().closeSession(this_ptr); 
             });
         }
 
@@ -87,12 +59,11 @@ namespace spdnet {
             auto loop = loop_owner_;
             auto this_ptr = shared_from_this();
             loop_owner_->runInEventLoop([loop, this_ptr]() {
-                loop->runAfterEventLoop([this_ptr]() {
-                    this_ptr->execShutDownInLoop();
-                });
+				loop->getImpl().shutdownSession(this_ptr); 
             });
         }
 
+		/*
         void TcpSession::execShutDownInLoop() {
             assert(socket_ != nullptr);
             assert(loop_owner_->isInLoopThread());
@@ -101,6 +72,7 @@ namespace spdnet {
             }
             is_can_write_ = false;
         }
+		*/
 
         void TcpSession::setDisconnectCallback(TcpDisconnectCallback &&callback) {
             disconnect_callback_ = std::move(callback);
@@ -112,7 +84,7 @@ namespace spdnet {
 
         void TcpSession::SocketDataDeleter::operator()(void* ptr) const
         {
-            owner_->getImpl()->recycle_socket_data(ptr);
+            owner_->getImpl().recycle_private_data(ptr);
         }
     }
 }
