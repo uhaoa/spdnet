@@ -6,20 +6,16 @@
 #include <spdnet/net/event_loop.h>
 #include <spdnet/base/current_thread.h>
 #include <spdnet/net/exception.h>
+#include <spdnet/net/impl_linux/epoll_impl.h>
 
 namespace spdnet {
     namespace net {
 
         EventLoop::EventLoop(unsigned int wait_timeout_ms) noexcept
                 :wait_timeout_ms_(wait_timeout_ms) {
-            event_entries_.resize(1024);
-            io_impl_.reset(new EpollImpl(*this));
+            io_impl_.reset(new detail::EpollImpl(*this));
         }
 
-        EventLoop::~EventLoop() noexcept {
-            close(epoll_fd_);
-            epoll_fd_ = -1;
-        }
 
         void EventLoop::runInEventLoop(AsynLoopTask &&task) {
             if (SPDNET_PREDICT_FALSE(isInLoopThread())) {
@@ -34,11 +30,6 @@ namespace spdnet {
 
         }
 
-        void EventLoop::runAfterEventLoop(AfterLoopTask &&task) {
-            assert(isInLoopThread());
-            after_loop_tasks.emplace_back(std::move(task));
-        }
-
         void EventLoop::execAsyncTasks() {
             {
                 std::lock_guard<std::mutex> lck(task_mutex_);
@@ -50,14 +41,6 @@ namespace spdnet {
             tmp_async_tasks.clear();
         }
 
-        void EventLoop::execAfterTasks() {
-            tmp_after_loop_tasks.swap(after_loop_tasks);
-            for (auto &task : tmp_after_loop_tasks) {
-                task();
-            }
-            tmp_after_loop_tasks.clear();
-        }
-
         TcpSession::Ptr EventLoop::getTcpSession(int fd) {
             auto iter = tcp_sessions_.find(fd);
             if (iter != tcp_sessions_.end())
@@ -66,8 +49,8 @@ namespace spdnet {
                 return nullptr;
         }
 
-        void EventLoop::addTcpSession(TcpSession::Ptr connection) {
-            tcp_sessions_[connection->getSocketFd()] = std::move(connection);
+        void EventLoop::addTcpSession(TcpSession::Ptr session) {
+            tcp_sessions_[session->sock_fd()] = std::move(session);
         }
 
         void EventLoop::removeTcpSession(int fd) {
@@ -82,8 +65,8 @@ namespace spdnet {
         void
         EventLoop::onTcpSessionEnter(TcpSession::Ptr tcp_session, const TcpSession::TcpEnterCallback &enter_callback) {
             assert(isInLoopThread());
-            io_impl_.onSessionEnter(tcp_session); 
-            assert(nullptr == getTcpSession(tcp_session->getSocketFd()));
+            io_impl_.onTcpSessionEnter(tcp_session);
+            assert(nullptr == getTcpSession(tcp_session->sock_fd()));
             if (nullptr != enter_callback)
                 enter_callback(tcp_session);
 
@@ -97,8 +80,6 @@ namespace spdnet {
 					io_impl_->runOnce(wait_timeout_ms_); 
 
                     execAsyncTasks();
-                    execAfterTasks();
-
                 }
             });
         }

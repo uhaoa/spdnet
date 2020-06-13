@@ -18,14 +18,14 @@ namespace spdnet {
             stop();
         }
 
-        EventLoop::Ptr EventService::getEventLoop() {
+        std::shared_ptr<EventLoop> EventService::getEventLoop() {
             auto rand_num = random_();
             return loops_[rand_num % loops_.size()];
         }
 
         void EventService::addTcpSession(std::shared_ptr<TcpSocket> tcp_socket,
                                          const TcpSession::TcpEnterCallback &enter_callback) {
-            EventLoop::Ptr loop = getEventLoop();
+            std::shared_ptr<EventLoop> loop = getEventLoop();
             TcpSession::Ptr new_connection = TcpSession::create(std::move(tcp_socket), loop);
             loop->runInEventLoop([loop, new_connection, enter_callback]() {
                 loop->onTcpSessionEnter(new_connection, enter_callback);
@@ -38,7 +38,7 @@ namespace spdnet {
 
             run_loop_ = std::make_shared<bool>(true);
             for (size_t i = 0; i < thread_num; i++) {
-                auto loop = EventLoop::create(kDefaultLoopTimeout);
+                auto loop = std::make_shared<EventLoop>(kDefaultLoopTimeout);
                 loop->run(run_loop_);
                 loops_.push_back(loop);
             }

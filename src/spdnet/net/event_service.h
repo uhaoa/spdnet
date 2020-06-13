@@ -26,14 +26,14 @@ namespace spdnet {
 
             void runThread(size_t thread_num);
 
-            EventLoop::Ptr getEventLoop();
+            std::shared_ptr<EventLoop> getEventLoop();
 
         private:
             void stop();
 
         private:
             std::shared_ptr<bool> run_loop_;
-            std::vector<EventLoop::Ptr> loops_;
+            std::vector<std::shared_ptr<EventLoop>> loops_;
             std::mt19937 random_;
             EnvInit env_;
         };

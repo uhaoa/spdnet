@@ -6,15 +6,19 @@
 #include <functional>
 #include <spdnet/base/noncopyable.h>
 #include <spdnet/net/socket.h>
-#include <spdnet/net/channel.h>
 #include <spdnet/base/buffer.h>
 #include <spdnet/base/spin_lock.h>
 
 namespace spdnet {
     namespace net {
+
+        namespace detail {
+            struct SocketImplData;
+            class EpollImpl ;
+        }
+
         using namespace base;
         class EventLoop;
-
         class TcpSession :public base::NonCopyable, public std::enable_shared_from_this<TcpSession> {
         public:
             friend class EventLoop;
@@ -28,8 +32,6 @@ namespace spdnet {
             TcpSession(std::shared_ptr<TcpSocket> socket, std::shared_ptr <EventLoop>);
 
             void postShutDown();
-
-            void postDisconnect();
 
             void setDisconnectCallback(TcpDisconnectCallback &&callback);
 
@@ -52,28 +54,15 @@ namespace spdnet {
             static Ptr create(std::shared_ptr<TcpSocket> socket, std::shared_ptr<EventLoop> loop);
 
         private:
-            void onClose() override;
+            void onClose();
+            detail::SocketImplData& socket_impl_data() { return *socket_impl_data_.get();}
         private:
             std::shared_ptr<TcpSocket> socket_;
 			std::shared_ptr <EventLoop> loop_owner_;
             TcpDisconnectCallback disconnect_callback_;
             TcpDataCallback data_callback_;
             size_t max_recv_buffer_size_ = 64 * 1024;
-
-
-            class PrivateDataDeleter
-            {
-            public:
-				PrivateDataDeleter(std::shared_ptr <EventLoop> owner)
-                    :owner_(owner)
-                {
-				}
-
-                void operator()(void* ptr) const;
-            private:
-				std::shared_ptr <EventLoop> owner_;
-            };
-            std::unique_ptr<void*, PrivateDataDeleter> private_data_;
+            std::unique_ptr<detail::SocketImplData> socket_impl_data_;
         };
 
     }

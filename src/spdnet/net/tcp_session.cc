@@ -3,13 +3,16 @@
 #include <iostream>
 #include <string.h>
 #include <spdnet/net/event_loop.h>
-#
+#include <spdnet/net/impl_linux/epoll_impl.h>
+
 namespace spdnet {
     namespace net {
         TcpSession::TcpSession(std::shared_ptr<TcpSocket> socket, std::shared_ptr <EventLoop> loop)
                 : socket_(std::move(socket)),
                   loop_owner_(loop){
-
+            auto this_ptr = shared_from_this();
+            auto data_ptr = std::make_unique<detail::SocketImplData>(this_ptr , loop_owner_);
+            socket_impl_data_ = std::move(data_ptr);
         }
 
         TcpSession::Ptr TcpSession::create(std::shared_ptr<TcpSocket> socket, std::shared_ptr <EventLoop> loop) {
@@ -19,34 +22,28 @@ namespace spdnet {
         void TcpSession::send(const char *data, size_t len) {
             if (len <= 0)
                 return;
+            if (!socket_impl_data().is_can_write_)
+                return ;
             auto buffer = loop_owner_->allocBufferBySize(len);
             assert(buffer);
             buffer->write(data, len);
 			{
-				std::lock_guard<SpinLock> lck(desciptor_data_.send_guard_);
-				desciptor_data_.send_buffer_list_.push_back(buffer);
+				std::lock_guard<SpinLock> lck(socket_impl_data().send_guard_);
+                socket_impl_data().send_buffer_list_.push_back(buffer);
 			}
         }
 
 
         void TcpSession::onClose() {
             assert(loop_owner_->isInLoopThread());
-            auto loop = loop_owner_;
-            auto callback = disconnect_callback_;
-            Ptr session = shared_from_this();
-            std::shared_ptr<TcpSocket> socket = std::move(socket_);
-            loop_owner_->runAfterEventLoop([loop, callback, session, socket]() {
-                if (callback)
-                    callback(session);
-                loop->removeTcpSession(socket->sock_fd());
-                struct epoll_event ev{0, {nullptr}};
-                ::epoll_ctl(loop->epoll_fd(), EPOLL_CTL_DEL, socket->sock_fd(), &ev);
-            });
+            auto session = shared_from_this();
+            if (disconnect_callback_)
+                disconnect_callback_(session);
             disconnect_callback_ = nullptr;
             data_callback_ = nullptr;
             socket_.reset();
         }
-
+/*
         void TcpSession::postDisconnect() {
             auto loop = loop_owner_;
             auto this_ptr = shared_from_this();
@@ -54,7 +51,7 @@ namespace spdnet {
 				loop->getImpl().closeSession(this_ptr); 
             });
         }
-
+*/
         void TcpSession::postShutDown() {
             auto loop = loop_owner_;
             auto this_ptr = shared_from_this();
@@ -63,17 +60,6 @@ namespace spdnet {
             });
         }
 
-		/*
-        void TcpSession::execShutDownInLoop() {
-            assert(socket_ != nullptr);
-            assert(loop_owner_->isInLoopThread());
-            if (socket_ != nullptr) {
-                ::shutdown(socket_->sock_fd(), SHUT_WR);
-            }
-            is_can_write_ = false;
-        }
-		*/
-
         void TcpSession::setDisconnectCallback(TcpDisconnectCallback &&callback) {
             disconnect_callback_ = std::move(callback);
         }
@@ -81,10 +67,6 @@ namespace spdnet {
         void TcpSession::setDataCallback(TcpDataCallback &&callback) {
             data_callback_ = std::move(callback);
         }
-
-        void TcpSession::SocketDataDeleter::operator()(void* ptr) const
-        {
-            owner_->getImpl().recycle_private_data(ptr);
-        }
+        
     }
 }

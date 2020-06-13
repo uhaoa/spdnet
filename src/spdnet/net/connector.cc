@@ -3,17 +3,18 @@
 #include <chrono>
 #include <set>
 #include <cassert>
-#include <spdnet/base/socket_api.h>
 #include <iostream>
 #include <algorithm>
+#include <spdnet/base/socket_api.h>
 #include <spdnet/net/event_service.h>
+#include <spdnet/net/impl_linux/epoll_impl.h>
 
 namespace spdnet {
     namespace net {
 
-        class ConnectSession : public Channel {
+        class ConnectContext {
         public:
-            ConnectSession(int fd, AsyncConnector &connector, EventLoop::Ptr loop_owner,
+            ConnectContext(int fd, AsyncConnector &connector, std::shared_ptr<EventLoop> loop_owner,
                            TcpSession::TcpEnterCallback &&enter_cb, AsyncConnector::FailedCallback &&failed_cb)
                     : fd_(fd),
                       connector_(connector),
@@ -21,46 +22,6 @@ namespace spdnet {
                       enter_cb_(std::move(enter_cb)),
                       failed_cb_(std::move(failed_cb)) {
 
-            }
-
-            void trySend() override {
-                assert(loop_owner_->isInLoopThread());
-
-                auto &connector = connector_;
-                auto fd = fd_;
-                loop_owner_->runAfterEventLoop([&connector, &fd]() {
-                    connector.removeSession(fd);
-                });
-
-
-                int result = 0;
-                socklen_t result_len = sizeof(result);
-                if (SPDNET_PREDICT_FALSE(getsockopt(fd_, SOL_SOCKET, SO_ERROR, &result, &result_len) == -1
-                                         || result != 0
-                                         || spdnet::base::checkSelfConnect(fd_))) {
-                    if (failed_cb_ != nullptr)
-                        failed_cb_();
-
-                    spdnet::base::closeSocket(fd_);
-                    return;
-                }
-
-                cancelEvent();
-
-                auto socket = std::make_shared<TcpSocket>(fd_);
-                auto new_conn = TcpSession::create(std::move(socket), loop_owner_);
-                loop_owner_->onTcpSessionEnter(new_conn, enter_cb_);
-            }
-
-            void tryRecv() override {
-                /*assert(false);*/
-            }
-
-            void onClose() override {
-                cancelEvent();
-                if (failed_cb_ != nullptr)
-                    failed_cb_();
-                spdnet::base::closeSocket(fd_);
             }
 
         private:
@@ -72,7 +33,7 @@ namespace spdnet {
         private:
             int fd_{0};
             AsyncConnector &connector_;
-            EventLoop::Ptr loop_owner_;
+            std::shared_ptr<EventLoop> loop_owner_;
             TcpSession::TcpEnterCallback enter_cb_;
             AsyncConnector::FailedCallback failed_cb_;
         };
@@ -88,7 +49,7 @@ namespace spdnet {
 
         bool AsyncConnector::removeSession(int fd) {
             std::lock_guard<std::mutex> lck(session_guard_);
-            return connect_sessions_.erase(fd) > 0;
+            return connecting_sessions_.erase(fd) > 0;
         }
 
         void AsyncConnector::asyncConnect(const EndPoint &addr, TcpSession::TcpEnterCallback &&enter_cb,
@@ -112,9 +73,10 @@ namespace spdnet {
                                                                 std::move(failed_cb));
                 {
                     std::lock_guard<std::mutex> lck(session_guard_);
-                    connect_sessions_[client_fd] = channel;
+                    connecting_sessions_[client_fd] = channel;
                 }
-                loop->linkChannel(client_fd, channel.get(), EPOLLET | EPOLLOUT | EPOLLRDHUP);
+                loop->getImpl().asyncConnect()
+                //loop->linkChannel(client_fd, channel.get(), EPOLLET | EPOLLOUT | EPOLLRDHUP);
                 return;
             }
 
