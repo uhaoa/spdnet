@@ -26,7 +26,7 @@ namespace spdnet::net {
             ret.addr6_.sin6_family = AF_INET6;
             ret.addr6_.sin6_port = ::htons(port);
             ::inet_pton(AF_INET6, ip.c_str(), &ret.addr6_.sin6_addr);
-            return ret ;
+            return ret;
         }
 
         std::string ip() const {

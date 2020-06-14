@@ -7,11 +7,13 @@
 #include <winsock2.h>
 #include <Windows.h>
 #elif defined SPDNET_PLATFORM_LINUX
+
 #include <unistd.h>
 #include <sys/prctl.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <linux/unistd.h>
+
 #endif
 
 namespace spdnet::net::current_thread {
@@ -23,8 +25,7 @@ namespace spdnet::net::current_thread {
 
     inline THREAD_ID_TYPE &tid() {
         static THREAD_LOCAL THREAD_ID_TYPE cached_tid = 0;
-        if (cached_tid == 0)
-        {
+        if (cached_tid == 0) {
 #if defined SPDNET_PLATFORM_WINDOWS
             cachedTid = ::GetCurrentThreadId();
 #elif defined SPDNET_PLATFORM_LINUX

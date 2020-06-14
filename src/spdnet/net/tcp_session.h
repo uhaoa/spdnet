@@ -14,14 +14,18 @@ namespace spdnet {
 
         namespace detail {
             struct SocketImplData;
-            class EpollImpl ;
+
+            class EpollImpl;
         }
 
         using namespace base;
+
         class EventLoop;
-        class TcpSession :public base::NonCopyable, public std::enable_shared_from_this<TcpSession> {
+
+        class TcpSession : public base::NonCopyable, public std::enable_shared_from_this<TcpSession> {
         public:
             friend class EventLoop;
+
             friend class detail::EpollImpl;
 
             using Ptr = std::shared_ptr<TcpSession>;
@@ -29,7 +33,7 @@ namespace spdnet {
             using TcpDataCallback = std::function<size_t(const char *, size_t len)>;
             using TcpEnterCallback = std::function<void(TcpSession::Ptr)>;
 
-            TcpSession(std::shared_ptr<TcpSocket> socket, std::shared_ptr <EventLoop>);
+            TcpSession(std::shared_ptr<TcpSocket> socket, std::shared_ptr<EventLoop>);
 
             void postShutDown();
 
@@ -47,18 +51,21 @@ namespace spdnet {
 
             void send(const char *data, size_t len);
 
-			int sock_fd() const {
-				return socket_->sock_fd();
-			}
+            int sock_fd() const {
+                return socket_->sock_fd();
+            }
+
         public:
             static Ptr create(std::shared_ptr<TcpSocket> socket, std::shared_ptr<EventLoop> loop);
 
         private:
             void onClose();
-            detail::SocketImplData& socket_impl_data() { return *socket_impl_data_.get();}
+
+            detail::SocketImplData &socket_impl_data() { return *socket_impl_data_.get(); }
+
         private:
             std::shared_ptr<TcpSocket> socket_;
-			std::shared_ptr <EventLoop> loop_owner_;
+            std::shared_ptr<EventLoop> loop_owner_;
             TcpDisconnectCallback disconnect_callback_;
             TcpDataCallback data_callback_;
             size_t max_recv_buffer_size_ = 64 * 1024;

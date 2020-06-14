@@ -1,5 +1,6 @@
 #ifndef SPDNET_NET_CONNECTOR_IMPL_H_
 #define SPDNET_NET_CONNECTOR_IMPL_H_
+
 #include <mutex>
 #include <unordered_map>
 #include <spdnet/base/noncopyable.h>
@@ -13,6 +14,7 @@ namespace spdnet {
         class EventService;
         namespace detail {
             class ConnectContext;
+
             class AsyncConnectorImpl : public base::NonCopyable {
             public:
                 AsyncConnectorImpl(EventService &service);

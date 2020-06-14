@@ -29,6 +29,7 @@
 
 
 #ifdef SPDNET_PLATFORM_LINUX
+
 #include<netdb.h>
 #include<cerrno>
 #include<fcntl.h>

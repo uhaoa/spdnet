@@ -22,9 +22,10 @@ namespace spdnet {
 
             class TcpSessionChannel : public Channel {
             public:
-                friend class EpollImpl ;
-                TcpSessionChannel(TcpSession::Ptr session, EventLoop& loop_owner)
-                        : session_(session), loop_owner_(loop_owner){
+                friend class EpollImpl;
+
+                TcpSessionChannel(TcpSession &session, EventLoop &loop_owner)
+                        : session_(session), loop_owner_(loop_owner) {
 
                 }
 
@@ -42,15 +43,14 @@ namespace spdnet {
                 }
 
             private:
-                TcpSession::Ptr session_;
-                EventLoop& loop_owner_;
-            } ;
+                TcpSession &session_;
+                EventLoop &loop_owner_;
+            };
 
             class WakeupChannel : public Channel {
             public:
                 explicit WakeupChannel(int fd) noexcept
-                    :fd_(fd)
-                {}
+                        : fd_(fd) {}
 
                 bool wakeup() {
                     int data = 1;

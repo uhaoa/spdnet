@@ -14,8 +14,7 @@
 
 namespace spdnet::net {
     using namespace base;
-    namespace detail
-    {
+    namespace detail {
         class EpollImpl;
     }
 
@@ -54,11 +53,14 @@ namespace spdnet::net {
         void recycleBuffer(spdnet::base::Buffer *buffer) {
             buffer_pool_.recycleBuffer(buffer);
         }
-        detail::EpollImpl& getImpl() {
+
+        detail::EpollImpl &getImpl() {
             return *io_impl_.get();
         }
+
     private:
         void execAsyncTasks();
+
     private:
         current_thread::THREAD_ID_TYPE thread_id_;
         std::shared_ptr<detail::EpollImpl> io_impl_;

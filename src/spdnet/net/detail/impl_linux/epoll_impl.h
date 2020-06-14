@@ -1,5 +1,6 @@
 #ifndef SPDNET_NET_EPOLL_IMPL_H_
 #define SPDNET_NET_EPOLL_IMPL_H_
+
 #include <thread>
 #include <mutex>
 #include <vector>
@@ -11,14 +12,17 @@
 
 namespace spdnet::net {
     class EventLoop;
+
     class AsyncConnector;
     namespace detail {
         class Channel;
+
         class WakeupChannel;
-        class TcpSessionChannel ;
+
+        class TcpSessionChannel;
 
         struct SocketImplData : public base::NonCopyable {
-            SocketImplData(TcpSession::Ptr , EventLoop&) noexcept ;
+            SocketImplData(TcpSession &, EventLoop &) noexcept;
 
             Buffer recv_buffer_;
             std::deque<Buffer *> send_buffer_list_;
@@ -33,33 +37,35 @@ namespace spdnet::net {
         class EpollImpl : public base::NonCopyable {
         public:
             friend class TcpSessionChannel;
+
             explicit EpollImpl(EventLoop &loop_owner) noexcept;
 
             virtual ~EpollImpl() noexcept;
 
-            void onTcpSessionEnter(TcpSession::Ptr session);
+            void onTcpSessionEnter(TcpSession &session);
 
             void runOnce(uint32_t timeout);
 
-            void send(TcpSession::Ptr session);
+            void send(TcpSession &session);
 
             void wakeup();
 
-            void closeSession(TcpSession::Ptr session);
+            void closeSession(TcpSession &session);
 
-            void shutdownSession(TcpSession::Ptr session);
+            void shutdownSession(TcpSession &session);
 
             int epoll_fd() const { return epoll_fd_; }
 
             bool linkChannel(int fd, const Channel *channel, uint32_t events);
+
         private:
-            void addWriteEvent(TcpSession::Ptr session);
+            void addWriteEvent(TcpSession &session);
 
-            void cancelWriteEvent(TcpSession::Ptr session);
+            void cancelWriteEvent(TcpSession &session);
 
-            void flushBuffer(TcpSession::Ptr session);
+            void flushBuffer(TcpSession &session);
 
-            void doRecv(TcpSession::Ptr session);
+            void doRecv(TcpSession &session);
 
         private:
             int epoll_fd_;

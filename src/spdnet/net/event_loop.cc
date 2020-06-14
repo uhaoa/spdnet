@@ -12,7 +12,7 @@ namespace spdnet {
     namespace net {
 
         EventLoop::EventLoop(unsigned int wait_timeout_ms) noexcept
-                :wait_timeout_ms_(wait_timeout_ms) {
+                : wait_timeout_ms_(wait_timeout_ms) {
             io_impl_.reset(new detail::EpollImpl(*this));
         }
 
@@ -25,7 +25,7 @@ namespace spdnet {
                     std::lock_guard<std::mutex> lck(task_mutex_);
                     async_tasks.emplace_back(std::move(task));
                 }
-				io_impl_->wakeup(); 
+                io_impl_->wakeup();
             }
 
         }
@@ -65,7 +65,7 @@ namespace spdnet {
         void
         EventLoop::onTcpSessionEnter(TcpSession::Ptr tcp_session, const TcpSession::TcpEnterCallback &enter_callback) {
             assert(isInLoopThread());
-            io_impl_->onTcpSessionEnter(tcp_session);
+            io_impl_->onTcpSessionEnter(*tcp_session);
             assert(nullptr == getTcpSession(tcp_session->sock_fd()));
             if (nullptr != enter_callback)
                 enter_callback(tcp_session);
@@ -77,7 +77,7 @@ namespace spdnet {
             loop_thread_ = std::make_shared<std::thread>([is_run, this]() {
                 thread_id_ = current_thread::tid();
                 while (*is_run) {
-					io_impl_->runOnce(wait_timeout_ms_); 
+                    io_impl_->runOnce(wait_timeout_ms_);
 
                     execAsyncTasks();
                 }
