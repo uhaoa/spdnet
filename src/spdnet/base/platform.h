@@ -28,4 +28,24 @@
 #endif
 
 
+#ifdef SPDNET_PLATFORM_LINUX
+#include<netdb.h>
+#include<cerrno>
+#include<fcntl.h>
+#include<unistd.h>
+#include<csignal>
+#include<sys/uio.h>
+#include<sys/ioctl.h>
+#include <sys/epoll.h>
+#include <sys/types.h>
+#include <sys/select.h>
+#include <sys/socket.h>
+#include <sys/eventfd.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <arpa/inet.h>
+
+#endif
+
+
 #endif  // SPDNET_BASE_PLATFORM_H

@@ -10,13 +10,12 @@
 #include <spdnet/net/tcp_session.h>
 
 namespace spdnet::net {
+    class EventLoop;
+    class AsyncConnector;
     namespace detail {
         class Channel;
         class WakeupChannel;
-        class EventLoop;
         class TcpSessionChannel ;
-        class AsyncConnector;
-        class ConnectorChannel;
 
         struct SocketImplData : public base::NonCopyable {
             SocketImplData(TcpSession::Ptr , EventLoop&) noexcept ;
@@ -28,19 +27,17 @@ namespace spdnet::net {
             volatile bool has_closed_{false};
             volatile bool is_post_flush_{false};
             volatile bool is_can_write_{true};
-            std::unique_ptr<TcpSessionChannel> channel_;
+            std::shared_ptr<TcpSessionChannel> channel_;
         };
 
         class EpollImpl : public base::NonCopyable {
         public:
-            friend class ConnectorChannel; 
+            friend class TcpSessionChannel;
             explicit EpollImpl(EventLoop &loop_owner) noexcept;
 
             virtual ~EpollImpl() noexcept;
 
             void onTcpSessionEnter(TcpSession::Ptr session);
-
-            void asyncConnect(AsyncConnector& session);
 
             void runOnce(uint32_t timeout);
 
@@ -54,12 +51,11 @@ namespace spdnet::net {
 
             int epoll_fd() const { return epoll_fd_; }
 
+            bool linkChannel(int fd, const Channel *channel, uint32_t events);
         private:
             void addWriteEvent(TcpSession::Ptr session);
 
             void cancelWriteEvent(TcpSession::Ptr session);
-
-            bool linkEvent(int fd, const Channel *channel, uint32_t events);
 
             void flushBuffer(TcpSession::Ptr session);
 
@@ -71,7 +67,6 @@ namespace spdnet::net {
             std::vector<epoll_event> event_entries_;
             EventLoop &loop_owner_ref_;
             std::vector<std::function<void()>> delay_tasks;
-            std::unordered_map<int , std::shared_ptr<ConnectorChannel>> connector_channels_;
         };
     }
 }

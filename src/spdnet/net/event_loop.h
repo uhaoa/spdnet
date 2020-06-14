@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <spdnet/base/noncopyable.h>
 #include <spdnet/base/platform.h>
-#include <spdnet/base/current_thread.h>
+#include <spdnet/net/current_thread.h>
 #include <spdnet/net/tcp_session.h>
 #include <spdnet/base/buffer_pool.h>
 
@@ -60,8 +60,8 @@ namespace spdnet::net {
     private:
         void execAsyncTasks();
     private:
-        int thread_id_;
-        std::unique_ptr<detail::EpollImpl> io_impl_;
+        current_thread::THREAD_ID_TYPE thread_id_;
+        std::shared_ptr<detail::EpollImpl> io_impl_;
         std::mutex task_mutex_;
         std::vector<AsynLoopTask> async_tasks;
         std::vector<AsynLoopTask> tmp_async_tasks;

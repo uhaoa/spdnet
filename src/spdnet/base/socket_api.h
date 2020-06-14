@@ -1,7 +1,7 @@
 #ifndef SPDNET_BASE_SOCKETAPI_H_
 #define SPDNET_BASE_SOCKETAPI_H_
 
-#include "base.h"
+#include <spdnet/base/platform.h>
 #include <string>
 
 namespace spdnet::base {

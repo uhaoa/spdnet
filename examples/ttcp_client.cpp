@@ -73,7 +73,7 @@ int main(int argc, char *argv[]) {
                                                    if (--*number_ptr > 0)
                                                        new_conn->send((char *) msg, length + sizeof(int));
                                                    else {
-                                                       new_conn->postDisconnect();
+                                                       new_conn->postShutDown();
                                                        --cur_client_num;
                                                    }
                                                    return sizeof(int);

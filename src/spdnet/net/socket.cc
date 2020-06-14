@@ -1,6 +1,6 @@
 #include <spdnet/net/socket.h>
 #include <spdnet/base/socket_api.h>
-#include <spdnet/base/base.h>
+#include <spdnet/base/platform.h>
 #include <spdnet/net/exception.h>
 
 namespace spdnet {

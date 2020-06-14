@@ -1,7 +1,6 @@
 #include <spdnet/net/acceptor.h>
 #include <unordered_map>
 #include <chrono>
-#include <set>
 #include <cassert>
 #include <iostream>
 #include <algorithm>
@@ -9,7 +8,6 @@
 #include <spdnet/net/exception.h>
 #include <spdnet/net/event_service.h>
 #include <spdnet/net/end_point.h>
-#include <sys/epoll.h>
 
 namespace spdnet {
     namespace net {

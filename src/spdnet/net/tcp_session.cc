@@ -3,7 +3,7 @@
 #include <iostream>
 #include <string.h>
 #include <spdnet/net/event_loop.h>
-#include <spdnet/net/impl_linux/epoll_impl.h>
+#include <spdnet/net/detail/impl_linux/epoll_impl.h>
 
 namespace spdnet {
     namespace net {
@@ -11,7 +11,7 @@ namespace spdnet {
                 : socket_(std::move(socket)),
                   loop_owner_(loop){
             auto this_ptr = shared_from_this();
-            auto data_ptr = std::make_unique<detail::SocketImplData>(this_ptr , loop_owner_);
+            auto data_ptr = std::make_shared<detail::SocketImplData>(this_ptr , *loop_owner_.get());
             socket_impl_data_ = std::move(data_ptr);
         }
 

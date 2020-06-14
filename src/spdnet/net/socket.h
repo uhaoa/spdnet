@@ -2,7 +2,7 @@
 #define SPDNET_NET_SOCKET_H_
 
 #include <memory>
-#include <spdnet/base/base.h>
+#include <spdnet/base/platform.h>
 #include <spdnet/base/noncopyable.h>
 
 namespace spdnet {

@@ -22,7 +22,7 @@ namespace spdnet {
         class TcpSession :public base::NonCopyable, public std::enable_shared_from_this<TcpSession> {
         public:
             friend class EventLoop;
-            friend class EpollImpl;
+            friend class detail::EpollImpl;
 
             using Ptr = std::shared_ptr<TcpSession>;
             using TcpDisconnectCallback = std::function<void(Ptr)>;
@@ -62,7 +62,7 @@ namespace spdnet {
             TcpDisconnectCallback disconnect_callback_;
             TcpDataCallback data_callback_;
             size_t max_recv_buffer_size_ = 64 * 1024;
-            std::unique_ptr<detail::SocketImplData> socket_impl_data_;
+            std::shared_ptr<detail::SocketImplData> socket_impl_data_;
         };
 
     }

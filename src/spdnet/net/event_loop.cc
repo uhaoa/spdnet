@@ -4,9 +4,9 @@
 #include <cassert>
 #include <sys/epoll.h>
 #include <spdnet/net/event_loop.h>
-#include <spdnet/base/current_thread.h>
+#include <spdnet/net/current_thread.h>
 #include <spdnet/net/exception.h>
-#include <spdnet/net/impl_linux/epoll_impl.h>
+#include <spdnet/net/detail/impl_linux/epoll_impl.h>
 
 namespace spdnet {
     namespace net {
@@ -65,7 +65,7 @@ namespace spdnet {
         void
         EventLoop::onTcpSessionEnter(TcpSession::Ptr tcp_session, const TcpSession::TcpEnterCallback &enter_callback) {
             assert(isInLoopThread());
-            io_impl_.onTcpSessionEnter(tcp_session);
+            io_impl_->onTcpSessionEnter(tcp_session);
             assert(nullptr == getTcpSession(tcp_session->sock_fd()));
             if (nullptr != enter_callback)
                 enter_callback(tcp_session);

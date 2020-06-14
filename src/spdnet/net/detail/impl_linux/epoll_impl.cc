@@ -3,28 +3,26 @@
 #include <unistd.h>
 #include <cassert>
 #include <sys/epoll.h>
-#include <spdnet/net/impl_linux/epoll_impl.h>
-#include <spdnet/base/current_thread.h>
-#include <spdnet/net/impl_linux/channel.h>
 #include <spdnet/net/exception.h>
 #include <spdnet/net/tcp_session.h>
 #include <spdnet/net/event_loop.h>
+#include <spdnet/net/detail/impl_linux/channel.h>
+#include <spdnet/net/detail/impl_linux/epoll_impl.h>
 
 namespace spdnet {
     namespace net {
         namespace detail{
                 SocketImplData::SocketImplData(TcpSession::Ptr session , EventLoop& session_owner) noexcept
-                : channel_(session, session_owner)
                 {
-
+                    channel_ = std::make_shared<TcpSessionChannel>(session , session_owner);
                 }
 
                 EpollImpl::EpollImpl(EventLoop& loop_owner) noexcept
-                : epoll_fd_(::epoll_create(1)), loop_owner_(loop_owner)
+                : epoll_fd_(::epoll_create(1)), loop_owner_ref_(loop_owner)
                 {
                     auto event_fd = ::eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
                     wake_up_.reset(new WakeupChannel(event_fd));
-                    linkEvent(event_fd, wake_up_.get());
+                    linkChannel(event_fd, wake_up_.get() , EPOLLET | EPOLLIN | EPOLLRDHUP);
                     event_entries_.resize(1024);
                 }
 
@@ -43,7 +41,7 @@ namespace spdnet {
                     struct epoll_event event{0, {nullptr}};
                     event.events = EPOLLET | EPOLLIN | EPOLLOUT | EPOLLRDHUP;
                     event.data.ptr = &data.channel_;
-                    ::epoll_ctl(epoll_fd_, EPOLL_CTL_MOD, sockfd, &event);
+                    ::epoll_ctl(epoll_fd_, EPOLL_CTL_MOD, session->sock_fd(), &event);
                 }
 
                 void EpollImpl::cancelWriteEvent(TcpSession::Ptr session) {
@@ -51,10 +49,10 @@ namespace spdnet {
                     struct epoll_event event{0, {nullptr}};
                     event.events = EPOLLET | EPOLLIN | EPOLLRDHUP;
                     event.data.ptr = &data.channel_;
-                    ::epoll_ctl(epoll_fd_, EPOLL_CTL_MOD, sockfd, &event);
+                    ::epoll_ctl(epoll_fd_, EPOLL_CTL_MOD, session->sock_fd(), &event);
                 }
 
-                bool EpollImpl::linkEvent(int fd, const Channel* channel, uint32_t events) {
+                bool EpollImpl::linkChannel(int fd, const Channel* channel, uint32_t events) {
                     struct epoll_event event{0, {nullptr}};
                     event.events = events;
                     event.data.ptr = (void *) (channel);
@@ -67,8 +65,9 @@ namespace spdnet {
                         return;
                     }
                     data.is_post_flush_ = true;
-                    loop_owner_ref_.runInEventLoop([session_ptr = session, this]() {
-                        auto &data = session->socket_impl_data();
+                    auto session_ptr = session;
+                    loop_owner_ref_.runInEventLoop([session_ptr, this]() {
+                        auto &data = session_ptr->socket_impl_data();
                         if (data.is_can_write_) {
                             this->flushBuffer(session_ptr);
                             data.is_post_flush_ = false;
@@ -103,7 +102,7 @@ namespace spdnet {
                     auto &data = session->socket_impl_data();
                     if (data.has_closed_)
                         return;
-                    assertwake_up_(loop_owner_ref_.isInLoopThread());
+                    assert(loop_owner_ref_.isInLoopThread());
                     ::shutdown(session->sock_fd(), SHUT_WR);
                     data.is_can_write_ = false;
                 }
@@ -111,12 +110,7 @@ namespace spdnet {
                 void EpollImpl::onTcpSessionEnter(TcpSession::Ptr session)
                 {
                     auto &data = session->socket_impl_data();
-                    linkEvent(session->sock_fd(), data.channel_.get(), EPOLLET | EPOLLIN | EPOLLRDHUP);
-                }
-
-                void EpollImpl::asyncConnect(AsyncConnector& connector)
-                {
-                    //
+                    linkChannel(session->sock_fd(), data.channel_.get(), EPOLLET | EPOLLIN | EPOLLRDHUP);
                 }
 
                 void EpollImpl::flushBuffer(TcpSession::Ptr session)
@@ -149,10 +143,10 @@ namespace spdnet {
                                 break;
                         }
                         assert(cnt > 0);
-                        const int send_len = ::writev(data.fd_, iov, static_cast<int>(cnt));
+                        const int send_len = ::writev(session->sock_fd(), iov, static_cast<int>(cnt));
                         if (SPDNET_PREDICT_FALSE(send_len < 0)) {
                             if (errno == EAGAIN) {
-                                addWriteEvent(session->sock_fd(), &data.channel_);
+                                addWriteEvent(session);
                                 data.is_can_write_ = false;
                             } else {
                                 force_close = true;
@@ -198,7 +192,7 @@ namespace spdnet {
 
                         size_t try_recv_len = valid_count + sizeof(stack_buffer);
 
-                        int recv_len = static_cast<int>(::readv(data.fd_, vec, 2));
+                        int recv_len = static_cast<int>(::readv(session->sock_fd(), vec, 2));
                         if (SPDNET_PREDICT_FALSE(recv_len == 0 || (recv_len < 0 && errno != EAGAIN))) {
                             force_close = true;
                             break;
@@ -210,13 +204,13 @@ namespace spdnet {
                         } else
                             recv_buffer.addWritePos(recv_len);
 
-                        if (SPDNET_PREDICT_TRUE(nullptr != data.data_callback_)) {
-                            size_t len = data.data_callback_(recv_buffer.getDataPtr(), recv_buffer.getLength());
+                        if (SPDNET_PREDICT_TRUE(nullptr != session->data_callback_)) {
+                            size_t len = session->data_callback_(recv_buffer.getDataPtr(), recv_buffer.getLength());
                             assert(len <= recv_buffer.getLength());
                             if (SPDNET_PREDICT_TRUE(len == recv_buffer.getLength())) {
                                 recv_buffer.removeLength(len);
                                 if (stack_len > 0) {
-                                    len = data.data_callback_(stack_buffer, stack_len);
+                                    len = session->data_callback_(stack_buffer, stack_len);
                                     assert(len <= stack_len);
                                     if (len < stack_len) {
                                         recv_buffer.write(stack_buffer + len, stack_len - len);
@@ -239,13 +233,13 @@ namespace spdnet {
                         if (SPDNET_PREDICT_FALSE(
                                 recv_len >= (int) recv_buffer.getCapacity()/* + (int)(sizeof(stack_buffer))*/)) {
                             size_t grow_len = 0;
-                            if (recv_buffer.getCapacity() * 2 <= max_recv_buffer_size_)
+                            if (recv_buffer.getCapacity() * 2 <= session->max_recv_buffer_size_)
                                 grow_len = recv_buffer.getCapacity();
                             else
-                                grow_len = max_recv_buffer_size_ - recv_buffer.getCapacity();
+                                grow_len = session->max_recv_buffer_size_ - recv_buffer.getCapacity();
 
                             if (grow_len > 0)
-                                recv_buffer_.grow(grow_len);
+                                recv_buffer.grow(grow_len);
                         }
 
                         if (SPDNET_PREDICT_FALSE(recv_buffer.getWriteValidCount() == 0 || recv_buffer.getLength() == 0))
