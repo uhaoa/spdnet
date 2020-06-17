@@ -41,17 +41,9 @@ namespace spdnet {
         void TcpSession::postShutDown() {
             auto loop = loop_owner_;
             auto this_ptr = shared_from_this();
-            loop_owner_->runInEventLoop([loop, this_ptr]() {
+            loop_owner_->post([loop, this_ptr]() {
                 loop->getImpl().shutdownSocket(*this_ptr);
             });
-        }
-
-        void TcpSession::setDisconnectCallback(TcpDisconnectCallback &&callback) {
-            disconnect_callback_ = std::move(callback);
-        }
-
-        void TcpSession::setDataCallback(TcpDataCallback &&callback) {
-            data_callback_ = std::move(callback);
         }
 
     }

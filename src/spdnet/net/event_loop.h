@@ -21,9 +21,6 @@ namespace spdnet::net {
     class EventLoop : public base::NonCopyable {
     public:
         using AsynLoopTask = std::function<void()>;
-#if defined SPDNET_PLATFORM_LINUX
-		using IoImplType = detail::EpollImpl; 
-#endif 
     public:
         explicit EventLoop(unsigned int) noexcept;
 
@@ -35,7 +32,9 @@ namespace spdnet::net {
             return thread_id_ == current_thread::tid();
         }
 
-        void runInEventLoop(AsynLoopTask &&task);
+        void post(AsynLoopTask &&task);
+
+        void postToNextCircle(AsynLoopTask &&task);
 
         void onTcpSessionEnter(TcpSession::Ptr tcp_session, const TcpSession::TcpEnterCallback &enter_callback);
 
@@ -66,7 +65,9 @@ namespace spdnet::net {
 
     private:
         current_thread::THREAD_ID_TYPE thread_id_;
+#if defined SPDNET_PLATFORM_LINUX
         std::shared_ptr<detail::EpollImpl> io_impl_;
+#endif
         std::mutex task_mutex_;
         std::vector<AsynLoopTask> async_tasks;
         std::vector<AsynLoopTask> tmp_async_tasks;

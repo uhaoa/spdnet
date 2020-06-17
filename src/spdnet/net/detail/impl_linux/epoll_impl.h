@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <spdnet/base/noncopyable.h>
 #include <spdnet/base/platform.h>
-#include <spdnet/net/tcp_session.h>
+#include <spdnet/base/buffer.h>
 
 namespace spdnet::net {
     class EventLoop;
@@ -29,7 +29,7 @@ namespace spdnet::net {
 				friend class EpollImpl;
 				using Ptr = std::shared_ptr<SocketImplData>;
 				using TcpDataCallback = std::function<size_t(const char*, size_t len)>;
-				using TcpDisconnectCallback = std::function<void(Ptr)>;
+				using TcpDisconnectCallback = std::function<void()>;
 
 				SocketImplData(EpollImpl& impl , std::shared_ptr<TcpSocket> socket)
 					:socket_(std::move(socket))
@@ -45,13 +45,16 @@ namespace spdnet::net {
 				void setNodelay() {
 					socket_->setNoDelay();
 				}
+				int sock_fd() const {
+				    return socket_->sock_fd();
+				}
 			private:
 				std::shared_ptr<TcpSocket> socket_;
 				TcpDisconnectCallback disconnect_callback_;
 				TcpDataCallback data_callback_;
-				Buffer recv_buffer_;
-				std::deque<Buffer*> send_buffer_list_;
-				std::deque<Buffer*> pending_buffer_list_;
+				base::Buffer recv_buffer_;
+				std::deque<base::Buffer*> send_buffer_list_;
+				std::deque<base::Buffer*> pending_buffer_list_;
 				spdnet::base::SpinLock send_guard_;
 				volatile bool has_closed_{ false };
 				volatile bool is_post_flush_{ false };
@@ -95,7 +98,6 @@ namespace spdnet::net {
             std::unique_ptr<WakeupChannel> wake_up_;
             std::vector<epoll_event> event_entries_;
             EventLoop &loop_ref_;
-            std::vector<std::function<void()>> delay_tasks;
         };
     }
 }

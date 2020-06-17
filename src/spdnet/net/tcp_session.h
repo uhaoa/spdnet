@@ -8,20 +8,20 @@
 #include <spdnet/net/socket.h>
 #include <spdnet/base/buffer.h>
 #include <spdnet/base/spin_lock.h>
-#include <spdnet/net/event_loop.h>
+#if defined SPDNET_PLATFORM_LINUX
+#include <spdnet/net/detail/impl_linux/epoll_impl.h>
+#endif
 
 namespace spdnet {
     namespace net {
         using namespace base;
-
+        class EventLoop;
         class TcpSession : public base::NonCopyable, public std::enable_shared_from_this<TcpSession> {
         public:
             friend class EventLoop;
             using Ptr = std::shared_ptr<TcpSession>;
-            using TcpDisconnectCallback = EventLoop:::IoImplType::TcpDisconnectCallback;
-            using TcpDataCallback = EventLoop:::IoImplType::TcpDataCallback;
-			using SocketImplDataType = EventLoop:::IoImplType::SocketImplData;
-        
+            using TcpDataCallback = std::function<size_t(const char*, size_t len)>;
+            using TcpDisconnectCallback = std::function<void(Ptr)>;
 			using TcpEnterCallback = std::function<void(TcpSession::Ptr)>;
 		public:
             TcpSession(std::shared_ptr<TcpSocket> socket, std::shared_ptr<EventLoop>);
@@ -29,16 +29,14 @@ namespace spdnet {
             void postShutDown();
 
 			void setDisconnectCallback(TcpDisconnectCallback&& callback) {
-				/*
 				auto cb = std::move(callback);
 				auto this_ptr = shared_from_this();
-				socket_data_->setImplCloseCallback([cb , this_ptr]() {
+				socket_data_->setDisconnectCallback([cb , this_ptr]() {
 					if (cb)
 						cb(this_ptr);
-					this_ptr->lo	
 				});
-				*/
-				socket_data_->setDisconnectCallback(callback); 
+
+				//socket_data_->setDisconnectCallback(callback);
 			}
 
 			void setDataCallback(TcpDataCallback&& callback) {
@@ -55,19 +53,20 @@ namespace spdnet {
 
             void send(const char *data, size_t len);
 
-			/*
+
             int sock_fd() const {
-                return socket_->sock_fd();
+                return socket_data_->sock_fd();
             }
-			*/
+
         public:
             static Ptr create(std::shared_ptr<TcpSocket> socket, std::shared_ptr<EventLoop> loop);
         private:
             std::shared_ptr<EventLoop> loop_owner_;
-            TcpDisconnectCallback disconnect_callback_;
-            TcpDataCallback data_callback_;
             size_t max_recv_buffer_size_ = 64 * 1024;
-            std::shared_ptr<SocketImplDataType> socket_data_;
+#if defined SPDNET_PLATFORM_LINUX
+            std::shared_ptr<detail::EpollImpl> socket_data_;
+#endif
+
         };
 
     }

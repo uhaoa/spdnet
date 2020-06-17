@@ -53,19 +53,19 @@ namespace spdnet {
             void EpollImpl::send(SocketImplData& socket_data, const char* data, size_t len) {
 				if (!socket_data.is_can_write_)
 					return; 
-				auto buffer = loop_ref_->allocBufferBySize(len);
+				auto buffer = loop_ref_.allocBufferBySize(len);
 				assert(buffer);
 				buffer->write(data, len);
 				{
 					std::lock_guard<SpinLock> lck(socket_data.send_guard_);
-					socket_data_.send_buffer_list_.push_back(buffer);
+                    socket_data.send_buffer_list_.push_back(buffer);
 				}
                 if (socket_data.is_post_flush_) {
                     return;
                 }
 				socket_data.is_post_flush_ = true;
 				auto& data = socket_data; 
-				loop_ref_.runInEventLoop([&data]() {
+				loop_ref_.post([&data]() {
                     if (data.is_can_write_) {
                         this->flushBuffer(data);
                         data.is_post_flush_ = false;
@@ -81,13 +81,17 @@ namespace spdnet {
 				socket_data.is_can_write_ = false;
 				auto& loop = loop_ref_;
 				auto sockfd = socket_data.socket_->sock_fd();
-                delay_tasks.emplace_back([&loop, sockfd]() {
-                    loop.removeTcpSession(sockfd);
-                });
-				
+				// remove session
+				loop_ref_.post([&loop , sockfd](){
+                    loop.postToNextCircle([&loop , sockfd](){
+                        loop.removeTcpSession(sockfd);
+                    });
+				});
+
+				// cancel event
                 struct epoll_event ev{0, {nullptr}};
                 ::epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, socket_data.socket_->sock_fd(), &ev);
-               
+
 				if (socket_data.disconnect_callback_)
 					socket_data.disconnect_callback_();
             }
@@ -96,8 +100,8 @@ namespace spdnet {
                 if (socket_data.has_closed_)
                     return;
                 assert(loop_ref_.isInLoopThread());
-                ::shutdown(socket_data.socket_()->sock_fd(), SHUT_WR);
-                data.is_can_write_ = false;
+                ::shutdown(socket_data.socket_->sock_fd(), SHUT_WR);
+                socket_data.is_can_write_ = false;
             }
 
             void EpollImpl::onTcpSessionEnter(SocketImplData& socket_data) {
