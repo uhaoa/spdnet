@@ -18,60 +18,83 @@ namespace spdnet::net {
         class Channel;
 
         class WakeupChannel;
-
         class TcpSessionChannel;
-
-        struct SocketImplData : public base::NonCopyable {
-            SocketImplData(TcpSession &, EventLoop &) noexcept;
-
-            Buffer recv_buffer_;
-            std::deque<Buffer *> send_buffer_list_;
-            std::deque<Buffer *> pending_buffer_list_;
-            base::SpinLock send_guard_;
-            volatile bool has_closed_{false};
-            volatile bool is_post_flush_{false};
-            volatile bool is_can_write_{true};
-            std::shared_ptr<TcpSessionChannel> channel_;
-        };
 
         class EpollImpl : public base::NonCopyable {
         public:
             friend class TcpSessionChannel;
 
+			class SocketImplData : public base::NonCopyable {
+			public:
+				friend class EpollImpl;
+				using Ptr = std::shared_ptr<SocketImplData>;
+				using TcpDataCallback = std::function<size_t(const char*, size_t len)>;
+				using TcpDisconnectCallback = std::function<void(Ptr)>;
+
+				SocketImplData(EpollImpl& impl , std::shared_ptr<TcpSocket> socket)
+					:socket_(std::move(socket))
+				{
+					channel_ = std::make_shared<TcpSessionChannel>(impl, *this);
+				}
+				void setDisconnectCallback(TcpDisconnectCallback&& callback) {
+					disconnect_callback_ = callback;
+				}
+				void setDataCallback(TcpDataCallback&& callback){
+					data_callback_ = callback;
+				}
+				void setNodelay() {
+					socket_->setNoDelay();
+				}
+			private:
+				std::shared_ptr<TcpSocket> socket_;
+				TcpDisconnectCallback disconnect_callback_;
+				TcpDataCallback data_callback_;
+				Buffer recv_buffer_;
+				std::deque<Buffer*> send_buffer_list_;
+				std::deque<Buffer*> pending_buffer_list_;
+				spdnet::base::SpinLock send_guard_;
+				volatile bool has_closed_{ false };
+				volatile bool is_post_flush_{ false };
+				volatile bool is_can_write_{ true };
+				std::shared_ptr<TcpSessionChannel> channel_;
+			};
+
+
+
             explicit EpollImpl(EventLoop &loop_owner) noexcept;
 
             virtual ~EpollImpl() noexcept;
 
-            void onTcpSessionEnter(TcpSession &session);
+			void onTcpSessionEnter(SocketImplData& socket_data);
 
             void runOnce(uint32_t timeout);
 
-            void send(TcpSession &session);
+            void send(SocketImplData& socket_data , const char*  data ,size_t len);
 
-            void wakeup();
+            void wakeup(); 
 
-            void closeSession(TcpSession &session);
-
-            void shutdownSession(TcpSession &session);
+            void shutdownSocket(SocketImplData& socket_data);
 
             int epoll_fd() const { return epoll_fd_; }
 
             bool linkChannel(int fd, const Channel *channel, uint32_t events);
 
         private:
-            void addWriteEvent(TcpSession &session);
+			void closeSocket(SocketImplData& socket_data);
 
-            void cancelWriteEvent(TcpSession &session);
+            void addWriteEvent(SocketImplData & socket_data);
 
-            void flushBuffer(TcpSession &session);
+            void cancelWriteEvent(SocketImplData & socket_data);
 
-            void doRecv(TcpSession &session);
+            void flushBuffer(SocketImplData & socket_data);
+
+            void doRecv(SocketImplData &socket_data);
 
         private:
             int epoll_fd_;
             std::unique_ptr<WakeupChannel> wake_up_;
             std::vector<epoll_event> event_entries_;
-            EventLoop &loop_owner_ref_;
+            EventLoop &loop_ref_;
             std::vector<std::function<void()>> delay_tasks;
         };
     }

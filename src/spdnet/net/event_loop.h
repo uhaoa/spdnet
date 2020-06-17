@@ -21,6 +21,9 @@ namespace spdnet::net {
     class EventLoop : public base::NonCopyable {
     public:
         using AsynLoopTask = std::function<void()>;
+#if defined SPDNET_PLATFORM_LINUX
+		using IoImplType = detail::EpollImpl; 
+#endif 
     public:
         explicit EventLoop(unsigned int) noexcept;
 

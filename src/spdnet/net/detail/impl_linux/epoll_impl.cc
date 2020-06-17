@@ -12,12 +12,8 @@
 namespace spdnet {
     namespace net {
         namespace detail {
-            SocketImplData::SocketImplData(TcpSession &session, EventLoop &session_owner) noexcept {
-                channel_ = std::make_shared<TcpSessionChannel>(session, session_owner);
-            }
-
             EpollImpl::EpollImpl(EventLoop &loop_owner) noexcept
-                    : epoll_fd_(::epoll_create(1)), loop_owner_ref_(loop_owner) {
+                    : epoll_fd_(::epoll_create(1)), loop_ref_(loop_owner) {
                 auto event_fd = ::eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
                 wake_up_.reset(new WakeupChannel(event_fd));
                 linkChannel(event_fd, wake_up_.get(), EPOLLET | EPOLLIN | EPOLLRDHUP);
@@ -33,20 +29,18 @@ namespace spdnet {
                 wake_up_->wakeup();
             }
 
-            void EpollImpl::addWriteEvent(TcpSession &session) {
-                auto &data = session.socket_impl_data();
+            void EpollImpl::addWriteEvent(SocketImplData& socket_data) {
                 struct epoll_event event{0, {nullptr}};
                 event.events = EPOLLET | EPOLLIN | EPOLLOUT | EPOLLRDHUP;
-                event.data.ptr = &data.channel_;
-                ::epoll_ctl(epoll_fd_, EPOLL_CTL_MOD, session.sock_fd(), &event);
+                event.data.ptr = &socket_data.channel_;
+                ::epoll_ctl(epoll_fd_, EPOLL_CTL_MOD, socket_data.sock_fd(), &event);
             }
 
-            void EpollImpl::cancelWriteEvent(TcpSession &session) {
-                auto &data = session.socket_impl_data();
+            void EpollImpl::cancelWriteEvent(SocketImplData& socket_data) {
                 struct epoll_event event{0, {nullptr}};
                 event.events = EPOLLET | EPOLLIN | EPOLLRDHUP;
-                event.data.ptr = &data.channel_;
-                ::epoll_ctl(epoll_fd_, EPOLL_CTL_MOD, session.sock_fd(), &event);
+                event.data.ptr = &socket_data.channel_;
+                ::epoll_ctl(epoll_fd_, EPOLL_CTL_MOD, socket_data.socket_->sock_fd(), &event);
             }
 
             bool EpollImpl::linkChannel(int fd, const Channel *channel, uint32_t events) {
@@ -56,62 +50,64 @@ namespace spdnet {
                 return ::epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, fd, &event) == 0;
             }
 
-            void EpollImpl::send(TcpSession &session) {
-                auto &data = session.socket_impl_data();
-                if (data.is_post_flush_) {
+            void EpollImpl::send(SocketImplData& socket_data, const char* data, size_t len) {
+				if (!socket_data.is_can_write_)
+					return; 
+				auto buffer = loop_ref_->allocBufferBySize(len);
+				assert(buffer);
+				buffer->write(data, len);
+				{
+					std::lock_guard<SpinLock> lck(socket_data.send_guard_);
+					socket_data_.send_buffer_list_.push_back(buffer);
+				}
+                if (socket_data.is_post_flush_) {
                     return;
                 }
-                data.is_post_flush_ = true;
-                auto session_ptr = session.shared_from_this();
-                loop_owner_ref_.runInEventLoop([session_ptr, this]() {
-                    auto &data = session_ptr->socket_impl_data();
+				socket_data.is_post_flush_ = true;
+				auto& data = socket_data; 
+				loop_ref_.runInEventLoop([&data]() {
                     if (data.is_can_write_) {
-                        this->flushBuffer(*session_ptr);
+                        this->flushBuffer(data);
                         data.is_post_flush_ = false;
                     }
                 });
             }
 
-            void EpollImpl::closeSession(TcpSession &session) {
-                assert(loop_owner_ref_.isInLoopThread());
-                auto &data = session.socket_impl_data();
-                if (data.has_closed_)
+            void EpollImpl::closeSocket(SocketImplData& socket_data) {
+				assert(loop_ref_.isInLoopThread());
+                if (socket_data.has_closed_)
                     return;
-                data.has_closed_ = true;
-                data.is_can_write_ = false;
-
-                auto &loop = loop_owner_ref_;
-                auto session_ptr = session.shared_from_this();
-                auto sock_fd = session.sock_fd();
-                delay_tasks.emplace_back([&loop, sock_fd, session_ptr]() {
-                    loop.removeTcpSession(sock_fd);
-                    // Avoid circular reference
-                    //session_ptr->socket_impl_data().channel_->session_.reset();
+				socket_data.has_closed_ = true;
+				socket_data.is_can_write_ = false;
+				auto& loop = loop_ref_;
+				auto sockfd = socket_data.socket_->sock_fd();
+                delay_tasks.emplace_back([&loop, sockfd]() {
+                    loop.removeTcpSession(sockfd);
                 });
-
+				
                 struct epoll_event ev{0, {nullptr}};
-                ::epoll_ctl(loop.getImpl().epoll_fd(), EPOLL_CTL_DEL, session.sock_fd(), &ev);
-                session.onClose();
+                ::epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, socket_data.socket_->sock_fd(), &ev);
+               
+				if (socket_data.disconnect_callback_)
+					socket_data.disconnect_callback_();
             }
 
-            void EpollImpl::shutdownSession(TcpSession &session) {
-                auto &data = session.socket_impl_data();
-                if (data.has_closed_)
+            void EpollImpl::shutdownSocket(SocketImplData& socket_data) {
+                if (socket_data.has_closed_)
                     return;
-                assert(loop_owner_ref_.isInLoopThread());
-                ::shutdown(session.sock_fd(), SHUT_WR);
+                assert(loop_ref_.isInLoopThread());
+                ::shutdown(socket_data.socket_()->sock_fd(), SHUT_WR);
                 data.is_can_write_ = false;
             }
 
-            void EpollImpl::onTcpSessionEnter(TcpSession &session) {
-                auto &data = session.socket_impl_data();
-                linkChannel(session.sock_fd(), data.channel_.get(), EPOLLET | EPOLLIN | EPOLLRDHUP);
+            void EpollImpl::onTcpSessionEnter(SocketImplData& socket_data) {
+                linkChannel(socket_data.socket_->sock_fd(), socket_data.channel_.get(), EPOLLET | EPOLLIN | EPOLLRDHUP);
             }
 
-            void EpollImpl::flushBuffer(TcpSession &session) {
+            void EpollImpl::flushBuffer(SocketImplData& socket_data) {
                 auto &data = session.socket_impl_data();
                 bool force_close = false;
-                assert(loop_owner_ref_.isInLoopThread());
+                assert(loop_ref_.isInLoopThread());
                 {
                     std::lock_guard<SpinLock> lck(data.send_guard_);
                     if (SPDNET_PREDICT_TRUE(data.pending_buffer_list_.empty())) {
@@ -153,7 +149,7 @@ namespace spdnet {
                             if (SPDNET_PREDICT_TRUE(buffer->getLength() <= tmp_len)) {
                                 tmp_len -= buffer->getLength();
                                 buffer->clear();
-                                loop_owner_ref_.recycleBuffer(buffer);
+								loop_ref_.recycleBuffer(buffer);
                                 iter = data.pending_buffer_list_.erase(iter);
                             } else {
                                 buffer->removeLength(tmp_len);
@@ -169,7 +165,7 @@ namespace spdnet {
                 }
             }
 
-            void EpollImpl::doRecv(TcpSession &session) {
+            void EpollImpl::doRecv(SocketImplData& socket_data) {
                 auto &data = session.socket_impl_data();
                 char stack_buffer[65536];
                 bool force_close = false;

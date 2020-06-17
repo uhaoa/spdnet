@@ -24,27 +24,28 @@ namespace spdnet {
             public:
                 friend class EpollImpl;
 
-                TcpSessionChannel(TcpSession &session, EventLoop &loop_owner)
-                        : session_(session), loop_owner_(loop_owner) {
+                TcpSessionChannel(EpollImpl &impl , EpollImpl::SocketImplData& data)
+                        :impl_(impl) , data_(data)
+				{
 
                 }
 
                 void trySend() override {
-                    loop_owner_.getImpl().flushBuffer(session_);
-                    loop_owner_.getImpl().cancelWriteEvent(session_);
+					impl_.flushBuffer(data_);
+					impl_.cancelWriteEvent(data_);
                 }
 
                 void tryRecv() override {
-                    loop_owner_.getImpl().doRecv(session_);
+					impl_.doRecv(data_);
                 }
 
                 void onClose() override {
-                    loop_owner_.getImpl().closeSession(session_);
+					impl_.closeSession(data_);
                 }
 
             private:
-                TcpSession &session_;
-                EventLoop &loop_owner_;
+				EpollImpl &impl_;
+				EpollImpl::SocketImplData& data_;
             };
 
             class WakeupChannel : public Channel {
