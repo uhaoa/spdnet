@@ -74,7 +74,7 @@ namespace spdnet {
         void
         EventLoop::onTcpSessionEnter(TcpSession::Ptr tcp_session, const TcpSession::TcpEnterCallback &enter_callback) {
             assert(isInLoopThread());
-            io_impl_->onTcpSessionEnter(*tcp_session);
+            io_impl_->onSocketEnter(*tcp_session->socket_data_);
             assert(nullptr == getTcpSession(tcp_session->sock_fd()));
             if (nullptr != enter_callback)
                 enter_callback(tcp_session);

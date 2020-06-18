@@ -28,7 +28,7 @@ namespace spdnet {
             std::shared_ptr<EventLoop> loop = getEventLoop();
             TcpSession::Ptr new_connection = TcpSession::create(std::move(tcp_socket), loop);
             loop->post([loop, new_connection, enter_callback]() {
-                loop->onTcpSessionEnter(new_connection, enter_callback);
+                loop->onSocketEnter(new_connection, enter_callback);
             });
         }
 

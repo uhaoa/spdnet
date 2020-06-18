@@ -40,7 +40,7 @@ namespace spdnet {
                 }
 
                 void onClose() override {
-					impl_.closeSession(data_);
+					impl_.closeSocket(data_);
                 }
 
             private:

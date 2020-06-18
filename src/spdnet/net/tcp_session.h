@@ -23,6 +23,9 @@ namespace spdnet {
             using TcpDataCallback = std::function<size_t(const char*, size_t len)>;
             using TcpDisconnectCallback = std::function<void(Ptr)>;
 			using TcpEnterCallback = std::function<void(TcpSession::Ptr)>;
+#if defined SPDNET_PLATFORM_LINUX
+			using SocketImplDataType = detail::EpollImpl::SocketImplData;
+#endif
 		public:
             TcpSession(std::shared_ptr<TcpSocket> socket, std::shared_ptr<EventLoop>);
 
@@ -40,11 +43,11 @@ namespace spdnet {
 			}
 
 			void setDataCallback(TcpDataCallback&& callback) {
-				socket_data_->setDataCallback(callback); 
+				socket_data_->setDataCallback(std::move(callback)); 
 			}
 
             void setMaxRecvBufferSize(size_t len) {
-                max_recv_buffer_size_ = len;
+				socket_data_->setMaxRecvBufferSize(len);
             }
 
             void setNodelay() {
@@ -62,11 +65,7 @@ namespace spdnet {
             static Ptr create(std::shared_ptr<TcpSocket> socket, std::shared_ptr<EventLoop> loop);
         private:
             std::shared_ptr<EventLoop> loop_owner_;
-            size_t max_recv_buffer_size_ = 64 * 1024;
-#if defined SPDNET_PLATFORM_LINUX
-            std::shared_ptr<detail::EpollImpl> socket_data_;
-#endif
-
+            std::shared_ptr<SocketImplDataType> socket_data_;
         };
 
     }

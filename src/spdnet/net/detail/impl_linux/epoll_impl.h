@@ -16,7 +16,6 @@ namespace spdnet::net {
     class AsyncConnector;
     namespace detail {
         class Channel;
-
         class WakeupChannel;
         class TcpSessionChannel;
 
@@ -31,11 +30,8 @@ namespace spdnet::net {
 				using TcpDataCallback = std::function<size_t(const char*, size_t len)>;
 				using TcpDisconnectCallback = std::function<void()>;
 
-				SocketImplData(EpollImpl& impl , std::shared_ptr<TcpSocket> socket)
-					:socket_(std::move(socket))
-				{
-					channel_ = std::make_shared<TcpSessionChannel>(impl, *this);
-				}
+				SocketImplData(EpollImpl& impl, std::shared_ptr<TcpSocket> socket); 
+
 				void setDisconnectCallback(TcpDisconnectCallback&& callback) {
 					disconnect_callback_ = callback;
 				}
@@ -48,11 +44,15 @@ namespace spdnet::net {
 				int sock_fd() const {
 				    return socket_->sock_fd();
 				}
+				void setMaxRecvBufferSize(size_t max_size) {
+					max_recv_buffer_size_ = max_size; 
+				}
 			private:
 				std::shared_ptr<TcpSocket> socket_;
 				TcpDisconnectCallback disconnect_callback_;
 				TcpDataCallback data_callback_;
 				base::Buffer recv_buffer_;
+				size_t max_recv_buffer_size_ = 64 * 1024;
 				std::deque<base::Buffer*> send_buffer_list_;
 				std::deque<base::Buffer*> pending_buffer_list_;
 				spdnet::base::SpinLock send_guard_;
@@ -68,7 +68,7 @@ namespace spdnet::net {
 
             virtual ~EpollImpl() noexcept;
 
-			void onTcpSessionEnter(SocketImplData& socket_data);
+			void onSocketEnter(SocketImplData& socket_data);
 
             void runOnce(uint32_t timeout);
 

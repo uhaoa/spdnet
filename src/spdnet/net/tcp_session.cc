@@ -42,7 +42,7 @@ namespace spdnet {
             auto loop = loop_owner_;
             auto this_ptr = shared_from_this();
             loop_owner_->post([loop, this_ptr]() {
-                loop->getImpl().shutdownSocket(*this_ptr);
+                loop->getImpl().shutdownSocket(*this_ptr->socket_data_);
             });
         }
 

@@ -25,6 +25,12 @@ namespace spdnet {
                 epoll_fd_ = -1;
             }
 
+			EpollImpl::SocketImplData::SocketImplData(EpollImpl& impl, std::shared_ptr<TcpSocket> socket)
+				:socket_(std::move(socket))
+			{
+				channel_ = std::make_shared<TcpSessionChannel>(impl, *this);
+			}
+
             void EpollImpl::wakeup() {
                 wake_up_->wakeup();
             }
@@ -64,11 +70,11 @@ namespace spdnet {
                     return;
                 }
 				socket_data.is_post_flush_ = true;
-				auto& data = socket_data; 
-				loop_ref_.post([&data]() {
-                    if (data.is_can_write_) {
-                        this->flushBuffer(data);
-                        data.is_post_flush_ = false;
+				auto& this_ref = *this;
+				loop_ref_.post([&socket_data, &this_ref]() {
+                    if (socket_data.is_can_write_) {
+						this_ref.flushBuffer(socket_data);
+						socket_data.is_post_flush_ = false;
                     }
                 });
             }
@@ -104,31 +110,30 @@ namespace spdnet {
                 socket_data.is_can_write_ = false;
             }
 
-            void EpollImpl::onTcpSessionEnter(SocketImplData& socket_data) {
+            void EpollImpl::onSocketEnter(SocketImplData& socket_data) {
                 linkChannel(socket_data.socket_->sock_fd(), socket_data.channel_.get(), EPOLLET | EPOLLIN | EPOLLRDHUP);
             }
 
             void EpollImpl::flushBuffer(SocketImplData& socket_data) {
-                auto &data = session.socket_impl_data();
                 bool force_close = false;
                 assert(loop_ref_.isInLoopThread());
                 {
-                    std::lock_guard<SpinLock> lck(data.send_guard_);
-                    if (SPDNET_PREDICT_TRUE(data.pending_buffer_list_.empty())) {
-                        data.pending_buffer_list_.swap(data.send_buffer_list_);
+                    std::lock_guard<SpinLock> lck(socket_data.send_guard_);
+                    if (SPDNET_PREDICT_TRUE(socket_data.pending_buffer_list_.empty())) {
+						socket_data.pending_buffer_list_.swap(socket_data.send_buffer_list_);
                     } else {
-                        for (const auto buffer : data.send_buffer_list_)
-                            data.pending_buffer_list_.push_back(buffer);
-                        data.send_buffer_list_.clear();
+                        for (const auto buffer : socket_data.send_buffer_list_)
+							socket_data.pending_buffer_list_.push_back(buffer);
+						socket_data.send_buffer_list_.clear();
                     }
                 }
 
                 constexpr size_t MAX_IOVEC = 1024;
                 struct iovec iov[MAX_IOVEC];
-                while (!data.pending_buffer_list_.empty()) {
+                while (!socket_data.pending_buffer_list_.empty()) {
                     size_t cnt = 0;
                     size_t prepare_send_len = 0;
-                    for (const auto buffer : data.pending_buffer_list_) {
+                    for (const auto buffer : socket_data.pending_buffer_list_) {
                         iov[cnt].iov_base = buffer->getDataPtr();
                         iov[cnt].iov_len = buffer->getLength();
                         prepare_send_len += buffer->getLength();
@@ -137,24 +142,24 @@ namespace spdnet {
                             break;
                     }
                     assert(cnt > 0);
-                    const int send_len = ::writev(session.sock_fd(), iov, static_cast<int>(cnt));
+                    const int send_len = ::writev(socket_data.sock_fd(), iov, static_cast<int>(cnt));
                     if (SPDNET_PREDICT_FALSE(send_len < 0)) {
                         if (errno == EAGAIN) {
-                            addWriteEvent(session);
-                            data.is_can_write_ = false;
+                            addWriteEvent(socket_data);
+							socket_data.is_can_write_ = false;
                         } else {
                             force_close = true;
                         }
                     } else {
                         size_t tmp_len = send_len;
-                        for (auto iter = data.pending_buffer_list_.begin();
-                             iter != data.pending_buffer_list_.end();) {
+                        for (auto iter = socket_data.pending_buffer_list_.begin();
+                             iter != socket_data.pending_buffer_list_.end();) {
                             auto buffer = *iter;
                             if (SPDNET_PREDICT_TRUE(buffer->getLength() <= tmp_len)) {
                                 tmp_len -= buffer->getLength();
                                 buffer->clear();
 								loop_ref_.recycleBuffer(buffer);
-                                iter = data.pending_buffer_list_.erase(iter);
+                                iter = socket_data.pending_buffer_list_.erase(iter);
                             } else {
                                 buffer->removeLength(tmp_len);
                                 break;
@@ -165,15 +170,14 @@ namespace spdnet {
                 }
 
                 if (force_close) {
-                    closeSession(session);
+                    closeSocket(socket_data);
                 }
             }
 
             void EpollImpl::doRecv(SocketImplData& socket_data) {
-                auto &data = session.socket_impl_data();
                 char stack_buffer[65536];
                 bool force_close = false;
-                auto &recv_buffer = data.recv_buffer_;
+                auto &recv_buffer = socket_data.recv_buffer_;
                 while (true) {
                     size_t valid_count = recv_buffer.getWriteValidCount();
                     struct iovec vec[2];
@@ -185,7 +189,7 @@ namespace spdnet {
 
                     size_t try_recv_len = valid_count + sizeof(stack_buffer);
 
-                    int recv_len = static_cast<int>(::readv(session.sock_fd(), vec, 2));
+                    int recv_len = static_cast<int>(::readv(socket_data.socket_->sock_fd(), vec, 2));
                     if (SPDNET_PREDICT_FALSE(recv_len == 0 || (recv_len < 0 && errno != EAGAIN))) {
                         force_close = true;
                         break;
@@ -197,13 +201,13 @@ namespace spdnet {
                     } else
                         recv_buffer.addWritePos(recv_len);
 
-                    if (SPDNET_PREDICT_TRUE(nullptr != session.data_callback_)) {
-                        size_t len = session.data_callback_(recv_buffer.getDataPtr(), recv_buffer.getLength());
+                    if (SPDNET_PREDICT_TRUE(nullptr != socket_data.data_callback_)) {
+                        size_t len = socket_data.data_callback_(recv_buffer.getDataPtr(), recv_buffer.getLength());
                         assert(len <= recv_buffer.getLength());
                         if (SPDNET_PREDICT_TRUE(len == recv_buffer.getLength())) {
                             recv_buffer.removeLength(len);
                             if (stack_len > 0) {
-                                len = session.data_callback_(stack_buffer, stack_len);
+                                len = socket_data.data_callback_(stack_buffer, stack_len);
                                 assert(len <= stack_len);
                                 if (len < stack_len) {
                                     recv_buffer.write(stack_buffer + len, stack_len - len);
@@ -226,10 +230,10 @@ namespace spdnet {
                     if (SPDNET_PREDICT_FALSE(
                             recv_len >= (int) recv_buffer.getCapacity()/* + (int)(sizeof(stack_buffer))*/)) {
                         size_t grow_len = 0;
-                        if (recv_buffer.getCapacity() * 2 <= session.max_recv_buffer_size_)
+                        if (recv_buffer.getCapacity() * 2 <= socket_data.max_recv_buffer_size_)
                             grow_len = recv_buffer.getCapacity();
                         else
-                            grow_len = session.max_recv_buffer_size_ - recv_buffer.getCapacity();
+                            grow_len = socket_data.max_recv_buffer_size_ - recv_buffer.getCapacity();
 
                         if (grow_len > 0)
                             recv_buffer.grow(grow_len);
@@ -243,7 +247,7 @@ namespace spdnet {
                 }
 
                 if (force_close)
-                    closeSession(session);
+                    closeSocket(socket_data);
             }
 
             void EpollImpl::runOnce(uint32_t timeout) {
@@ -268,11 +272,6 @@ namespace spdnet {
                 if (SPDNET_PREDICT_FALSE(num_events == static_cast<int>(event_entries_.size()))) {
                     event_entries_.resize(event_entries_.size() * 2);
                 }
-
-                for (auto &task : delay_tasks) {
-                    task();
-                }
-                delay_tasks.clear();
             }
         }
     }
