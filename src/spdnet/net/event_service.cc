@@ -26,9 +26,12 @@ namespace spdnet {
         void EventService::addTcpSession(std::shared_ptr<TcpSocket> tcp_socket,
                                          const TcpSession::TcpEnterCallback &enter_callback) {
             std::shared_ptr<EventLoop> loop = getEventLoop();
-            TcpSession::Ptr new_connection = TcpSession::create(std::move(tcp_socket), loop);
-            loop->post([loop, new_connection, enter_callback]() {
-                loop->onSocketEnter(new_connection, enter_callback);
+            TcpSession::Ptr new_session = TcpSession::create(std::move(tcp_socket), loop);
+            loop->post([loop, new_session, enter_callback]() {
+                if (loop->getImpl().onSocketEnter(*new_session->socket_data_)){
+                    if (enter_callback)
+                        enter_callback(new_session);
+                }
             });
         }
 

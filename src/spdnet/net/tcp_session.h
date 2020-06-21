@@ -21,6 +21,7 @@ namespace spdnet {
         class TcpSession : public base::NonCopyable, public std::enable_shared_from_this<TcpSession> {
         public:
             friend class EventLoop;
+            friend class EventService;
             using Ptr = std::shared_ptr<TcpSession>;
             using TcpDataCallback = std::function<size_t(const char*, size_t len)>;
             using TcpDisconnectCallback = std::function<void(Ptr)>;

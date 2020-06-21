@@ -1,3 +1,5 @@
+#include <spdnet/base/platform.h>
+#ifdef SPDNET_PLATFORM_WINDOWS
 #include <memory>
 #include <iostream>
 #include <cassert>
@@ -5,10 +7,6 @@
 #include <spdnet/net/tcp_session.h>
 #include <spdnet/net/event_loop.h>
 #include <spdnet/net/detail/impl_win/iocp_impl.h>
-#include <spdnet/base/platform.h>
-
-#if defined SPDNET_PLATFORM_WINDOWS
-
 namespace spdnet {
     namespace net {
         namespace detail {

@@ -1,3 +1,5 @@
+#include <spdnet/base/platform.h>
+#ifdef SPDNET_PLATFORM_LINUX
 #include <memory>
 #include <iostream>
 #include <unistd.h>
@@ -8,7 +10,6 @@
 #include <spdnet/net/event_loop.h>
 #include <spdnet/net/detail/impl_linux/channel.h>
 #include <spdnet/net/detail/impl_linux/epoll_impl.h>
-#ifdef SPDNET_PLATFORM_LINUX
 namespace spdnet {
     namespace net {
         namespace detail {
