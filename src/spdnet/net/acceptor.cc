@@ -12,67 +12,61 @@
 namespace spdnet {
     namespace net {
         TcpAcceptor::TcpAcceptor(EventService &service)
-                : service_(service),
-                  epoll_fd_(epoll_create(1)) {
+                : service_(service)
+        {
 
-        }
-
-        TcpAcceptor::~TcpAcceptor() {
-            *run_listen_ = false;
-            if (listen_thread_->joinable())
-                listen_thread_->join();
         }
 
         void TcpAcceptor::start(const EndPoint &addr, TcpSession::TcpEnterCallback &&cb) {
-            const int listen_fd = createListenSocket(addr);
+            const sock listen_fd = createListenSocket(addr);
             if (listen_fd == -1) {
-                throw SpdnetException(std::string("listen error : ") + std::to_string(errno));
+                throw SpdnetException(std::string("listen error : ") + std::to_string(current_errno()));
             }
+            enter_callback_ = std::move(cb);
+            listen_socket_ = std::make_shared<ListenSocket>(listen_fd);
+            listen_socket_->setNonblock();
 
-            struct epoll_event ev;
-            ev.events = EPOLLIN;
-            ev.data.ptr = nullptr;
-            if (epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, listen_fd, &ev) != 0) {
-                throw SpdnetException(std::string("epoll_ctl error : ") + std::to_string(errno));
-            }
+            auto listen_loop = service_.getEventLoop(); 
+            listen_loop->getImpl().startAccept(listen_fd);
 
-            auto listen_socket = std::make_shared<ListenSocket>(listen_fd);
-            listen_socket->setNonblock();
-
+            /*
             run_listen_ = std::make_shared<bool>(true);
             listen_thread_ = std::make_shared<std::thread>(
                     [listen_socket, enter_callback = std::move(cb), this]() mutable {
                         while (*(this->run_listen_)) {
-                            struct epoll_event ev;
-                            int ret = epoll_wait(this->epoll_fd_, &ev, 1, 1000);
-                            if (ret == 1 && ev.events & EPOLLIN) {
-                                auto tcp_socket = listen_socket->accept();
-                                if (nullptr != tcp_socket) {
-                                    this->service_.addTcpSession(std::move(tcp_socket), enter_callback);
-                                }
-                            }
-
+							auto tcp_socket = listen_socket->accept();
+							if (nullptr != tcp_socket) {
+								this->service_.addTcpSession(std::move(tcp_socket), enter_callback);
+							}
                         }
                     }
             );
+            */
         }
 
+        void TcpAcceptor::doAccept()
+        {
+			auto tcp_socket = listen_socket_->accept();
+			if (nullptr != tcp_socket) {
+				this->service_.addTcpSession(std::move(tcp_socket), enter_callback_);
+			}
+        }
 
-        int TcpAcceptor::createListenSocket(const EndPoint &addr) {
-            int fd = ::socket(addr.family(), SOCK_STREAM, 0);
+        sock TcpAcceptor::createListenSocket(const EndPoint &addr) {
+            sock fd = ::socket(addr.family(), SOCK_STREAM, 0);
             if (fd == -1) {
                 return -1;
             }
 
             int reuse_on = 1;
             if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (const char *) &reuse_on, sizeof(int)) < 0) {
-                base::closeSocket(fd);
+                spdnet::base::closeSocket(fd);
                 return -1;
             }
 
             int ret = ::bind(fd, addr.socket_addr(), addr.socket_addr_len());
             if (ret == -1 || listen(fd, 512) == -1) {
-                base::closeSocket(fd);
+                spdnet::base::closeSocket(fd);
                 return -1;
             }
 

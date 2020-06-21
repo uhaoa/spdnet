@@ -6,10 +6,11 @@
 #include <cassert>
 #include <sys/epoll.h>
 #include <spdnet/net/exception.h>
-#include <spdnet/net/tcp_session.h>
 #include <spdnet/net/event_loop.h>
 #include <spdnet/net/detail/impl_linux/channel.h>
 #include <spdnet/net/detail/impl_linux/epoll_impl.h>
+#include <spdnet/net/acceptor.h>
+
 namespace spdnet {
     namespace net {
         namespace detail {
@@ -78,6 +79,16 @@ namespace spdnet {
 						socket_data.is_post_flush_ = false;
                     }
                 });
+            }
+
+            void EpollImpl::startAccept(AcceptContext& context)
+            {
+				struct epoll_event ev;
+				ev.events = EPOLLIN;
+				ev.data.ptr = nullptr;
+				if (epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, listen_fd, &ev) != 0) {
+					// error . notify?
+				}
             }
 
             void EpollImpl::closeSocket(SocketImplData& socket_data) {

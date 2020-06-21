@@ -47,6 +47,10 @@
 #include <arpa/inet.h>
 
 using sock = int;
+
+inline int current_errno() {
+	return errno;
+}
 #else
 
 #include <winsock2.h>
@@ -57,6 +61,9 @@ using sock = int;
 
 using sock = SOCKET; 
 
+inline int current_errno() {
+	return WSAGetLastError();
+}
 #endif
 
 

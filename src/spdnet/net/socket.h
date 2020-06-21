@@ -8,7 +8,7 @@
 namespace spdnet {
     namespace net {
 
-        class TcpSocket : public base::NonCopyable {
+        class TcpSocket : public spdnet::base::NonCopyable {
         public:
             explicit TcpSocket(sock fd);
 
@@ -30,7 +30,7 @@ namespace spdnet {
             sock fd_;
         };
 
-        class ListenSocket : public base::NonCopyable {
+        class ListenSocket : public spdnet::base::NonCopyable {
         public:
             explicit ListenSocket(sock fd);
 

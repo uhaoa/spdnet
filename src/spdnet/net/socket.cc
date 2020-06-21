@@ -2,49 +2,64 @@
 #include <spdnet/base/socket_api.h>
 #include <spdnet/base/platform.h>
 #include <spdnet/net/exception.h>
+#include <iostream>
 
 namespace spdnet {
     namespace net {
-        ListenSocket::ListenSocket(int fd)
+        ListenSocket::ListenSocket(sock fd)
                 : fd_(fd),
-                  idle_fd_(::open("/dev/null", O_RDONLY | O_CLOEXEC)) {
+#ifdef SPDNET_PLATFORM_LINUX
+                  idle_fd_(::open("/dev/null", O_RDONLY | O_CLOEXEC)) 
+#endif 
+        {
 
         }
 
         ListenSocket::~ListenSocket() {
-            base::closeSocket(fd_);
-        }
+            spdnet::base::closeSocket(fd_);
+#ifdef SPDNET_PLATFORM_LINUX
+            spdnet::base::closeSocket(idle_fd_);
+#endif 
+		}
 
         std::shared_ptr<TcpSocket> ListenSocket::accept() {
-            int accept_fd = ::accept(fd_, nullptr, nullptr);
+            sock accept_fd = ::accept(fd_, nullptr, nullptr);
             if (accept_fd == -1) {
+#ifdef SPDNET_PLATFORM_LINUX
                 if (errno == EMFILE) {
                     ::close(idle_fd_);
                     accept_fd = ::accept(fd_, nullptr, nullptr);
                     ::close(accept_fd);
                     idle_fd_ = open("/dev/null", O_RDONLY | O_CLOEXEC);
                 }
-
+#endif
+                std::cerr << "accept error . errno:" << current_errno() << std::endl; 
+                // or throw exception ? 
                 return nullptr;
             }
             return std::make_shared<TcpSocket>(accept_fd);
         }
 
-        TcpSocket::TcpSocket(int fd)
+		bool ListenSocket::setNonblock() noexcept {
+			return spdnet::base::socketNonBlock(sock_fd());
+		}
+
+
+        TcpSocket::TcpSocket(sock fd)
                 : fd_(fd) {
 
         }
 
         TcpSocket::~TcpSocket() {
-            base::closeSocket(sock_fd());
+            spdnet::base::closeSocket(sock_fd());
         }
 
         void TcpSocket::setNoDelay() noexcept {
-            base::socketNoDelay(sock_fd());
+            spdnet::base::socketNoDelay(sock_fd());
         }
 
         bool TcpSocket::setNonblock() noexcept {
-            return base::socketNonBlock(sock_fd());
+            return spdnet::base::socketNonBlock(sock_fd());
         }
 
         void TcpSocket::setSendSize() noexcept {
@@ -54,11 +69,6 @@ namespace spdnet {
         void TcpSocket::setRecvSize() noexcept {
 
         }
-
-        bool ListenSocket::setNonblock() noexcept {
-            return base::socketNonBlock(sock_fd());
-        }
-
 
     }
 }

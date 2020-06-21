@@ -33,7 +33,7 @@ namespace spdnet::net {
 		};
 
 
-        class EpollImpl : public base::NonCopyable {
+        class EpollImpl : public spdnet::base::NonCopyable {
         public:
             friend class TcpSessionChannel;
 
@@ -55,6 +55,7 @@ namespace spdnet::net {
 
             bool linkChannel(int fd, const Channel *channel, uint32_t events);
 
+            void startAccept(AcceptContext& context); 
         private:
 			void closeSocket(SocketImplData& socket_data);
 
