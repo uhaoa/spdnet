@@ -8,8 +8,10 @@
 #include <spdnet/net/socket.h>
 #include <spdnet/base/buffer.h>
 #include <spdnet/base/spin_lock.h>
-#if defined SPDNET_PLATFORM_LINUX
+#ifdef SPDNET_PLATFORM_LINUX
 #include <spdnet/net/detail/impl_linux/epoll_impl.h>
+#else
+#include <spdnet/net/detail/impl_win/iocp_impl.h>
 #endif
 
 namespace spdnet {
@@ -23,9 +25,6 @@ namespace spdnet {
             using TcpDataCallback = std::function<size_t(const char*, size_t len)>;
             using TcpDisconnectCallback = std::function<void(Ptr)>;
 			using TcpEnterCallback = std::function<void(TcpSession::Ptr)>;
-#if defined SPDNET_PLATFORM_LINUX
-			using SocketImplDataType = detail::EpollImpl::SocketImplData;
-#endif
 		public:
             TcpSession(std::shared_ptr<TcpSocket> socket, std::shared_ptr<EventLoop>);
 
@@ -65,7 +64,7 @@ namespace spdnet {
             static Ptr create(std::shared_ptr<TcpSocket> socket, std::shared_ptr<EventLoop> loop);
         private:
             std::shared_ptr<EventLoop> loop_owner_;
-            std::shared_ptr<SocketImplDataType> socket_data_;
+            std::shared_ptr<detail::SocketImplData> socket_data_;
         };
 
     }

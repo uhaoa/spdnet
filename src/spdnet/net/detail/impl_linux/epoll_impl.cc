@@ -8,10 +8,16 @@
 #include <spdnet/net/event_loop.h>
 #include <spdnet/net/detail/impl_linux/channel.h>
 #include <spdnet/net/detail/impl_linux/epoll_impl.h>
-
+#ifdef SPDNET_PLATFORM_LINUX
 namespace spdnet {
     namespace net {
         namespace detail {
+			SocketImplData::SocketImplData(std::shared_ptr<EventLoop> loop, std::shared_ptr<TcpSocket> socket)
+                :SocketDataBase(socket)
+			{
+				channel_ = std::make_shared<TcpSessionChannel>(loop, *this);
+			}
+
             EpollImpl::EpollImpl(EventLoop &loop_owner) noexcept
                     : epoll_fd_(::epoll_create(1)), loop_ref_(loop_owner) {
                 auto event_fd = ::eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
@@ -24,12 +30,6 @@ namespace spdnet {
                 ::close(epoll_fd_);
                 epoll_fd_ = -1;
             }
-
-			EpollImpl::SocketImplData::SocketImplData(EpollImpl& impl, std::shared_ptr<TcpSocket> socket)
-				:socket_(std::move(socket))
-			{
-				channel_ = std::make_shared<TcpSessionChannel>(impl, *this);
-			}
 
             void EpollImpl::wakeup() {
                 wake_up_->wakeup();
@@ -110,8 +110,8 @@ namespace spdnet {
                 socket_data.is_can_write_ = false;
             }
 
-            void EpollImpl::onSocketEnter(SocketImplData& socket_data) {
-                linkChannel(socket_data.socket_->sock_fd(), socket_data.channel_.get(), EPOLLET | EPOLLIN | EPOLLRDHUP);
+            bool EpollImpl::onSocketEnter(SocketImplData& socket_data) {
+                return linkChannel(socket_data.socket_->sock_fd(), socket_data.channel_.get(), EPOLLET | EPOLLIN | EPOLLRDHUP);
             }
 
             void EpollImpl::flushBuffer(SocketImplData& socket_data) {
@@ -276,3 +276,4 @@ namespace spdnet {
         }
     }
 }
+#endif

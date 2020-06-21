@@ -4,15 +4,11 @@
 #include <string.h>
 #include <spdnet/net/event_loop.h>
 
-#if defined SPDNET_PLATFORM_LINUX
-#include <spdnet/net/detail/impl_linux/epoll_impl.h>
-#endif
-
 namespace spdnet {
     namespace net {
         TcpSession::TcpSession(std::shared_ptr<TcpSocket> socket, std::shared_ptr<EventLoop> loop)
                 :loop_owner_(loop) {
-			socket_data_ = std::make_shared<SocketImplDataType>(loop->getImpl(), std::move(socket));
+			socket_data_ = std::make_shared<detail::SocketImplData>(loop, std::move(socket));
         }
 
         TcpSession::Ptr TcpSession::create(std::shared_ptr<TcpSocket> socket, std::shared_ptr<EventLoop> loop) {

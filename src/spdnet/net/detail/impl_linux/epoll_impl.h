@@ -9,6 +9,7 @@
 #include <spdnet/base/noncopyable.h>
 #include <spdnet/base/platform.h>
 #include <spdnet/base/buffer.h>
+#include <spdnet/net/socket_data.h>
 
 namespace spdnet::net {
     class EventLoop;
@@ -19,56 +20,28 @@ namespace spdnet::net {
         class WakeupChannel;
         class TcpSessionChannel;
 
+		class SocketImplData : public SocketDataBase {
+		public:
+			friend class EpollImpl;
+			using Ptr = std::shared_ptr<SocketImplData>;
+
+			SocketImplData(std::shared_ptr<EventLoop> loop, std::shared_ptr<TcpSocket> socket);
+		private:
+
+			volatile bool is_can_write_{ true };
+			std::shared_ptr<TcpSessionChannel> channel_;
+		};
+
+
         class EpollImpl : public base::NonCopyable {
         public:
             friend class TcpSessionChannel;
-
-			class SocketImplData : public base::NonCopyable {
-			public:
-				friend class EpollImpl;
-				using Ptr = std::shared_ptr<SocketImplData>;
-				using TcpDataCallback = std::function<size_t(const char*, size_t len)>;
-				using TcpDisconnectCallback = std::function<void()>;
-
-				SocketImplData(EpollImpl& impl, std::shared_ptr<TcpSocket> socket); 
-
-				void setDisconnectCallback(TcpDisconnectCallback&& callback) {
-					disconnect_callback_ = callback;
-				}
-				void setDataCallback(TcpDataCallback&& callback){
-					data_callback_ = callback;
-				}
-				void setNodelay() {
-					socket_->setNoDelay();
-				}
-				int sock_fd() const {
-				    return socket_->sock_fd();
-				}
-				void setMaxRecvBufferSize(size_t max_size) {
-					max_recv_buffer_size_ = max_size; 
-				}
-			private:
-				std::shared_ptr<TcpSocket> socket_;
-				TcpDisconnectCallback disconnect_callback_;
-				TcpDataCallback data_callback_;
-				base::Buffer recv_buffer_;
-				size_t max_recv_buffer_size_ = 64 * 1024;
-				std::deque<base::Buffer*> send_buffer_list_;
-				std::deque<base::Buffer*> pending_buffer_list_;
-				spdnet::base::SpinLock send_guard_;
-				volatile bool has_closed_{ false };
-				volatile bool is_post_flush_{ false };
-				volatile bool is_can_write_{ true };
-				std::shared_ptr<TcpSessionChannel> channel_;
-			};
-
-
 
             explicit EpollImpl(EventLoop &loop_owner) noexcept;
 
             virtual ~EpollImpl() noexcept;
 
-			void onSocketEnter(SocketImplData& socket_data);
+			bool onSocketEnter(SocketImplData& socket_data);
 
             void runOnce(uint32_t timeout);
 

@@ -46,6 +46,17 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 
+using sock = int;
+#else
+
+#include <winsock2.h>
+#include <WinError.h>
+#include <winsock.h>
+#include <Ws2tcpip.h>
+#include <errno.h>
+
+using sock = SOCKET; 
+
 #endif
 
 
