@@ -16,27 +16,9 @@ namespace spdnet {
         class EventService;
 
         class TcpAcceptor : public spdnet::base::NonCopyable {
-        private:
-#ifdef SPDNET_PLATFORM_LINUX
-            class AcceptContext : public detail::Channel
-            {
-            public:
-                friend class TcpAcceptor; 
-                AcceptContext()
-                {
-
-                }
-				void trySend() override {}
-                void onClose() override {}
-                void tryRecv() override 
-                {
-
-                }
-                
-            private:
-                TcpAcceptor& acceptor_;
-            };
-#endif
+		private:
+			class AcceptContext;
+			friend class AcceptContext; 
         public:
             TcpAcceptor(EventService &service);
 
@@ -44,11 +26,12 @@ namespace spdnet {
 
         private:
             sock createListenSocket(const EndPoint &addr);
-            void doAccept();
+			void onAcceptSuccess(std::shared_ptr<TcpSocket> new_socket);
         private:
             EventService &service_;
             std::shared_ptr<ListenSocket> listen_socket_;
             TcpSession::TcpEnterCallback enter_callback_;
+			std::unique_ptr<AcceptContext> context_; 
         };
 
 

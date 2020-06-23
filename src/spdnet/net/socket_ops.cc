@@ -2,7 +2,7 @@
 #include <cstring>
 #include <arpa/inet.h>
 
-namespace spdnet::base {
+namespace spdnet::net::socket_ops {
     int socketNoDelay(int fd) {
         int on = 1;
         return ::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (const char *) &on, sizeof(on));
@@ -55,4 +55,9 @@ namespace spdnet::base {
         return local_addr.sin_port == remote_addr.sin_port &&
                local_addr.sin_addr.s_addr == remote_addr.sin_addr.s_addr;
     }
+
+	sock createSocket()
+	{
+
+	}
 }

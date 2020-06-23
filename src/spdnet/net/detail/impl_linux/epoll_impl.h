@@ -55,7 +55,7 @@ namespace spdnet::net {
 
             bool linkChannel(int fd, const Channel *channel, uint32_t events);
 
-            void startAccept(AcceptContext& context); 
+            void startAccept(sock listen_fd, const Channel* channel);
         private:
 			void closeSocket(SocketImplData& socket_data);
 

@@ -49,6 +49,8 @@ namespace spdnet::net {
             void runOnce(uint32_t timeout);
 
 			void wakeup();
+
+			void startAccept(sock listen_fd);
         private:
 			void startRecv(SocketImplData& socket_data);
         private:

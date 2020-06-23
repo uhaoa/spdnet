@@ -43,17 +43,21 @@ namespace spdnet::net {
             return std::string("unkown ip");
         }
 
-        sa_family_t family() const {
+		// support ipv4 and ipv6
+		uint16_t family() const {
             return addr_.sin_family;
         }
 
-        uint16_t port() const {
+		// support ipv4 and ipv6
+        int16_t port() const {
             return ntohs(addr_.sin_port);
         }
 
+		// support ipv4 and ipv6
         const struct sockaddr *
         socket_addr() const { return static_cast<const struct sockaddr *>((const void *) (&addr6_)); }
 
+		// support ipv4 and ipv6
         size_t socket_addr_len() const { return sizeof(sockaddr_in6); };
     private:
         union {

@@ -81,11 +81,11 @@ namespace spdnet {
                 });
             }
 
-            void EpollImpl::startAccept(AcceptContext& context)
+            void EpollImpl::startAccept(sock listen_fd, const Channel* channel)
             {
 				struct epoll_event ev;
 				ev.events = EPOLLIN;
-				ev.data.ptr = nullptr;
+				ev.data.ptr = channel;
 				if (epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, listen_fd, &ev) != 0) {
 					// error . notify?
 				}

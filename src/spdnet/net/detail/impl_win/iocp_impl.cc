@@ -7,9 +7,11 @@
 #include <spdnet/net/tcp_session.h>
 #include <spdnet/net/event_loop.h>
 #include <spdnet/net/detail/impl_win/iocp_impl.h>
+#include <spdnet/net/detail/impl_win/iocp_operation.h>
+
 namespace spdnet {
     namespace net {
-        namespace detail {
+		namespace detail {
 			SocketImplData::SocketImplData(std::shared_ptr<EventLoop> loop, std::shared_ptr<TcpSocket> socket)
 				:socket_(std::move(socket))
 			{
@@ -17,23 +19,38 @@ namespace spdnet {
 				send_op_ = std::make_shared<SocketSendOp>(*this, loop);
 			}
 
-            IocpImpl::IocpImpl(EventLoop& loop) noexcept
-                : handle_(CreateIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 1)) , loop_ref_(loop)
-            {
+			IocpImpl::IocpImpl(EventLoop& loop) noexcept
+				: handle_(CreateIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 1)), loop_ref_(loop)
+			{
 				wakeup_op_ = std::make_shared<SocketWakeupOp>();
-            }
+			}
 
-            IocpImpl::~IocpImpl() noexcept {
+			IocpImpl::~IocpImpl() noexcept {
 				CloseHandle(handle_);
 				handle_ = INVALID_HANDLE_VALUE;
-            }
+			}
 
 			bool IocpImpl::onSocketEnter(SocketImplData& socket_data) {
 				if (CreateIoCompletionPort((HANDLE)socket_data.sock_fd(), handle_, 0, 0) == 0)
-					return false; 
-                startRecv(socket_data);
-				return true; 
-            }
+					return false;
+				startRecv(socket_data);
+				return true;
+			}
+
+			void IocpImpl::startAccept(sock listen_fd)
+			{
+				/*
+				assert(op);
+				DWORD bytes_read = 0;
+				BOOL result = ::AcceptEx(v, op->makeNewSocket(), op->buffer() ,
+					0, op->getAddressLength(), op->getAddressLength(), &bytes_read, op);
+				DWORD last_error = current_errno();
+				if (!result && last_error != WSA_IO_PENDING) {
+					// error
+					std::cout << "::AcceptEx error ! errno:" << last_error << std::endl;. 
+				}
+				*/
+			}
 
 			void IocpImpl::send(SocketImplData& socket_data, const char* data, size_t len) {
 				if (!socket_data.is_can_write_)
@@ -133,7 +150,7 @@ namespace spdnet {
 					DWORD last_error = ::GetLastError();
 
 					if (overlapped) {
-						SocketOp* op = static_cast<SocketOp*>(overlapped);
+						Operation* op = static_cast<Operation*>(overlapped);
 						op->doComplete(bytes_transferred);
 
 					}

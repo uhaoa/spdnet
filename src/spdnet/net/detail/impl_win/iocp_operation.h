@@ -5,6 +5,7 @@
 #include <spdnet/base/platform.h>
 #include <spdnet/net/detail/impl_win/iocp_impl.h>
 #include <spdnet/net/event_loop.h>
+#include <spdnet/net/acceptor.h>
 
 namespace spdnet {
     namespace net {
