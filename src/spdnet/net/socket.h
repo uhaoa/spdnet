@@ -10,7 +10,7 @@ namespace spdnet {
 
         class TcpSocket : public spdnet::base::NonCopyable {
         public:
-            explicit TcpSocket(sock fd);
+            explicit TcpSocket(sock_t fd);
 
             virtual ~TcpSocket();
 
@@ -22,17 +22,17 @@ namespace spdnet {
 
             void setRecvSize() noexcept;
 
-            sock sock_fd() const {
+			sock_t sock_fd() const {
                 return fd_;
             }
 
         private:
-            sock fd_;
+			sock_t fd_;
         };
 
         class ListenSocket : public spdnet::base::NonCopyable {
         public:
-            explicit ListenSocket(sock fd);
+            explicit ListenSocket(sock_t fd);
 
             virtual ~ListenSocket();
 
@@ -40,13 +40,13 @@ namespace spdnet {
 
             bool setNonblock() noexcept;
 
-            sock sock_fd() const {
+			sock_t sock_fd() const {
                 return fd_;
             }
 
         private:
-            sock fd_;
-            int idle_fd_;
+			sock_t fd_;
+			sock_t idle_fd_;
         };
     }
 }

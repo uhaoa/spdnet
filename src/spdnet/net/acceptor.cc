@@ -39,7 +39,7 @@ namespace spdnet {
 		class TcpAcceptor::AcceptContext : public Operation
 		{
 		public:
-			AcceptContext(TcpAcceptor& acceptor , sock listen_fd)
+			AcceptContext(TcpAcceptor& acceptor , sock_t listen_fd)
 				:acceptor_(acceptor) listen_fd_(listen_fd)
 			{
 				asyncAccept(); 
@@ -69,7 +69,8 @@ namespace spdnet {
 				return sizeof(SOCKADDR_IN) + 16;
 			}
 		
-			sock makeNewSocket() {
+			sock_t makeNewSocket() {
+				socket_ = std::make_shared<TcpSocket>(socket_ops::createSocket())
 				return socket_->sock_fd();
 			}
 
@@ -87,7 +88,7 @@ namespace spdnet {
 		private:
 			CHAR		buffer_[(sizeof(SOCKADDR_IN) + 16) * 2];
 			std::shared_ptr<TcpSocket> socket_;
-			sock listen_fd_; 
+			sock_t listen_fd_; 
 			TcpAcceptor& acceptor_;
 		};
 
@@ -100,7 +101,7 @@ namespace spdnet {
         }
 
         void TcpAcceptor::start(const EndPoint &addr, TcpSession::TcpEnterCallback &&cb) {
-            const sock listen_fd = createListenSocket(addr);
+            const sock_t listen_fd = createListenSocket(addr);
             if (listen_fd == -1) {
                 throw SpdnetException(std::string("listen error : ") + std::to_string(current_errno()));
             }
@@ -134,8 +135,8 @@ namespace spdnet {
 			}
         }
 
-        sock TcpAcceptor::createListenSocket(const EndPoint &addr) {
-            sock fd = ::socket(addr.family(), SOCK_STREAM, 0);
+		sock_t TcpAcceptor::createListenSocket(const EndPoint &addr) {
+			sock_t fd = ::socket(addr.family(), SOCK_STREAM, 0);
             if (fd == -1) {
                 return -1;
             }

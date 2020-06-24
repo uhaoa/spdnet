@@ -46,7 +46,9 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 
-using sock = int;
+using sock_t = int;
+
+const sock_t invalid_socket = -1;
 
 inline int current_errno() {
 	return errno;
@@ -59,7 +61,9 @@ inline int current_errno() {
 #include <Ws2tcpip.h>
 #include <errno.h>
 
-using sock = SOCKET; 
+using sock_t = SOCKET;
+
+const sock_t invalid_socket = INVALID_SOCKET;
 
 inline int current_errno() {
 	return WSAGetLastError();

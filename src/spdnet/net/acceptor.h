@@ -30,6 +30,7 @@ namespace spdnet {
         private:
             EventService &service_;
             std::shared_ptr<ListenSocket> listen_socket_;
+			EndPoint server_addr_; 
             TcpSession::TcpEnterCallback enter_callback_;
 			std::unique_ptr<AcceptContext> context_; 
         };

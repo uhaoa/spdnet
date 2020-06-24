@@ -6,7 +6,7 @@
 
 namespace spdnet {
     namespace net {
-        ListenSocket::ListenSocket(sock fd)
+        ListenSocket::ListenSocket(sock_t fd)
                 : fd_(fd),
 #ifdef SPDNET_PLATFORM_LINUX
                   idle_fd_(::open("/dev/null", O_RDONLY | O_CLOEXEC)) 
@@ -16,14 +16,14 @@ namespace spdnet {
         }
 
         ListenSocket::~ListenSocket() {
-            spdnet::base::closeSocket(fd_);
+			socket_ops::closeSocket(fd_);
 #ifdef SPDNET_PLATFORM_LINUX
-            spdnet::base::closeSocket(idle_fd_);
+			socket_ops::closeSocket(idle_fd_);
 #endif 
 		}
 
         std::shared_ptr<TcpSocket> ListenSocket::accept() {
-            sock accept_fd = ::accept(fd_, nullptr, nullptr);
+			sock_t accept_fd = ::accept(fd_, nullptr, nullptr);
             if (accept_fd == -1) {
 #ifdef SPDNET_PLATFORM_LINUX
                 if (errno == EMFILE) {
@@ -41,25 +41,25 @@ namespace spdnet {
         }
 
 		bool ListenSocket::setNonblock() noexcept {
-			return spdnet::base::socketNonBlock(sock_fd());
+			return socket_ops::socketNonBlock(sock_fd());
 		}
 
 
-        TcpSocket::TcpSocket(sock fd)
+        TcpSocket::TcpSocket(sock_t fd)
                 : fd_(fd) {
 
         }
 
         TcpSocket::~TcpSocket() {
-            spdnet::base::closeSocket(sock_fd());
+			socket_ops::closeSocket(sock_fd());
         }
 
         void TcpSocket::setNoDelay() noexcept {
-            spdnet::base::socketNoDelay(sock_fd());
+			socket_ops::socketNoDelay(sock_fd());
         }
 
         bool TcpSocket::setNonblock() noexcept {
-            return spdnet::base::socketNonBlock(sock_fd());
+            return socket_ops::socketNonBlock(sock_fd());
         }
 
         void TcpSocket::setSendSize() noexcept {
