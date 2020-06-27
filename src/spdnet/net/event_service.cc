@@ -32,7 +32,7 @@ namespace spdnet {
                         enter_callback(new_session);
                 }
                 */
-                loop->onTcpSessionEnter(new_session, enter_callback); 
+                loop->onTcpSessionEnter(new_session, enter_callback);
             });
         }
 

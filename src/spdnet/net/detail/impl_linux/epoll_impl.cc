@@ -48,7 +48,7 @@ namespace spdnet {
                 struct epoll_event event{0, {nullptr}};
                 event.events = EPOLLET | EPOLLIN | EPOLLRDHUP;
                 event.data.ptr = &socket_data.channel_;
-                ::epoll_ctl(epoll_fd_, EPOLL_CTL_MOD, socket_data.socket_->sock_fd(), &event);
+                ::epoll_ctl(epoll_fd_, EPOLL_CTL_MOD, socket_data.sock_fd(), &event);
             }
 
             bool EpollImpl::linkChannel(int fd, const Channel *channel, uint32_t events) {
@@ -85,7 +85,7 @@ namespace spdnet {
             {
 				struct epoll_event ev;
 				ev.events = EPOLLIN;
-				ev.data.ptr = channel;
+				ev.data.ptr = (void*)channel;
 				if (epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, listen_fd, &ev) != 0) {
                     return false; 
 				}
@@ -105,7 +105,7 @@ namespace spdnet {
 				socket_data.has_closed_ = true;
 				socket_data.is_can_write_ = false;
 				auto& loop = loop_ref_;
-				auto sockfd = socket_data.socket_->sock_fd();
+				auto sockfd = socket_data.sock_fd();
 				// remove session
 				loop_ref_.post([&loop , sockfd](){
                     loop.postToNextCircle([&loop , sockfd](){
@@ -115,7 +115,7 @@ namespace spdnet {
 
 				// cancel event
                 struct epoll_event ev{0, {nullptr}};
-                ::epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, socket_data.socket_->sock_fd(), &ev);
+                ::epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, socket_data.sock_fd(), &ev);
 
 				if (socket_data.disconnect_callback_)
 					socket_data.disconnect_callback_();
@@ -125,12 +125,12 @@ namespace spdnet {
                 if (socket_data.has_closed_)
                     return;
                 assert(loop_ref_.isInLoopThread());
-                ::shutdown(socket_data.socket_->sock_fd(), SHUT_WR);
+                ::shutdown(socket_data.sock_fd(), SHUT_WR);
                 socket_data.is_can_write_ = false;
             }
 
             bool EpollImpl::onSocketEnter(SocketImplData& socket_data) {
-                return linkChannel(socket_data.socket_->sock_fd(), socket_data.channel_.get(), EPOLLET | EPOLLIN | EPOLLRDHUP);
+                return linkChannel(socket_data.sock_fd(), socket_data.channel_.get(), EPOLLET | EPOLLIN | EPOLLRDHUP);
             }
 
             void EpollImpl::flushBuffer(SocketImplData& socket_data) {
@@ -208,7 +208,7 @@ namespace spdnet {
 
                     size_t try_recv_len = valid_count + sizeof(stack_buffer);
 
-                    int recv_len = static_cast<int>(::readv(socket_data.socket_->sock_fd(), vec, 2));
+                    int recv_len = static_cast<int>(::readv(socket_data.sock_fd(), vec, 2));
                     if (SPDNET_PREDICT_FALSE(recv_len == 0 || (recv_len < 0 && errno != EAGAIN))) {
                         force_close = true;
                         break;

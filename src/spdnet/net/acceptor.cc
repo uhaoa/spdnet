@@ -9,7 +9,6 @@
 #include <spdnet/net/event_service.h>
 #include <spdnet/net/end_point.h>
 #include <spdnet/base/platform.h>
-#include <winsock.h>
 #ifdef SPDNET_PLATFORM_LINUX
 #include <spdnet/net/detail/impl_linux/channel.h>
 #else
@@ -38,7 +37,7 @@ namespace spdnet {
 				if (accept_fd == -1) {
 					if (current_errno() == EMFILE) {
 						::close(idle_fd_);
-						accept_fd = ::accept(fd_, nullptr, nullptr);
+						accept_fd = ::accept(acceptor_.listen_fd_, nullptr, nullptr);
 						::close(accept_fd);
 						idle_fd_ = open("/dev/null", O_RDONLY | O_CLOEXEC);
 					}
@@ -171,8 +170,9 @@ namespace spdnet {
 			if (!listen_loop->getImpl().startAccept(listen_fd_, context_.get())) {
 				throw SpdnetException(std::string("listen error : ") + std::to_string(current_errno()));
 			}
-
-			context_->asyncAccept(); 
+#if defined(SPDNET_PLATFORM_WINDOWS)
+			context_->asyncAccept();
+#endif
         }
 
 

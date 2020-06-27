@@ -7,7 +7,8 @@
 #include <spdnet/base/noncopyable.h>
 #include <spdnet/base/buffer.h>
 #include <spdnet/base/spin_lock.h>
-#ifdef SPDNET_PLATFORM_LINUX
+#include <spdnet/base/platform.h>
+#if defined SPDNET_PLATFORM_LINUX
 #include <spdnet/net/detail/impl_linux/epoll_impl.h>
 #else
 #include <spdnet/net/detail/impl_win/iocp_impl.h>
