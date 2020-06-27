@@ -13,7 +13,6 @@ std::atomic_llong total_packet_num = ATOMIC_VAR_INIT(0);
 void gprofStartAndStop(int signum) {
     static int isStarted = 0;
     if (signum != SIGUSR1) return;
-
     //通过isStarted标记未来控制第一次收到信号量开启性能分析，第二次收到关闭性能分析。
     if (!isStarted){
         isStarted = 1;
@@ -25,7 +24,7 @@ void gprofStartAndStop(int signum) {
     }
 }
 */
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
     if (argc != 3) {
         fprintf(stderr, "usage : <port> <thread num>\n");
         exit(-1);
@@ -34,34 +33,25 @@ int main(int argc, char *argv[]) {
     spdnet::net::EventService service;
     service.runThread(atoi(argv[2]));
     spdnet::net::TcpAcceptor acceptor(service);
-	std::unordered_map < int , std::shared_ptr < TcpSession >> lists;
-	std::unordered_map < int, spdnet::base::Buffer> buffers; 
-    acceptor.start(spdnet::net::EndPoint::ipv4("0.0.0.0", atoi(argv[1])), [&lists , &buffers](spdnet::net::TcpSession::Ptr new_conn) {
+    acceptor.start(spdnet::net::EndPoint::ipv4("0.0.0.0", atoi(argv[1])), [](spdnet::net::TcpSession::Ptr new_conn) {
         total_client_num++;
-		lists[total_client_num] = new_conn;
-        new_conn->setDataCallback([new_conn , total_client_num](const char *data, size_t len) -> size_t {
-            //new_conn->send(data, len);
+        new_conn->setDataCallback([new_conn](const char* data, size_t len) -> size_t {
+            new_conn->send(data, len);
             total_recv_size += len;
             total_packet_num++;
-			buffers[total_client_num].write(data, len); 
             return len;
-        });
+            });
         new_conn->setDisconnectCallback([](spdnet::net::TcpSession::Ptr connection) {
             total_client_num--;
-        });
+            });
         new_conn->setNodelay();
-    });
+        });
 
-	auto send_thread = std::make_shared<std::thread>([&lists , &buffers]() {
-		for (auto& [first , second] : lists)
-		{
-			second->send
-		}
-	});
+
     while (true) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
         std::cout << "total recv : " << (total_recv_size / 1024) / 1024 << " M /s, of client num:" << total_client_num
-                  << std::endl;
+            << std::endl;
         std::cout << "packet num:" << total_packet_num << std::endl;
         total_packet_num = 0;
         total_recv_size = 0;
@@ -70,4 +60,4 @@ int main(int argc, char *argv[]) {
     getchar();
     return 0;
 
-} 
+}

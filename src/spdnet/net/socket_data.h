@@ -4,6 +4,9 @@
 #include <memory>
 #include <spdnet/base/platform.h>
 #include <spdnet/base/noncopyable.h>
+#include <spdnet/base/buffer.h>
+#include <spdnet/base/spin_lock.h>
+#include <spdnet/net/socket_ops.h>
 
 namespace spdnet {
     namespace net {
@@ -12,8 +15,8 @@ namespace spdnet {
 			using TcpDataCallback = std::function<size_t(const char*, size_t len)>;
 			using TcpDisconnectCallback = std::function<void()>;
 
-			SocketDataBase(std::shared_ptr<TcpSocket> socket)
-				:socket_(socket)
+			SocketDataBase(sock_t fd)
+				:fd_(fd)
 			{
 
 			}
@@ -25,22 +28,22 @@ namespace spdnet {
 				data_callback_ = callback;
 			}
 			void setNodelay() {
-				socket_->setNoDelay();
+				socket_ops::socketNoDelay(fd_); 
 			}
-			sock sock_fd() const {
-				return socket_->sock_fd();
+			sock_t sock_fd() const {
+				return fd_;
 			}
 			void setMaxRecvBufferSize(size_t max_size) {
 				max_recv_buffer_size_ = max_size;
 			}
 		protected:
-			std::shared_ptr<TcpSocket> socket_;
+			sock_t fd_;
 			TcpDisconnectCallback disconnect_callback_;
 			TcpDataCallback data_callback_;
-			base::Buffer recv_buffer_;
+			spdnet::base::Buffer recv_buffer_;
 			size_t max_recv_buffer_size_ = 64 * 1024;
-			std::deque<base::Buffer*> send_buffer_list_;
-			std::deque<base::Buffer*> pending_buffer_list_;
+			std::deque<spdnet::base::Buffer*> send_buffer_list_;
+			std::deque<spdnet::base::Buffer*> pending_buffer_list_;
 			spdnet::base::SpinLock send_guard_;
 			volatile bool has_closed_{ false };
 			volatile bool is_post_flush_{ false };

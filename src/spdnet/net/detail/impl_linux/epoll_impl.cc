@@ -14,8 +14,8 @@
 namespace spdnet {
     namespace net {
         namespace detail {
-			SocketImplData::SocketImplData(std::shared_ptr<EventLoop> loop, std::shared_ptr<TcpSocket> socket)
-                :SocketDataBase(socket)
+			SocketImplData::SocketImplData(std::shared_ptr<EventLoop> loop, sock_t fd)
+                :SocketDataBase(fd)
 			{
 				channel_ = std::make_shared<TcpSessionChannel>(loop, *this);
 			}
@@ -81,14 +81,21 @@ namespace spdnet {
                 });
             }
 
-            void EpollImpl::startAccept(sock listen_fd, const Channel* channel)
+            bool EpollImpl::startAccept(sock_t listen_fd, const Channel* channel)
             {
 				struct epoll_event ev;
 				ev.events = EPOLLIN;
 				ev.data.ptr = channel;
 				if (epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, listen_fd, &ev) != 0) {
-					// error . notify?
+                    return false; 
 				}
+
+                return true; 
+            }
+
+            bool EpollImpl::asyncConnect(sock_t client_fd, const EndPoint& addr, Channel* channel)
+            {
+                return linkChannel(client_fd, channel, EPOLLET | EPOLLOUT | EPOLLRDHUP);
             }
 
             void EpollImpl::closeSocket(SocketImplData& socket_data) {

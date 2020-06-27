@@ -1,19 +1,24 @@
 #include <memory>
 #include <iostream>
-#include <unistd.h>
 #include <cassert>
-#include <sys/epoll.h>
 #include <spdnet/net/event_loop.h>
 #include <spdnet/net/current_thread.h>
 #include <spdnet/net/exception.h>
+#ifdef SPDNET_PLATFORM_LINUX
 #include <spdnet/net/detail/impl_linux/epoll_impl.h>
-
+#else
+#include <spdnet/net/detail/impl_win/iocp_impl.h>
+#endif
 namespace spdnet {
     namespace net {
 
         EventLoop::EventLoop(unsigned int wait_timeout_ms) noexcept
                 : wait_timeout_ms_(wait_timeout_ms) {
+#ifdef SPDNET_PLATFORM_LINUX
             io_impl_.reset(new detail::EpollImpl(*this));
+#else
+            io_impl_.reset(new detail::IocpImpl(*this));
+#endif
         }
 
 
@@ -50,7 +55,7 @@ namespace spdnet {
             tmp_async_tasks.clear();
         }
 
-        TcpSession::Ptr EventLoop::getTcpSession(int fd) {
+        TcpSession::Ptr EventLoop::getTcpSession(sock_t fd) {
             auto iter = tcp_sessions_.find(fd);
             if (iter != tcp_sessions_.end())
                 return iter->second;
@@ -62,7 +67,7 @@ namespace spdnet {
             tcp_sessions_[session->sock_fd()] = std::move(session);
         }
 
-        void EventLoop::removeTcpSession(int fd) {
+        void EventLoop::removeTcpSession(sock_t fd) {
             auto iter = tcp_sessions_.find(fd);
             if (iter != tcp_sessions_.end()) {
                 tcp_sessions_.erase(iter);

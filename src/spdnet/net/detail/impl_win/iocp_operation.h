@@ -1,6 +1,6 @@
 #ifndef SPDNET_NET_DETAIL_IMPL_WIN_SOCKET_OP_H_
 #define SPDNET_NET_DETAIL_IMPL_WIN_SOCKET_OP_H_
-
+#include <system_error>
 #include <spdnet/base/noncopyable.h>
 #include <spdnet/base/platform.h>
 #include <spdnet/net/detail/impl_win/iocp_impl.h>
@@ -12,25 +12,36 @@ namespace spdnet {
         namespace detail {
             class Operation : public OVERLAPPED
             {
-                virtual void doComplete(size_t bytes_transferred) = 0;
+            public:
+                Operation() {
+                    reset();
+                }
+                virtual void doComplete(size_t bytes_transferred , std::error_code ec) = 0;
+                void reset() {
+					Internal = 0;
+					InternalHigh = 0;
+					Offset = 0;
+					OffsetHigh = 0;
+					hEvent = 0;
+                }
             };
 
             class SocketOp : public Operation {
             public:
-                SocketOp(IocpImpl::SocketImplData& data, std::shared_ptr<EventLoop> loop)
+                SocketOp(SocketImplData& data, std::shared_ptr<EventLoop> loop)
                     :socket_data_(data), loop_(loop)
                 {
 
                 }
                 virtual ~SocketOp() noexcept {}
             protected:
-				IocpImpl::SocketImplData& socket_data_;
+				SocketImplData& socket_data_;
                 std::shared_ptr<EventLoop> loop_;
             };
 
             class SocketWakeupOp : public Operation
             {
-                void doComplete(size_t bytes_transferred) override
+                void doComplete(size_t bytes_transferred, std::error_code ec) override
                 {
                     // ...
                 }
@@ -39,12 +50,12 @@ namespace spdnet {
             class SocketSendOp : public SocketOp 
             {
             public:
-                SocketSendOp(IocpImpl::SocketImplData& data , std::shared_ptr<EventLoop> loop)
+                SocketSendOp(SocketImplData& data , std::shared_ptr<EventLoop> loop)
                     :SocketOp(data , loop)
                 {
 
                 }
-                void doComplete(size_t bytes_transferred) override
+                void doComplete(size_t bytes_transferred, std::error_code ec) override
                 {
 					if (bytes_transferred == 0) {
                         //closeSocket(socket_data);
@@ -73,15 +84,15 @@ namespace spdnet {
 			class SocketRecieveOp : public SocketOp
 			{
 			public:
-                SocketRecieveOp(IocpImpl::SocketImplData& data, std::shared_ptr<EventLoop> loop)
+                SocketRecieveOp(SocketImplData& data, std::shared_ptr<EventLoop> loop)
                     :SocketOp(data, loop)
                 {
 
                 }
-				void doComplete(size_t bytes_transferred) override
+				void doComplete(size_t bytes_transferred, std::error_code ec) override
 				{
                     bool force_close = false; 
-                    if (bytes_transferred == 0) {
+                    if (bytes_transferred == 0 || !ec) {
                         // eof 
                         force_close = true; 
                     }

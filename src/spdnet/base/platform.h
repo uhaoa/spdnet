@@ -48,26 +48,34 @@
 
 using sock_t = int;
 
-const sock_t invalid_socket = -1;
+constexpr sock_t invalid_socket = -1;
 
 inline int current_errno() {
 	return errno;
 }
-#else
 
+#define SPDNET_SOCKET_ERROR -1
+
+#define SPDNET_EXPORT 
+#else
 #include <winsock2.h>
+#include <mswsock.h>
 #include <WinError.h>
-#include <winsock.h>
+//#include <winsock.h>
 #include <Ws2tcpip.h>
 #include <errno.h>
 
 using sock_t = SOCKET;
 
-const sock_t invalid_socket = INVALID_SOCKET;
+constexpr sock_t invalid_socket = INVALID_SOCKET;
 
 inline int current_errno() {
 	return WSAGetLastError();
 }
+
+#define SPDNET_SOCKET_ERROR SOCKET_ERROR
+
+#define SPDNET_EXPORT  __declspec(dllexport)
 #endif
 
 

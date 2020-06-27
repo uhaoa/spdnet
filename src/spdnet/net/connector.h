@@ -4,41 +4,33 @@
 #include <mutex>
 #include <unordered_map>
 #include <spdnet/base/noncopyable.h>
-#include <spdnet/net/socket.h>
 #include <spdnet/net/tcp_session.h>
 #include <spdnet/net/end_point.h>
 #include <spdnet/base/platform.h>
 
 #if defined(SPDNET_PLATFORM_LINUX)
-
-#include <spdnet/net/detail/impl_linux/connector_impl.h>
-
+#include <spdnet/net/detail/impl_linux/connect_context.h>
+#else
+#include <spdnet/net/detail/impl_win/connect_context.h>
 #endif
 
 namespace spdnet {
     namespace net {
         class EventService;
 
-        class AsyncConnector : public base::NonCopyable {
+        class SPDNET_EXPORT AsyncConnector : public base::NonCopyable {
         public:
-#if defined(SPDNET_PLATFORM_LINUX)
-            using ImplType = detail::AsyncConnectorImpl;
-#endif
+            AsyncConnector(EventService& service); 
+            ~AsyncConnector();
 
-            AsyncConnector(EventService &service)
-                    : impl_(service) {
-
-            }
-
-            ~AsyncConnector() = default;
-
-            void asyncConnect(const EndPoint &addr, TcpSession::TcpEnterCallback &&success_cb,
-                              std::function<void()> &&failed_cb) {
-                impl_.asyncConnect(addr, std::move(success_cb), std::move(failed_cb));
-            }
-
+            void asyncConnect(const EndPoint& addr, TcpSession::TcpEnterCallback&& success_cb, std::function<void()>&& failed_cb);
         private:
-            ImplType impl_;
+            bool removeContext(sock_t fd);
+        private:
+            EventService& service_;
+            std::shared_ptr<char> cancel_token_; 
+			std::mutex context_guard_;
+			std::unordered_map<sock_t, std::shared_ptr<detail::ConnectContext>> connecting_context_;
         };
 
 

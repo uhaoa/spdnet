@@ -12,8 +12,8 @@
 namespace spdnet {
     namespace net {
 		namespace detail {
-			SocketImplData::SocketImplData(std::shared_ptr<EventLoop> loop, std::shared_ptr<TcpSocket> socket)
-				:socket_(std::move(socket))
+			SocketImplData::SocketImplData(std::shared_ptr<EventLoop> loop, sock_t fd)
+				:SocketDataBase(fd)
 			{
 				recv_op_ = std::make_shared<SocketRecieveOp>(*this, loop);
 				send_op_ = std::make_shared<SocketSendOp>(*this, loop);
@@ -37,24 +37,53 @@ namespace spdnet {
 				return true;
 			}
 
-			void IocpImpl::startAccept(sock listen_fd)
+			bool IocpImpl::startAccept(sock_t listen_fd , Operation* op)
 			{
-				/*
-				assert(op);
-				DWORD bytes_read = 0;
-				BOOL result = ::AcceptEx(v, op->makeNewSocket(), op->buffer() ,
-					0, op->getAddressLength(), op->getAddressLength(), &bytes_read, op);
-				DWORD last_error = current_errno();
-				if (!result && last_error != WSA_IO_PENDING) {
-					// error
-					std::cout << "::AcceptEx error ! errno:" << last_error << std::endl;. 
+				if (::CreateIoCompletionPort((HANDLE)listen_fd, handle_, 0, 0) == 0)
+				{
+					return false;
 				}
-				*/
+
+				return true;
+			}
+
+			bool IocpImpl::asyncConnect(sock_t fd, const EndPoint& addr , Operation* op)
+			{
+				if (::CreateIoCompletionPort((HANDLE)fd, handle_, 0, 0) == 0)
+				{
+					return false;
+				}
+
+				if (!connect_ex_)
+				{
+					DWORD bytes = 0;
+					GUID guid = { 0x25a207b9, 0xddf3, 0x4660,
+									{ 0x8e, 0xe9, 0x76, 0xe5, 0x8c, 0x74, 0x06, 0x3e } };
+					void* ptr = nullptr; 
+					if (::WSAIoctl(fd, SIO_GET_EXTENSION_FUNCTION_POINTER,
+						&guid, sizeof(guid), &ptr, sizeof(ptr), &bytes, 0, 0) != 0)
+					{
+						// ...
+					}
+					connect_ex_ = ptr; 
+				}
+
+				if (connect_ex_)
+				{
+					void* connect_ex = connect_ex_; 
+					typedef BOOL(PASCAL* connect_ex_fn)(SOCKET,
+						const sockaddr*, int, void*, DWORD, DWORD*, OVERLAPPED*);
+					BOOL result = ((connect_ex_fn)connect_ex)(fd,
+						addr.socket_addr(), addr.socket_addr_len(), 0, 0, 0, (LPOVERLAPPED)op);
+					DWORD last_error = ::WSAGetLastError();
+					if (!result && last_error != WSA_IO_PENDING) {
+						// ...
+					}
+				}
+				return true;
 			}
 
 			void IocpImpl::send(SocketImplData& socket_data, const char* data, size_t len) {
-				if (!socket_data.is_can_write_)
-					return;
 				auto buffer = loop_ref_.allocBufferBySize(len);
 				assert(buffer);
 				buffer->write(data, len);
@@ -68,10 +97,8 @@ namespace spdnet {
 				socket_data.is_post_flush_ = true;
 				auto& this_ref = *this;
 				loop_ref_.post([&socket_data, &this_ref]() {
-					if (socket_data.is_can_write_) {
-						this_ref.flushBuffer(socket_data);
-						socket_data.is_post_flush_ = false;
-					}
+					this_ref.flushBuffer(socket_data);
+					socket_data.is_post_flush_ = false;
 			    });
 			}
 
@@ -110,9 +137,9 @@ namespace spdnet {
 					cnt,
 					&send_len,
 					0,
-					socket_data.send_op_.get(),
+					(LPOVERLAPPED)socket_data.send_op_.get(),
 					0);
-
+				DWORD last_error = current_errno(); 
 				if (result != 0 && last_error != WSA_IO_PENDING) {
 					// closeSocket(socket_data);
 				}
@@ -126,16 +153,18 @@ namespace spdnet {
 
 				DWORD bytes_transferred = 0;
 				DWORD recv_flags = 0;
-                int result  = ::WSARecv(socket_data.sock_fd(), &buf, 1, &bytes_transferred, &recv_flags, socket_data.recv_op_.get(), 0);
+				socket_data.recv_op_->reset(); 
+                int result  = ::WSARecv(socket_data.sock_fd(), &buf, 1, &bytes_transferred, &recv_flags, (LPOVERLAPPED)socket_data.recv_op_.get(), 0);
                 DWORD last_error = ::WSAGetLastError();
                 if (result != 0 && last_error != WSA_IO_PENDING) {
                     // closeSocket(socket_data);
+					//auto tmp = WSA_IO_PENDING; 
                 }
             }
 
 			void IocpImpl::wakeup()
 			{
-				PostQueuedCompletionStatus(handle_,0,0,wakeup_op_.get());
+				::PostQueuedCompletionStatus(handle_,0,0, (LPOVERLAPPED)wakeup_op_.get());
 			}
 
             void IocpImpl::runOnce(uint32_t timeout)
@@ -143,18 +172,18 @@ namespace spdnet {
 				for (;;)
 				{
 					DWORD bytes_transferred = 0;
-					dword_ptr_t completion_key = 0;
+					ULONG_PTR completion_key = 0;
 					LPOVERLAPPED overlapped = 0;
 					::SetLastError(0);
-					/*BOOL ok = */::GetQueuedCompletionStatus(handle_, &bytes_transferred, &completion_key, &overlapped, timeout);
+					BOOL ok = ::GetQueuedCompletionStatus(handle_, &bytes_transferred, &completion_key, &overlapped, timeout);
 					DWORD last_error = ::GetLastError();
 
 					if (overlapped) {
 						Operation* op = static_cast<Operation*>(overlapped);
-						op->doComplete(bytes_transferred);
+						op->doComplete((size_t)bytes_transferred , std::error_code(last_error , std::system_category()));
 
 					}
-					else/* if (!ok) */{
+					else if (!ok) {
 						break;
 					}
 

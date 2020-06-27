@@ -10,54 +10,65 @@
 #include <spdnet/base/platform.h>
 #include <spdnet/base/buffer.h>
 #include <spdnet/net/socket_data.h>
+#include <spdnet/net/end_point.h>
 
-namespace spdnet::net {
-    class EventLoop;
-	//ServiceThread
-    class AsyncConnector;
-    namespace detail {
-
-		class SocketImplData : public SocketDataBase {
-		public:
-			friend class IocpImpl;
-			friend class SocketSendOp;
-			friend class SocketRecieveOp;
+namespace spdnet {
+	namespace net {
+		class EventLoop;
+		//ServiceThread
+		class AsyncConnector;
+		namespace detail {
 			class SocketRecieveOp;
 			class SocketWakeupOp;
-			using Ptr = std::shared_ptr<SocketImplData>;
+			class Operation;
+			class SocketImplData : public SocketDataBase {
+			public:
+				friend class IocpImpl;
+				friend class SocketSendOp;
+				friend class SocketRecieveOp;
 
-			SocketImplData(std::shared_ptr<EventLoop> loop, std::shared_ptr<TcpSocket> socket);
-		private:
-			std::shared_ptr<SocketRecieveOp> recv_op_;
-			std::shared_ptr<SocketSendOp> send_op_;
-		};
+				using Ptr = std::shared_ptr<SocketImplData>;
 
-        class IocpImpl : public base::NonCopyable {
-        public:
-			class SocketSendOp;
+				SocketImplData(std::shared_ptr<EventLoop> loop, sock_t fd);
+			private:
+				std::shared_ptr<SocketRecieveOp> recv_op_;
+				std::shared_ptr<SocketSendOp> send_op_;
+			};
 
-            explicit IocpImpl(EventLoop &loop) noexcept;
+			class SocketWakeupOp;
+			class IocpImpl : public spdnet::base::NonCopyable {
+			public:
+				
+				friend class SocketRecieveOp; 
 
-            virtual ~IocpImpl() noexcept;
+				explicit IocpImpl(EventLoop& loop) noexcept;
 
-			bool onSocketEnter(SocketImplData& socket_data);
+				virtual ~IocpImpl() noexcept;
 
-			void send(SocketImplData& socket_data, const char* data, size_t len); 
+				bool onSocketEnter(SocketImplData& socket_data);
 
-			void flushBuffer(SocketImplData& socket_data); 
+				void send(SocketImplData& socket_data, const char* data, size_t len);
 
-            void runOnce(uint32_t timeout);
+				void flushBuffer(SocketImplData& socket_data);
 
-			void wakeup();
+				void runOnce(uint32_t timeout);
 
-			void startAccept(sock listen_fd);
-        private:
-			void startRecv(SocketImplData& socket_data);
-        private:
-			HANDLE  handle_;
-            EventLoop &loop_ref_;
-			std::shared_ptr<SocketWakeupOp> wakeup_op_;
-        };
-    }
+				void wakeup();
+
+				bool startAccept(sock_t listen_fd, Operation* op);
+
+				bool asyncConnect(sock_t fd , const EndPoint& addr , Operation* op);
+
+				void shutdownSocket(SocketImplData& socket_data) {}
+			private:
+				void startRecv(SocketImplData& socket_data);
+			private:
+				HANDLE  handle_;
+				EventLoop& loop_ref_;
+				std::shared_ptr<SocketWakeupOp> wakeup_op_;
+				std::atomic<void*> connect_ex_{nullptr};
+			};
+		}
+	}
 }
 #endif  // SPDNET_NET_IOCP_IMPL_H_

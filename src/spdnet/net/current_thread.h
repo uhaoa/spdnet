@@ -16,24 +16,27 @@
 
 #endif
 
-namespace spdnet::net::current_thread {
+namespace spdnet {
+    namespace net {
+        namespace current_thread {
 #if defined SPDNET_PLATFORM_WINDOWS
-    using THREAD_ID_TYPE = DWORD;
+            using THREAD_ID_TYPE = DWORD;
 #elif defined SPDNET_PLATFORM_LINUX
-    using THREAD_ID_TYPE = int;
+            using THREAD_ID_TYPE = int;
 #endif
 
-    inline THREAD_ID_TYPE &tid() {
-        static THREAD_LOCAL THREAD_ID_TYPE cached_tid = 0;
-        if (cached_tid == 0) {
+            inline THREAD_ID_TYPE& tid() {
+                static THREAD_LOCAL THREAD_ID_TYPE cached_tid = 0;
+                if (cached_tid == 0) {
 #if defined SPDNET_PLATFORM_WINDOWS
-            cachedTid = ::GetCurrentThreadId();
+                    cached_tid = ::GetCurrentThreadId();
 #elif defined SPDNET_PLATFORM_LINUX
-            cached_tid = static_cast<pid_t>(::syscall(SYS_gettid));
+                    cached_tid = static_cast<pid_t>(::syscall(SYS_gettid));
 #endif
+                }
+                return cached_tid;
+            }
         }
-        return cached_tid;
     }
 }
-
 #endif //SPDNET_NET_CURRENT_THREAD_H_

@@ -6,13 +6,13 @@
 
 namespace spdnet {
     namespace net {
-        TcpSession::TcpSession(std::shared_ptr<TcpSocket> socket, std::shared_ptr<EventLoop> loop)
+        TcpSession::TcpSession(sock_t fd, std::shared_ptr<EventLoop> loop)
                 :loop_owner_(loop) {
-			socket_data_ = std::make_shared<detail::SocketImplData>(loop, std::move(socket));
+			socket_data_ = std::make_shared<detail::SocketImplData>(loop, fd);
         }
 
-        TcpSession::Ptr TcpSession::create(std::shared_ptr<TcpSocket> socket, std::shared_ptr<EventLoop> loop) {
-            return std::make_shared<TcpSession>(std::move(socket), loop);
+        TcpSession::Ptr TcpSession::create(sock_t fd, std::shared_ptr<EventLoop> loop) {
+            return std::make_shared<TcpSession>(fd, loop);
         }
 
         void TcpSession::send(const char *data, size_t len) {

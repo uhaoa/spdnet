@@ -10,69 +10,74 @@
 #include <spdnet/base/platform.h>
 #include <spdnet/base/buffer.h>
 #include <spdnet/net/socket_data.h>
+#include <spdnet/net/end_point.h>
 
-namespace spdnet::net {
-    class EventLoop;
+namespace spdnet {
+    namespace net {
+        class EventLoop;
 
-    class AsyncConnector;
-    namespace detail {
-        class Channel;
-        class WakeupChannel;
-        class TcpSessionChannel;
+        class AsyncConnector;
+        namespace detail {
+            class Channel;
+            class WakeupChannel;
+            class TcpSessionChannel;
 
-		class SocketImplData : public SocketDataBase {
-		public:
-			friend class EpollImpl;
-			using Ptr = std::shared_ptr<SocketImplData>;
+            class SocketImplData : public SocketDataBase {
+            public:
+                friend class EpollImpl;
+                using Ptr = std::shared_ptr<SocketImplData>;
 
-			SocketImplData(std::shared_ptr<EventLoop> loop, std::shared_ptr<TcpSocket> socket);
-		private:
+                SocketImplData(std::shared_ptr<EventLoop> loop, sock_t fd);
+            private:
 
-			volatile bool is_can_write_{ true };
-			std::shared_ptr<TcpSessionChannel> channel_;
-		};
+                volatile bool is_can_write_{ true };
+                std::shared_ptr<TcpSessionChannel> channel_;
+            };
 
 
-        class EpollImpl : public spdnet::base::NonCopyable {
-        public:
-            friend class TcpSessionChannel;
+            class EpollImpl : public spdnet::base::NonCopyable {
+            public:
+                friend class TcpSessionChannel;
 
-            explicit EpollImpl(EventLoop &loop_owner) noexcept;
+                explicit EpollImpl(EventLoop& loop_owner) noexcept;
 
-            virtual ~EpollImpl() noexcept;
+                virtual ~EpollImpl() noexcept;
 
-			bool onSocketEnter(SocketImplData& socket_data);
+                bool onSocketEnter(SocketImplData& socket_data);
 
-            void runOnce(uint32_t timeout);
+                void runOnce(uint32_t timeout);
 
-            void send(SocketImplData& socket_data , const char*  data ,size_t len);
+                void send(SocketImplData& socket_data, const char* data, size_t len);
 
-            void wakeup(); 
+                void wakeup();
 
-            void shutdownSocket(SocketImplData& socket_data);
+                void shutdownSocket(SocketImplData& socket_data);
 
-            int epoll_fd() const { return epoll_fd_; }
+                int epoll_fd() const { return epoll_fd_; }
 
-            bool linkChannel(int fd, const Channel *channel, uint32_t events);
+                bool linkChannel(int fd, const Channel* channel, uint32_t events);
 
-            void startAccept(sock listen_fd, const Channel* channel);
-        private:
-			void closeSocket(SocketImplData& socket_data);
+                bool startAccept(sock_t listen_fd, const Channel* channel);
 
-            void addWriteEvent(SocketImplData & socket_data);
+                bool asyncConnect(sock_t client_fd, const EndPoint& addr, Channel* channel);
+            private:
+                void closeSocket(SocketImplData& socket_data);
 
-            void cancelWriteEvent(SocketImplData & socket_data);
+                void addWriteEvent(SocketImplData& socket_data);
 
-            void flushBuffer(SocketImplData & socket_data);
+                void cancelWriteEvent(SocketImplData& socket_data);
 
-            void doRecv(SocketImplData &socket_data);
+                void flushBuffer(SocketImplData& socket_data);
 
-        private:
-            int epoll_fd_;
-            std::unique_ptr<WakeupChannel> wake_up_;
-            std::vector<epoll_event> event_entries_;
-            EventLoop &loop_ref_;
-        };
+                void doRecv(SocketImplData& socket_data);
+
+            private:
+                int epoll_fd_;
+                std::unique_ptr<WakeupChannel> wake_up_;
+                std::vector<epoll_event> event_entries_;
+                EventLoop& loop_ref_;
+            };
+        }
     }
 }
 #endif  // SPDNET_NET_EPOLL_IMPL_H_

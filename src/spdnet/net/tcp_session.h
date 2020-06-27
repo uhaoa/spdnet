@@ -5,7 +5,6 @@
 #include <deque>
 #include <functional>
 #include <spdnet/base/noncopyable.h>
-#include <spdnet/net/socket.h>
 #include <spdnet/base/buffer.h>
 #include <spdnet/base/spin_lock.h>
 #ifdef SPDNET_PLATFORM_LINUX
@@ -18,7 +17,7 @@ namespace spdnet {
     namespace net {
         using namespace base;
         class EventLoop;
-        class TcpSession : public base::NonCopyable, public std::enable_shared_from_this<TcpSession> {
+        class SPDNET_EXPORT TcpSession : public base::NonCopyable, public std::enable_shared_from_this<TcpSession> {
         public:
             friend class EventLoop;
             friend class EventService;
@@ -27,7 +26,7 @@ namespace spdnet {
             using TcpDisconnectCallback = std::function<void(Ptr)>;
 			using TcpEnterCallback = std::function<void(TcpSession::Ptr)>;
 		public:
-            TcpSession(std::shared_ptr<TcpSocket> socket, std::shared_ptr<EventLoop>);
+            TcpSession(sock_t fd, std::shared_ptr<EventLoop>);
 
             void postShutDown();
 
@@ -57,12 +56,12 @@ namespace spdnet {
             void send(const char *data, size_t len);
 
 
-            int sock_fd() const {
+            sock_t sock_fd() const {
                 return socket_data_->sock_fd();
             }
 
         public:
-            static Ptr create(std::shared_ptr<TcpSocket> socket, std::shared_ptr<EventLoop> loop);
+            static Ptr create(sock_t fd, std::shared_ptr<EventLoop> loop);
         private:
             std::shared_ptr<EventLoop> loop_owner_;
             std::shared_ptr<detail::SocketImplData> socket_data_;

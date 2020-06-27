@@ -7,7 +7,6 @@
 #include <mutex>
 #include <functional>
 #include <spdnet/base/noncopyable.h>
-#include <spdnet/net/socket.h>
 #include <spdnet/net/tcp_session.h>
 #include <spdnet/net/end_point.h>
 
@@ -15,7 +14,7 @@ namespace spdnet {
     namespace net {
         class EventService;
 
-        class TcpAcceptor : public spdnet::base::NonCopyable {
+        class SPDNET_EXPORT TcpAcceptor : public spdnet::base::NonCopyable {
 		private:
 			class AcceptContext;
 			friend class AcceptContext; 
@@ -25,14 +24,15 @@ namespace spdnet {
             void start(const EndPoint &addr, TcpSession::TcpEnterCallback &&cb);
 
         private:
-            sock createListenSocket(const EndPoint &addr);
-			void onAcceptSuccess(std::shared_ptr<TcpSocket> new_socket);
+            sock_t createListenSocket(const EndPoint &addr);
+			void onAcceptSuccess(sock_t new_socket);
         private:
             EventService &service_;
-            std::shared_ptr<ListenSocket> listen_socket_;
-			EndPoint server_addr_; 
+            //std::shared_ptr<ListenSocket> listen_socket_;
+            sock_t listen_fd_;
+			EndPoint addr_; 
             TcpSession::TcpEnterCallback enter_callback_;
-			std::unique_ptr<AcceptContext> context_; 
+			std::shared_ptr<AcceptContext> context_; 
         };
 
 

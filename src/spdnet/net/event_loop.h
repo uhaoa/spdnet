@@ -12,70 +12,77 @@
 #include <spdnet/net/tcp_session.h>
 #include <spdnet/base/buffer_pool.h>
 
-namespace spdnet::net {
-    using namespace base;
-    namespace detail {
-        class EpollImpl;
-    }
-
-    class EventLoop : public base::NonCopyable {
-    public:
-        using AsynLoopTask = std::function<void()>;
-    public:
-        explicit EventLoop(unsigned int) noexcept;
-
-        ~EventLoop() = default;
-
-        void run(std::shared_ptr<bool>);
-
-        inline bool isInLoopThread() const {
-            return thread_id_ == current_thread::tid();
+namespace spdnet {
+    namespace net {
+        using namespace base;
+        namespace detail {
+            class EpollImpl;
         }
 
-        void post(AsynLoopTask &&task);
+        class SPDNET_EXPORT EventLoop : public base::NonCopyable {
+        public:
+            using AsynLoopTask = std::function<void()>;
+        public:
+            explicit EventLoop(unsigned int) noexcept;
 
-        void postToNextCircle(AsynLoopTask &&task);
+            ~EventLoop() = default;
 
-        void onTcpSessionEnter(TcpSession::Ptr tcp_session, const TcpSession::TcpEnterCallback &enter_callback);
+            void run(std::shared_ptr<bool>);
 
-        TcpSession::Ptr getTcpSession(int fd);
+            inline bool isInLoopThread() const {
+                return thread_id_ == current_thread::tid();
+            }
 
-        void addTcpSession(TcpSession::Ptr);
+            void post(AsynLoopTask&& task);
 
-        void removeTcpSession(int fd);
+            void postToNextCircle(AsynLoopTask&& task);
 
-        const std::shared_ptr<std::thread> &getLoopThread() const {
-            return loop_thread_;
-        }
+            void onTcpSessionEnter(TcpSession::Ptr tcp_session, const TcpSession::TcpEnterCallback& enter_callback);
 
-        spdnet::base::Buffer *allocBufferBySize(size_t size) {
-            return buffer_pool_.allocBufferBySize(size);
-        }
+            TcpSession::Ptr getTcpSession(sock_t fd);
 
-        void recycleBuffer(spdnet::base::Buffer *buffer) {
-            buffer_pool_.recycleBuffer(buffer);
-        }
+            void addTcpSession(TcpSession::Ptr);
 
-        detail::EpollImpl &getImpl() {
-            return *io_impl_.get();
-        }
+            void removeTcpSession(sock_t fd);
 
-    private:
-        void execAsyncTasks();
+            const std::shared_ptr<std::thread>& getLoopThread() const {
+                return loop_thread_;
+            }
 
-    private:
-        current_thread::THREAD_ID_TYPE thread_id_;
+            spdnet::base::Buffer* allocBufferBySize(size_t size) {
+                return buffer_pool_.allocBufferBySize(size);
+            }
+
+            void recycleBuffer(spdnet::base::Buffer* buffer) {
+                buffer_pool_.recycleBuffer(buffer);
+            }
 #if defined SPDNET_PLATFORM_LINUX
-        std::shared_ptr<detail::EpollImpl> io_impl_;
+            detail::EpollImpl& getImpl() {
+                return *io_impl_.get();
+            }
+#else
+			detail::IocpImpl& getImpl() {
+				return *io_impl_.get();
+			}
 #endif
-        std::mutex task_mutex_;
-        std::vector<AsynLoopTask> async_tasks;
-        std::vector<AsynLoopTask> tmp_async_tasks;
-        std::shared_ptr<std::thread> loop_thread_;
-        unsigned int wait_timeout_ms_;
-        std::unordered_map<int, TcpSession::Ptr> tcp_sessions_;
-        spdnet::base::BufferPool buffer_pool_;
-    };
+        private:
+            void execAsyncTasks();
 
+        private:
+            current_thread::THREAD_ID_TYPE thread_id_;
+#if defined SPDNET_PLATFORM_LINUX
+            std::shared_ptr<detail::EpollImpl> io_impl_;
+#else
+            std::shared_ptr<detail::IocpImpl> io_impl_;
+#endif
+            std::mutex task_mutex_;
+            std::vector<AsynLoopTask> async_tasks;
+            std::vector<AsynLoopTask> tmp_async_tasks;
+            std::shared_ptr<std::thread> loop_thread_;
+            unsigned int wait_timeout_ms_;
+            std::unordered_map<sock_t, TcpSession::Ptr> tcp_sessions_;
+            spdnet::base::BufferPool buffer_pool_;
+        };
+    }
 }
 #endif  // SPDNET_NET_EVENT_LOOP_H_

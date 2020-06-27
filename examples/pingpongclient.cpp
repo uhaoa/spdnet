@@ -2,7 +2,6 @@
 #include <iostream>
 #include <spdnet/net/event_service.h>
 #include <spdnet/net/connector.h>
-#include <spdnet/net/socket.h>
 
 int main(int argc, char *argv[]) {
     if (argc != 6) {

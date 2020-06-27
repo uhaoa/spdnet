@@ -6,15 +6,15 @@
 #include <memory>
 #include <thread>
 #include <random>
+#include <iostream>
 #include <spdnet/base/noncopyable.h>
 #include <spdnet/base/platform.h>
-#include <spdnet/net/socket.h>
 #include <spdnet/net/event_loop.h>
 #include <spdnet/net/env_init.h>
 
 namespace spdnet {
     namespace net {
-        class EventService : public base::NonCopyable {
+        class SPDNET_EXPORT EventService : public base::NonCopyable {
         public:
 
             EventService() noexcept;
@@ -22,7 +22,7 @@ namespace spdnet {
             ~EventService() noexcept;
 
             void
-            addTcpSession(std::shared_ptr<TcpSocket> tcp_socket, const TcpSession::TcpEnterCallback &enter_callback);
+            addTcpSession(sock_t fd, const TcpSession::TcpEnterCallback &enter_callback);
 
             void runThread(size_t thread_num);
 

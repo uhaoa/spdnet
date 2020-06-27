@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <iostream>
 #include <spdnet/net/connector.h>
-#include <spdnet/net/socket.h>
 #include <spdnet/net/event_service.h>
 #include <atomic>
 //#include <gperftools/profiler.h>
