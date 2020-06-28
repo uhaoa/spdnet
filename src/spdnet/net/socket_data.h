@@ -21,6 +21,17 @@ namespace spdnet {
 
 			}
 
+			~SocketDataBase() {
+				for (auto buffer : send_buffer_list_){
+					delete buffer; 
+				}
+				for (auto buffer : pending_buffer_list_) {
+					delete buffer;
+				}
+				send_buffer_list_.clear();
+				pending_buffer_list_.clear();
+			}
+
 			void setDisconnectCallback(TcpDisconnectCallback&& callback) {
 				disconnect_callback_ = callback;
 			}
@@ -49,10 +60,7 @@ namespace spdnet {
 			spdnet::base::SpinLock send_guard_;
 			volatile bool has_closed_{ false };
 			volatile bool is_post_flush_{ false };
-			/*
-			std::shared_ptr<SocketRecieveOp> recv_op_;
-			std::shared_ptr<SocketSendOp> send_op_;
-			*/
+			volatile bool is_can_write_{ true };
 		};
     }
 }

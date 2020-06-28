@@ -57,8 +57,8 @@ namespace spdnet {
                 }
                 void doComplete(size_t bytes_transferred, std::error_code ec) override
                 {
-					if (bytes_transferred == 0) {
-                        //closeSocket(socket_data);
+					if (bytes_transferred == 0 || ec) {
+                        loop_->getImpl().closeSocket(socket_data_);
 					}
                     else {
                         auto send_len = bytes_transferred; 
@@ -77,6 +77,8 @@ namespace spdnet {
 							}
 
 						}
+
+                        socket_data_.is_post_flush_ = false;
                     }
                 }
             };
@@ -92,7 +94,7 @@ namespace spdnet {
 				void doComplete(size_t bytes_transferred, std::error_code ec) override
 				{
                     bool force_close = false; 
-                    if (bytes_transferred == 0 || !ec) {
+                    if (bytes_transferred == 0 || ec) {
                         // eof 
                         force_close = true; 
                     }
@@ -126,12 +128,11 @@ namespace spdnet {
 							recv_buffer.adjustToHead();
                     }
                     
-                    /*
+                    
                     if (force_close)
-                        impl_.closeSocket(socket_data_);
-                    */
-
-                    loop_->getImpl().startRecv(socket_data_);
+                        loop_->getImpl().closeSocket(socket_data_);
+                    else 
+                        loop_->getImpl().startRecv(socket_data_);
 				}
 			};
         }

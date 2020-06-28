@@ -38,8 +38,8 @@ namespace spdnet {
 			class SocketWakeupOp;
 			class IocpImpl : public spdnet::base::NonCopyable {
 			public:
-				
 				friend class SocketRecieveOp; 
+				friend class SocketSendOp; 
 
 				explicit IocpImpl(EventLoop& loop) noexcept;
 
@@ -62,11 +62,14 @@ namespace spdnet {
 				void shutdownSocket(SocketImplData& socket_data) {}
 			private:
 				void startRecv(SocketImplData& socket_data);
+
+				void closeSocket(SocketImplData& socket_data);
 			private:
 				HANDLE  handle_;
 				EventLoop& loop_ref_;
 				std::shared_ptr<SocketWakeupOp> wakeup_op_;
 				std::atomic<void*> connect_ex_{nullptr};
+				std::vector<std::shared_ptr<Operation>> del_operation_list_;
 			};
 		}
 	}

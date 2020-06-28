@@ -35,15 +35,6 @@ namespace spdnet {
 
         }
 
-        void EventLoop::postToNextCircle(AsynLoopTask &&task)
-        {
-            {
-                std::lock_guard<std::mutex> lck(task_mutex_);
-                async_tasks.emplace_back(std::move(task));
-            }
-            io_impl_->wakeup();
-        }
-
         void EventLoop::execAsyncTasks() {
             {
                 std::lock_guard<std::mutex> lck(task_mutex_);

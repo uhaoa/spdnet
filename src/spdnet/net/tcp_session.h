@@ -29,18 +29,11 @@ namespace spdnet {
 		public:
             TcpSession(sock_t fd, bool is_server_side, std::shared_ptr<EventLoop>);
 
+            ~TcpSession() = default; 
+
             void postShutDown();
 
-			void setDisconnectCallback(TcpDisconnectCallback&& callback) {
-				auto cb = std::move(callback);
-				auto this_ptr = shared_from_this();
-				socket_data_->setDisconnectCallback([cb , this_ptr]() {
-					if (cb)
-						cb(this_ptr);
-				});
-
-				//socket_data_->setDisconnectCallback(callback);
-			}
+            void setDisconnectCallback(TcpDisconnectCallback&& callback); 
 
 			void setDataCallback(TcpDataCallback&& callback) {
 				socket_data_->setDataCallback(std::move(callback)); 

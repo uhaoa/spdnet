@@ -15,6 +15,17 @@ namespace spdnet {
             return std::make_shared<TcpSession>(fd, is_server_side ,  loop);
         }
 
+		void TcpSession::setDisconnectCallback(TcpDisconnectCallback&& callback) {
+			auto cb = std::move(callback);
+			auto this_ptr = shared_from_this();
+			socket_data_->setDisconnectCallback([cb, this_ptr]() {
+				if (cb) {
+					cb(this_ptr);
+				}
+				this_ptr->loop_owner_->removeTcpSession(this_ptr->sock_fd());
+			});
+		}
+
         void TcpSession::send(const char *data, size_t len) {
             if (len <= 0)
                 return;

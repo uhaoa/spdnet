@@ -104,18 +104,17 @@ namespace spdnet {
                     return;
 				socket_data.has_closed_ = true;
 				socket_data.is_can_write_ = false;
-				auto& loop = loop_ref_;
-				auto sockfd = socket_data.sock_fd();
-				// remove session
-				loop_ref_.post([&loop , sockfd](){
-                    loop.postToNextCircle([&loop , sockfd](){
-                        loop.removeTcpSession(sockfd);
-                    });
-				});
+
+                // Prevent the channel from being released
+                auto channel = socket_data.channel_;
+                channel->cancel_token_ = true; 
+                del_channel_list_.emplace_back(channel); 
 
 				// cancel event
                 struct epoll_event ev{0, {nullptr}};
                 ::epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, socket_data.sock_fd(), &ev);
+
+                socket_ops::closeSocket(socket_data.sock_fd());
 
 				if (socket_data.disconnect_callback_)
 					socket_data.disconnect_callback_();
@@ -275,22 +274,28 @@ namespace spdnet {
                     auto channel = static_cast<Channel *>(event_entries_[i].data.ptr);
                     auto event = event_entries_[i].events;
 
-                    if (SPDNET_PREDICT_FALSE(event & EPOLLRDHUP)) {
-                        channel->tryRecv();
-                        channel->onClose();
-                        continue;
+                    if (!channel->cancel_token_) {
+						if (SPDNET_PREDICT_FALSE(event & EPOLLRDHUP)) {
+							channel->tryRecv();
+							channel->onClose();
+							continue;
+						}
+						if (SPDNET_PREDICT_TRUE(event & EPOLLIN)) {
+							channel->tryRecv();
+						}
+						if (event & EPOLLOUT) {
+							channel->trySend();
+						}
                     }
-                    if (SPDNET_PREDICT_TRUE(event & EPOLLIN)) {
-                        channel->tryRecv();
-                    }
-                    if (event & EPOLLOUT) {
-                        channel->trySend();
-                    }
+
                 }
 
                 if (SPDNET_PREDICT_FALSE(num_events == static_cast<int>(event_entries_.size()))) {
                     event_entries_.resize(event_entries_.size() * 2);
                 }
+
+                // release channel 
+                del_channel_list_.clear();
             }
         }
     }

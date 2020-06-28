@@ -29,8 +29,6 @@ namespace spdnet {
 
                 SocketImplData(std::shared_ptr<EventLoop> loop, sock_t fd , bool is_server_side);
             private:
-
-                volatile bool is_can_write_{ true };
                 std::shared_ptr<TcpSessionChannel> channel_;
             };
 
@@ -76,6 +74,7 @@ namespace spdnet {
                 std::unique_ptr<WakeupChannel> wake_up_;
                 std::vector<epoll_event> event_entries_;
                 EventLoop& loop_ref_;
+                std::vector<std::shared_ptr<Channel>> del_channel_list_;
             };
         }
     }

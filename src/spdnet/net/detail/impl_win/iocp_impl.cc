@@ -50,6 +50,23 @@ namespace spdnet {
 				return true;
 			}
 
+			void IocpImpl::closeSocket(SocketImplData& socket_data)
+			{
+				assert(loop_ref_.isInLoopThread());
+				if (socket_data.has_closed_)
+					return;
+				socket_data.has_closed_ = true;
+				socket_data.is_can_write_ = false;
+
+				del_operation_list_.emplace_back(socket_data.send_op_);
+				del_operation_list_.emplace_back(socket_data.recv_op_);
+
+				socket_ops::closeSocket(socket_data.sock_fd());
+
+				if (socket_data.disconnect_callback_)
+					socket_data.disconnect_callback_();
+			}
+
 			bool IocpImpl::asyncConnect(sock_t fd, const EndPoint& addr , Operation* op)
 			{
 				if (::CreateIoCompletionPort((HANDLE)fd, handle_, 0, 0) == 0)
@@ -79,7 +96,6 @@ namespace spdnet {
 						struct sockaddr_in v4;
 						struct sockaddr_in6 v6;
 					} address;
-					using namespace std; // For memset.
 					memset(&address, 0, sizeof(address));
 					address.head.sa_family = addr.family();
 					auto ret = ::bind(fd, &address.head, addr.family() == AF_INET ? sizeof(address.v4) : sizeof(address.v6));
@@ -115,8 +131,9 @@ namespace spdnet {
 				socket_data.is_post_flush_ = true;
 				auto& this_ref = *this;
 				loop_ref_.post([&socket_data, &this_ref]() {
-					this_ref.flushBuffer(socket_data);
-					socket_data.is_post_flush_ = false;
+					if (socket_data.is_can_write_) {
+						this_ref.flushBuffer(socket_data);
+					}
 			    });
 			}
 
@@ -159,13 +176,13 @@ namespace spdnet {
 					0);
 				DWORD last_error = current_errno(); 
 				if (result != 0 && last_error != WSA_IO_PENDING) {
-					// closeSocket(socket_data);
+					closeSocket(socket_data);
 				}
             }
 
             void IocpImpl::startRecv(SocketImplData& socket_data)
             {
-                static WSABUF  buf = { 0, nullptr };
+                static WSABUF  buf = { 0, 0 };
                 buf.len = socket_data.recv_buffer_.getWriteValidCount();
                 buf.buf = socket_data.recv_buffer_.getWritePtr(); 
 
@@ -175,8 +192,7 @@ namespace spdnet {
                 int result  = ::WSARecv(socket_data.sock_fd(), &buf, 1, &bytes_transferred, &recv_flags, (LPOVERLAPPED)socket_data.recv_op_.get(), 0);
                 DWORD last_error = ::WSAGetLastError();
                 if (result != 0 && last_error != WSA_IO_PENDING) {
-                    // closeSocket(socket_data);
-					//auto tmp = WSA_IO_PENDING; 
+                    closeSocket(socket_data);
                 }
             }
 
@@ -207,6 +223,8 @@ namespace spdnet {
 
 					timeout = 0; 
 				}
+
+				del_operation_list_.clear();
             }
 
         }

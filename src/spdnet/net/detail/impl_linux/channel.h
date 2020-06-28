@@ -18,6 +18,9 @@ namespace spdnet {
                 virtual void tryRecv() = 0;
 
                 virtual void onClose() = 0;
+
+                // whether the session is valid
+                volatile bool cancel_token_ = false; 
             };
 
             class TcpSessionChannel : public Channel {

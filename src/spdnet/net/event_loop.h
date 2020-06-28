@@ -35,8 +35,6 @@ namespace spdnet {
 
             void post(AsynLoopTask&& task);
 
-            void postToNextCircle(AsynLoopTask&& task);
-
             void onTcpSessionEnter(TcpSession::Ptr tcp_session, const TcpSession::TcpEnterCallback& enter_callback);
 
             TcpSession::Ptr getTcpSession(sock_t fd);
