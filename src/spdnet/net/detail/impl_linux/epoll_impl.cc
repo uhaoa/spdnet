@@ -14,8 +14,8 @@
 namespace spdnet {
     namespace net {
         namespace detail {
-			SocketImplData::SocketImplData(std::shared_ptr<EventLoop> loop, sock_t fd)
-                :SocketDataBase(fd)
+			SocketImplData::SocketImplData(std::shared_ptr<EventLoop> loop, sock_t fd , bool is_server_side)
+                :SocketDataBase(fd , is_server_side)
 			{
 				channel_ = std::make_shared<TcpSessionChannel>(loop, *this);
 			}

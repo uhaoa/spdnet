@@ -27,7 +27,7 @@ namespace spdnet {
                 friend class EpollImpl;
                 using Ptr = std::shared_ptr<SocketImplData>;
 
-                SocketImplData(std::shared_ptr<EventLoop> loop, sock_t fd);
+                SocketImplData(std::shared_ptr<EventLoop> loop, sock_t fd , bool is_server_side);
             private:
 
                 volatile bool is_can_write_{ true };

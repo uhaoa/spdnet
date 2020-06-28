@@ -41,6 +41,7 @@ namespace spdnet {
                 if (client_fd == invalid_socket)
                     return;
                 socket_ops::socketNonBlock(client_fd);
+				/*
                 int ret = ::connect(client_fd, addr.socket_addr(), addr.socket_addr_len());
                 if (ret == 0) {
                     if (socket_ops::checkSelfConnect(client_fd))
@@ -48,25 +49,32 @@ namespace spdnet {
 
                     service_.addTcpSession(client_fd, enter_cb);
                 }
-                else if (errno != EINPROGRESS) {
+#if defined(SPDNET_PLATFORM_WINDOWS)
+                else if (current_errno() != WSAEWOULDBLOCK) {
                     goto FAILED;
                 }
-                else {
+#else
+				else if (current_errno() != EINPROGRESS) {
+					goto FAILED;
+				}
+#endif
+*/
+                /*else*/ {
                     auto loop = service_.getEventLoop();
                     auto enter = std::move(enter_cb);
                     auto failed = std::move(failed_cb);
                     auto fd = client_fd;
                     auto& this_ref = *this;
-                    std::weak_ptr<char> cancel_token(cancel_token_);
+                    std::weak_ptr<char> cancel_token = cancel_token_;
                     auto success_notify = [fd, enter, loop, cancel_token, &this_ref]() {
-                        loop->post([fd , cancel_token , &this_ref]() mutable {
-                            auto token = cancel_token.lock();
-                            if (token)
-                                this_ref.removeContext(fd);
-                            });
-                        auto token = cancel_token.lock();
-                        if (token)
-                            this_ref.service_.addTcpSession(fd, enter);
+                        auto share_token = cancel_token.lock();
+                        if (share_token)
+                            this_ref.service_.addTcpSession(fd, false , enter);
+						loop->post([fd, cancel_token, &this_ref]() mutable {
+							auto token = cancel_token.lock();
+							if (token)
+								this_ref.removeContext(fd);
+							});
                     };
                     auto failed_notify = [fd, failed, loop, cancel_token, &this_ref]() mutable {
                         loop->post([fd , cancel_token  , &this_ref]() {
@@ -83,6 +91,7 @@ namespace spdnet {
                         std::lock_guard<std::mutex> lck(context_guard_);
                         connecting_context_[client_fd] = context;
                     }
+					context->reset(); 
                     loop->getImpl().asyncConnect(client_fd, addr, context.get());
                     return;
 

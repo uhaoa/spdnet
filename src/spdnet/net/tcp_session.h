@@ -27,7 +27,7 @@ namespace spdnet {
             using TcpDisconnectCallback = std::function<void(Ptr)>;
 			using TcpEnterCallback = std::function<void(TcpSession::Ptr)>;
 		public:
-            TcpSession(sock_t fd, std::shared_ptr<EventLoop>);
+            TcpSession(sock_t fd, bool is_server_side, std::shared_ptr<EventLoop>);
 
             void postShutDown();
 
@@ -62,7 +62,7 @@ namespace spdnet {
             }
 
         public:
-            static Ptr create(sock_t fd, std::shared_ptr<EventLoop> loop);
+			static Ptr create(sock_t fd, bool is_server_side ,  std::shared_ptr<EventLoop> loop );
         private:
             std::shared_ptr<EventLoop> loop_owner_;
             std::shared_ptr<detail::SocketImplData> socket_data_;

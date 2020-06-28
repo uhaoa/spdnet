@@ -15,8 +15,8 @@ namespace spdnet {
 			using TcpDataCallback = std::function<size_t(const char*, size_t len)>;
 			using TcpDisconnectCallback = std::function<void()>;
 
-			SocketDataBase(sock_t fd)
-				:fd_(fd)
+			SocketDataBase(sock_t fd , bool is_server_side)
+				:fd_(fd), is_server_side_(is_server_side)
 			{
 
 			}
@@ -36,8 +36,10 @@ namespace spdnet {
 			void setMaxRecvBufferSize(size_t max_size) {
 				max_recv_buffer_size_ = max_size;
 			}
+			bool isServerSide() { return is_server_side_; }
 		protected:
 			sock_t fd_;
+			bool is_server_side_{ false }; 
 			TcpDisconnectCallback disconnect_callback_;
 			TcpDataCallback data_callback_;
 			spdnet::base::Buffer recv_buffer_;

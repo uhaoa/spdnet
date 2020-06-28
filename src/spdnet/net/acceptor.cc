@@ -179,7 +179,7 @@ namespace spdnet {
         void TcpAcceptor::onAcceptSuccess(sock_t new_socket)
         {
 			if (invalid_socket != new_socket) {
-				this->service_.addTcpSession(new_socket, enter_callback_);
+				this->service_.addTcpSession(new_socket, true , enter_callback_);
 			}
         }
 
@@ -196,7 +196,7 @@ namespace spdnet {
             }
 
             int ret = ::bind(fd, addr.socket_addr(), addr.socket_addr_len());
-            if (ret == -1 || listen(fd, 512) == -1) {
+            if (ret == SPDNET_SOCKET_ERROR || listen(fd, 512) == -1) {
 				socket_ops::closeSocket(fd);
                 return -1;
             }

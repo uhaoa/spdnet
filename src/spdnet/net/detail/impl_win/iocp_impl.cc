@@ -12,8 +12,8 @@
 namespace spdnet {
     namespace net {
 		namespace detail {
-			SocketImplData::SocketImplData(std::shared_ptr<EventLoop> loop, sock_t fd)
-				:SocketDataBase(fd)
+			SocketImplData::SocketImplData(std::shared_ptr<EventLoop> loop, sock_t fd , bool is_server_side)
+				:SocketDataBase(fd , is_server_side)
 			{
 				recv_op_ = std::make_shared<SocketRecieveOp>(*this, loop);
 				send_op_ = std::make_shared<SocketSendOp>(*this, loop);
@@ -31,8 +31,11 @@ namespace spdnet {
 			}
 
 			bool IocpImpl::onSocketEnter(SocketImplData& socket_data) {
-				if (CreateIoCompletionPort((HANDLE)socket_data.sock_fd(), handle_, 0, 0) == 0)
-					return false;
+				if (socket_data.isServerSide()) {
+					if (CreateIoCompletionPort((HANDLE)socket_data.sock_fd(), handle_, 0, 0) == 0) {
+						return false;
+					}
+				}
 				startRecv(socket_data);
 				return true;
 			}
@@ -70,6 +73,20 @@ namespace spdnet {
 
 				if (connect_ex_)
 				{
+					union address_union
+					{
+						struct sockaddr head;
+						struct sockaddr_in v4;
+						struct sockaddr_in6 v6;
+					} address;
+					using namespace std; // For memset.
+					memset(&address, 0, sizeof(address));
+					address.head.sa_family = addr.family();
+					auto ret = ::bind(fd, &address.head, addr.family() == AF_INET ? sizeof(address.v4) : sizeof(address.v6));
+					if (ret == SPDNET_SOCKET_ERROR) {
+						// ...
+						return false; 
+					}
 					void* connect_ex = connect_ex_; 
 					typedef BOOL(PASCAL* connect_ex_fn)(SOCKET,
 						const sockaddr*, int, void*, DWORD, DWORD*, OVERLAPPED*);
@@ -78,6 +95,7 @@ namespace spdnet {
 					DWORD last_error = ::WSAGetLastError();
 					if (!result && last_error != WSA_IO_PENDING) {
 						// ...
+						return false; 
 					}
 				}
 				return true;

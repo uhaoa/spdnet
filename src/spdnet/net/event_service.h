@@ -22,7 +22,7 @@ namespace spdnet {
             ~EventService() noexcept;
 
             void
-            addTcpSession(sock_t fd, const TcpSession::TcpEnterCallback &enter_callback);
+            addTcpSession(sock_t fd, bool is_server_side , const TcpSession::TcpEnterCallback &enter_callback);
 
             void runThread(size_t thread_num);
 

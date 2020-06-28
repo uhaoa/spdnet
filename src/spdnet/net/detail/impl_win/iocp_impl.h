@@ -29,7 +29,7 @@ namespace spdnet {
 
 				using Ptr = std::shared_ptr<SocketImplData>;
 
-				SocketImplData(std::shared_ptr<EventLoop> loop, sock_t fd);
+				SocketImplData(std::shared_ptr<EventLoop> loop, sock_t fd , bool is_server_side);
 			private:
 				std::shared_ptr<SocketRecieveOp> recv_op_;
 				std::shared_ptr<SocketSendOp> send_op_;
