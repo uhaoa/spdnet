@@ -7,7 +7,7 @@
 #include <spdnet/net/tcp_session.h>
 #include <spdnet/net/event_loop.h>
 #include <spdnet/net/detail/impl_win/iocp_impl.h>
-#include <spdnet/net/detail/impl_win/iocp_operation.h>
+#include <spdnet/net/detail/impl_win/iocp_channel.h>
 
 namespace spdnet {
     namespace net {
@@ -15,14 +15,14 @@ namespace spdnet {
 			SocketImplData::SocketImplData(std::shared_ptr<EventLoop> loop, sock_t fd , bool is_server_side)
 				:SocketDataBase(fd , is_server_side)
 			{
-				recv_op_ = std::make_shared<SocketRecieveOp>(*this, loop);
-				send_op_ = std::make_shared<SocketSendOp>(*this, loop);
+				recv_channel_ = std::make_shared<SocketRecieveChannel>(*this, loop);
+				send_channel_ = std::make_shared<SocketSendChannel>(*this, loop);
 			}
 
 			IocpImpl::IocpImpl(EventLoop& loop) noexcept
 				: handle_(CreateIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 1)), loop_ref_(loop)
 			{
-				wakeup_op_ = std::make_shared<SocketWakeupOp>();
+				wakeup_op_ = std::make_shared<SocketWakeupChannel>();
 			}
 
 			IocpImpl::~IocpImpl() noexcept {
@@ -40,7 +40,7 @@ namespace spdnet {
 				return true;
 			}
 
-			bool IocpImpl::startAccept(sock_t listen_fd , Operation* op)
+			bool IocpImpl::startAccept(sock_t listen_fd , Channel* op)
 			{
 				if (::CreateIoCompletionPort((HANDLE)listen_fd, handle_, 0, 0) == 0)
 				{
@@ -58,8 +58,8 @@ namespace spdnet {
 				socket_data.has_closed_ = true;
 				socket_data.is_can_write_ = false;
 
-				del_operation_list_.emplace_back(socket_data.send_op_);
-				del_operation_list_.emplace_back(socket_data.recv_op_);
+				del_channel_list_.emplace_back(socket_data.send_channel_);
+				del_channel_list_.emplace_back(socket_data.recv_channel_);
 
 				socket_ops::closeSocket(socket_data.sock_fd());
 
@@ -67,7 +67,7 @@ namespace spdnet {
 					socket_data.disconnect_callback_();
 			}
 
-			bool IocpImpl::asyncConnect(sock_t fd, const EndPoint& addr , Operation* op)
+			bool IocpImpl::asyncConnect(sock_t fd, const EndPoint& addr , Channel* op)
 			{
 				if (::CreateIoCompletionPort((HANDLE)fd, handle_, 0, 0) == 0)
 				{
@@ -172,7 +172,7 @@ namespace spdnet {
 					cnt,
 					&send_len,
 					0,
-					(LPOVERLAPPED)socket_data.send_op_.get(),
+					(LPOVERLAPPED)socket_data.send_channel_.get(),
 					0);
 				DWORD last_error = current_errno(); 
 				if (result != 0 && last_error != WSA_IO_PENDING) {
@@ -188,8 +188,8 @@ namespace spdnet {
 
 				DWORD bytes_transferred = 0;
 				DWORD recv_flags = 0;
-				socket_data.recv_op_->reset(); 
-                int result  = ::WSARecv(socket_data.sock_fd(), &buf, 1, &bytes_transferred, &recv_flags, (LPOVERLAPPED)socket_data.recv_op_.get(), 0);
+				socket_data.recv_channel_->reset(); 
+                int result  = ::WSARecv(socket_data.sock_fd(), &buf, 1, &bytes_transferred, &recv_flags, (LPOVERLAPPED)socket_data.recv_channel_.get(), 0);
                 DWORD last_error = ::WSAGetLastError();
                 if (result != 0 && last_error != WSA_IO_PENDING) {
                     closeSocket(socket_data);
@@ -213,7 +213,7 @@ namespace spdnet {
 					DWORD last_error = ::GetLastError();
 
 					if (overlapped) {
-						Operation* op = static_cast<Operation*>(overlapped);
+						Channel* op = static_cast<Channel*>(overlapped);
 						op->doComplete((size_t)bytes_transferred , std::error_code(last_error , std::system_category()));
 
 					}
@@ -224,7 +224,7 @@ namespace spdnet {
 					timeout = 0; 
 				}
 
-				del_operation_list_.clear();
+				del_channel_list_.clear();
             }
 
         }

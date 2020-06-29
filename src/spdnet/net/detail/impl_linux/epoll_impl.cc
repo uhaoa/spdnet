@@ -7,7 +7,7 @@
 #include <sys/epoll.h>
 #include <spdnet/net/exception.h>
 #include <spdnet/net/event_loop.h>
-#include <spdnet/net/detail/impl_linux/channel.h>
+#include <spdnet/net/detail/impl_linux/epoll_channel.h>
 #include <spdnet/net/detail/impl_linux/epoll_impl.h>
 #include <spdnet/net/acceptor.h>
 

@@ -18,28 +18,28 @@ namespace spdnet {
 		//ServiceThread
 		class AsyncConnector;
 		namespace detail {
-			class SocketRecieveOp;
-			class SocketWakeupOp;
-			class Operation;
+			class SocketRecieveChannel;
+			class SocketWakeupChannel;
+			class Channel;
 			class SocketImplData : public SocketDataBase {
 			public:
 				friend class IocpImpl;
-				friend class SocketSendOp;
-				friend class SocketRecieveOp;
+				friend class SocketSendChannel;
+				friend class SocketRecieveChannel;
 
 				using Ptr = std::shared_ptr<SocketImplData>;
 
 				SocketImplData(std::shared_ptr<EventLoop> loop, sock_t fd , bool is_server_side);
 			private:
-				std::shared_ptr<SocketRecieveOp> recv_op_;
-				std::shared_ptr<SocketSendOp> send_op_;
+				std::shared_ptr<SocketRecieveChannel> recv_channel_;
+				std::shared_ptr<SocketSendChannel> send_channel_;
 			};
 
 			class SocketWakeupOp;
 			class IocpImpl : public spdnet::base::NonCopyable {
 			public:
-				friend class SocketRecieveOp; 
-				friend class SocketSendOp; 
+				friend class SocketRecieveChannel;
+				friend class SocketSendChannel;
 
 				explicit IocpImpl(EventLoop& loop) noexcept;
 
@@ -55,9 +55,9 @@ namespace spdnet {
 
 				void wakeup();
 
-				bool startAccept(sock_t listen_fd, Operation* op);
+				bool startAccept(sock_t listen_fd, Channel* op);
 
-				bool asyncConnect(sock_t fd , const EndPoint& addr , Operation* op);
+				bool asyncConnect(sock_t fd , const EndPoint& addr , Channel* op);
 
 				void shutdownSocket(SocketImplData& socket_data) {}
 			private:
@@ -67,9 +67,9 @@ namespace spdnet {
 			private:
 				HANDLE  handle_;
 				EventLoop& loop_ref_;
-				std::shared_ptr<SocketWakeupOp> wakeup_op_;
+				std::shared_ptr<SocketWakeupChannel> wakeup_op_;
 				std::atomic<void*> connect_ex_{nullptr};
-				std::vector<std::shared_ptr<Operation>> del_operation_list_;
+				std::vector<std::shared_ptr<Channel>> del_channel_list_;
 			};
 		}
 	}

@@ -1,5 +1,5 @@
-#ifndef SPDNET_NET_CHANNEL_H_
-#define SPDNET_NET_CHANNEL_H_
+#ifndef SPDNET_NET_EPOLL_CHANNEL_H_
+#define SPDNET_NET_EPOLL_CHANNEL_H_
 
 #include <spdnet/base/noncopyable.h>
 #include <spdnet/base/platform.h>
@@ -88,4 +88,4 @@ namespace spdnet {
 
 }
 
-#endif  // SPDNET_NET_CHANNEL_H_
+#endif  // SPDNET_NET_EPOLL_CHANNEL_H_

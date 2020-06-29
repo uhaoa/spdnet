@@ -10,9 +10,9 @@
 #include <spdnet/net/end_point.h>
 #include <spdnet/base/platform.h>
 #ifdef SPDNET_PLATFORM_LINUX
-#include <spdnet/net/detail/impl_linux/channel.h>
+#include <spdnet/net/detail/impl_linux/epoll_channel.h>
 #else
-#include <spdnet/net/detail/impl_win/iocp_operation.h>
+#include <spdnet/net/detail/impl_win/iocp_channel.h>
 #endif
 
 
@@ -57,7 +57,7 @@ namespace spdnet {
 			sock_t idle_fd_;
 		};
 #else
-		class TcpAcceptor::AcceptContext : public detail::Operation
+		class TcpAcceptor::AcceptContext : public detail::Channel
 		{
 		public:
 			typedef

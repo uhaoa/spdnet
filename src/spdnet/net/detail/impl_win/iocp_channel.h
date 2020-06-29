@@ -1,5 +1,5 @@
-#ifndef SPDNET_NET_DETAIL_IMPL_WIN_SOCKET_OP_H_
-#define SPDNET_NET_DETAIL_IMPL_WIN_SOCKET_OP_H_
+#ifndef SPDNET_NET_DETAIL_IMPL_WIN_IOCP_CHANNEL_H_
+#define SPDNET_NET_DETAIL_IMPL_WIN_IOCP_CHANNEL_H_
 #include <system_error>
 #include <spdnet/base/noncopyable.h>
 #include <spdnet/base/platform.h>
@@ -10,10 +10,10 @@
 namespace spdnet {
     namespace net {
         namespace detail {
-            class Operation : public OVERLAPPED
+            class Channel : public OVERLAPPED
             {
             public:
-                Operation() {
+				Channel() {
                     reset();
                 }
                 virtual void doComplete(size_t bytes_transferred , std::error_code ec) = 0;
@@ -26,32 +26,33 @@ namespace spdnet {
                 }
             };
 
-            class SocketOp : public Operation {
+            class SocketChannel : public Channel {
             public:
-                SocketOp(SocketImplData& data, std::shared_ptr<EventLoop> loop)
+				SocketChannel(SocketImplData& data, std::shared_ptr<EventLoop> loop)
                     :socket_data_(data), loop_(loop)
                 {
 
                 }
-                virtual ~SocketOp() noexcept {}
+                virtual ~SocketChannel() noexcept {}
             protected:
 				SocketImplData& socket_data_;
                 std::shared_ptr<EventLoop> loop_;
             };
 
-            class SocketWakeupOp : public Operation
+            class SocketWakeupChannel : public Channel
             {
                 void doComplete(size_t bytes_transferred, std::error_code ec) override
                 {
                     // ...
+					// do nothing 
                 }
             };
 
-            class SocketSendOp : public SocketOp 
+            class SocketSendChannel : public SocketChannel
             {
             public:
-                SocketSendOp(SocketImplData& data , std::shared_ptr<EventLoop> loop)
-                    :SocketOp(data , loop)
+				SocketSendChannel(SocketImplData& data , std::shared_ptr<EventLoop> loop)
+                    :SocketChannel(data , loop)
                 {
 
                 }
@@ -83,11 +84,11 @@ namespace spdnet {
                 }
             };
 
-			class SocketRecieveOp : public SocketOp
+			class SocketRecieveChannel : public SocketChannel
 			{
 			public:
-                SocketRecieveOp(SocketImplData& data, std::shared_ptr<EventLoop> loop)
-                    :SocketOp(data, loop)
+				SocketRecieveChannel(SocketImplData& data, std::shared_ptr<EventLoop> loop)
+                    :SocketChannel(data, loop)
                 {
 
                 }
@@ -140,4 +141,4 @@ namespace spdnet {
 
 }
 
-#endif  // SPDNET_NET_DETAIL_IMPL_WIN_SOCKET_OP_H_
+#endif  // SPDNET_NET_DETAIL_IMPL_WIN_IOCP_CHANNEL_H_

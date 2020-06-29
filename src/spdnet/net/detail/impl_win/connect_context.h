@@ -6,12 +6,12 @@
 #include <spdnet/base/noncopyable.h>
 #include <spdnet/net/tcp_session.h>
 #include <spdnet/net/end_point.h>
-#include <spdnet/net/detail/impl_win/iocp_operation.h>
+#include <spdnet/net/detail/impl_win/iocp_channel.h>
 
 namespace spdnet {
 	namespace net {
 		namespace detail {
-			class ConnectContext : public Operation
+			class ConnectContext : public Channel
 			{
 			public:
 				ConnectContext(sock_t fd, std::shared_ptr<EventLoop> loop, std::function<void()>&& success_cb, std::function<void()>&& failed_cb)
