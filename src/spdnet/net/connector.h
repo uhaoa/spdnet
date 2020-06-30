@@ -7,7 +7,8 @@
 #include <spdnet/net/tcp_session.h>
 #include <spdnet/net/end_point.h>
 #include <spdnet/base/platform.h>
-
+#include <spdnet/net/io_type_define.h>
+#include <spdnet/net/event_loop.h>
 #if defined(SPDNET_PLATFORM_LINUX)
 #include <spdnet/net/detail/impl_linux/connect_context.h>
 #else
@@ -23,7 +24,7 @@ namespace spdnet {
             AsyncConnector(EventService& service); 
             ~AsyncConnector();
 
-            void asyncConnect(const EndPoint& addr, TcpSession::TcpEnterCallback&& success_cb, std::function<void()>&& failed_cb);
+            void asyncConnect(const EndPoint& addr, TcpEnterCallback&& success_cb, std::function<void()>&& failed_cb);
         private:
             bool removeContext(sock_t fd);
         private:

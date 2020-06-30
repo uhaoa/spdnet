@@ -17,11 +17,12 @@ elseif(UNIX)
         set(CMAKE_BUILD_TYPE "Debug")
         #set(CMAKE_BUILD_TYPE "Release")
     endif()
-    SET(CMAKE_CXX_FLAGS_DEBUG   "-O0 -g -ggdb -Wall -D_DEBUG")
-    SET(CMAKE_CXX_FLAGS_RELEASE "-O3 -g -ggdb -Wall -DNDEBUG")
+    set(CMAKE_CXX_FLAGS_DEBUG   "-O0 -g -ggdb -Wall -D_DEBUG")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -g -ggdb -Wall -DNDEBUG")
+
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+	set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} -fPIC")
 endif()
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
-set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} -fPIC")
 
 set(LIBRARY_OUTPUT_PATH "${PROJECT_BINARY_DIR}/lib")
 

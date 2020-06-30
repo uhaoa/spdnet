@@ -1,28 +1,24 @@
-#include <spdnet/base/platform.h>
-#ifdef SPDNET_PLATFORM_WINDOWS
+#ifndef SPDNET_NET_IOCP_IMPL_IPP_
+#define SPDNET_NET_IOCP_IMPL_IPP_
+#include <spdnet/net/detail/impl_win/iocp_impl.h>
 #include <memory>
 #include <iostream>
 #include <cassert>
-#include <spdnet/net/exception.h>
-#include <spdnet/net/tcp_session.h>
-#include <spdnet/net/event_loop.h>
-#include <spdnet/net/detail/impl_win/iocp_impl.h>
-#include <spdnet/net/detail/impl_win/iocp_channel.h>
+#include <spdnet/base/spin_lock.h>
+#include <spdnet/base/buffer_pool.h>
+#include <spdnet/net/detail/impl_win/iocp_wakeup_channel.h>
+#include <spdnet/net/detail/impl_win/iocp_recv_channel.h>
 
 namespace spdnet {
     namespace net {
 		namespace detail {
-			SocketImplData::SocketImplData(std::shared_ptr<EventLoop> loop, sock_t fd , bool is_server_side)
-				:SocketDataBase(fd , is_server_side)
+			IocpImpl::IocpImpl(std::shared_ptr<TaskExecutor> task_executor , std::function<void(sock_t)>&& socket_close_notify_cb) noexcept
+				: handle_(CreateIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 1))
+				,task_executor_(task_executor) 
+				, socket_close_notify_cb_(socket_close_notify_cb)
 			{
-				recv_channel_ = std::make_shared<SocketRecieveChannel>(*this, loop);
-				send_channel_ = std::make_shared<SocketSendChannel>(*this, loop);
-			}
-
-			IocpImpl::IocpImpl(EventLoop& loop) noexcept
-				: handle_(CreateIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 1)), loop_ref_(loop)
-			{
-				wakeup_op_ = std::make_shared<SocketWakeupChannel>();
+				wakeup_op_ = std::make_shared<IocpWakeupChannel>(handle_);
+				task_executor_->setWakeupChannel(wakeup_op_); 
 			}
 
 			IocpImpl::~IocpImpl() noexcept {
@@ -30,7 +26,7 @@ namespace spdnet {
 				handle_ = INVALID_HANDLE_VALUE;
 			}
 
-			bool IocpImpl::onSocketEnter(SocketImplData& socket_data) {
+			bool IocpImpl::onSocketEnter(TcpSocketData& socket_data) {
 				if (socket_data.isServerSide()) {
 					if (CreateIoCompletionPort((HANDLE)socket_data.sock_fd(), handle_, 0, 0) == 0) {
 						return false;
@@ -50,19 +46,19 @@ namespace spdnet {
 				return true;
 			}
 
-			void IocpImpl::closeSocket(SocketImplData& socket_data)
+			void IocpImpl::closeSocket(TcpSocketData& socket_data)
 			{
-				assert(loop_ref_.isInLoopThread());
 				if (socket_data.has_closed_)
 					return;
 				socket_data.has_closed_ = true;
 				socket_data.is_can_write_ = false;
 
-				del_channel_list_.emplace_back(socket_data.send_channel_);
-				del_channel_list_.emplace_back(socket_data.recv_channel_);
-
+				/*
+				del_channel_list_.push_back(socket_data.send_channel_);
+				del_channel_list_.push_back(socket_data.recv_channel_);
+				*/
 				socket_ops::closeSocket(socket_data.sock_fd());
-
+				socket_close_notify_cb_(socket_data.sock_fd());
 				if (socket_data.disconnect_callback_)
 					socket_data.disconnect_callback_();
 			}
@@ -117,12 +113,13 @@ namespace spdnet {
 				return true;
 			}
 
-			void IocpImpl::send(SocketImplData& socket_data, const char* data, size_t len) {
-				auto buffer = loop_ref_.allocBufferBySize(len);
+			void IocpImpl::send(TcpSocketData& socket_data, const char* data, size_t len) {
+				//auto buffer = loop_ref_.allocBufferBySize(len);
+				auto buffer = spdnet::base::BufferPool::instance().allocBufferBySize(len);
 				assert(buffer);
 				buffer->write(data, len);
 				{
-					std::lock_guard<SpinLock> lck(socket_data.send_guard_);
+					std::lock_guard<base::SpinLock> lck(socket_data.send_guard_);
 					socket_data.send_buffer_list_.push_back(buffer);
 				}
 				if (socket_data.is_post_flush_) {
@@ -130,18 +127,18 @@ namespace spdnet {
 				}
 				socket_data.is_post_flush_ = true;
 				auto& this_ref = *this;
-				loop_ref_.post([&socket_data, &this_ref]() {
+				task_executor_->post([&socket_data, &this_ref]() {
 					if (socket_data.is_can_write_) {
 						this_ref.flushBuffer(socket_data);
 					}
 			    });
 			}
 
-            void IocpImpl::flushBuffer(SocketImplData& socket_data)
+            void IocpImpl::flushBuffer(TcpSocketData& socket_data)
             {
-				assert(loop_ref_.isInLoopThread());
+				//assert(loop_ref_.isInLoopThread());
 				{
-					std::lock_guard<SpinLock> lck(socket_data.send_guard_);
+					std::lock_guard<base::SpinLock> lck(socket_data.send_guard_);
 					if (SPDNET_PREDICT_TRUE(socket_data.pending_buffer_list_.empty())) {
 						socket_data.pending_buffer_list_.swap(socket_data.send_buffer_list_);
 					}
@@ -180,22 +177,6 @@ namespace spdnet {
 				}
             }
 
-            void IocpImpl::startRecv(SocketImplData& socket_data)
-            {
-                static WSABUF  buf = { 0, 0 };
-                buf.len = socket_data.recv_buffer_.getWriteValidCount();
-                buf.buf = socket_data.recv_buffer_.getWritePtr(); 
-
-				DWORD bytes_transferred = 0;
-				DWORD recv_flags = 0;
-				socket_data.recv_channel_->reset(); 
-                int result  = ::WSARecv(socket_data.sock_fd(), &buf, 1, &bytes_transferred, &recv_flags, (LPOVERLAPPED)socket_data.recv_channel_.get(), 0);
-                DWORD last_error = ::WSAGetLastError();
-                if (result != 0 && last_error != WSA_IO_PENDING) {
-                    closeSocket(socket_data);
-                }
-            }
-
 			void IocpImpl::wakeup()
 			{
 				::PostQueuedCompletionStatus(handle_,0,0, (LPOVERLAPPED)wakeup_op_.get());
@@ -232,4 +213,4 @@ namespace spdnet {
 
 }
 
-#endif
+#endif // SPDNET_NET_IOCP_IMPL_IPP_

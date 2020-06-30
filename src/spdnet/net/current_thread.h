@@ -19,14 +19,8 @@
 namespace spdnet {
     namespace net {
         namespace current_thread {
-#if defined SPDNET_PLATFORM_WINDOWS
-            using THREAD_ID_TYPE = DWORD;
-#elif defined SPDNET_PLATFORM_LINUX
-            using THREAD_ID_TYPE = int;
-#endif
-
-            inline THREAD_ID_TYPE& tid() {
-                static THREAD_LOCAL THREAD_ID_TYPE cached_tid = 0;
+            inline thread_id_t& tid() {
+                static THREAD_LOCAL thread_id_t cached_tid = 0;
                 if (cached_tid == 0) {
 #if defined SPDNET_PLATFORM_WINDOWS
                     cached_tid = ::GetCurrentThreadId();

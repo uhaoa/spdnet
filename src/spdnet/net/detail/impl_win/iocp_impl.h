@@ -11,67 +11,53 @@
 #include <spdnet/base/buffer.h>
 #include <spdnet/net/socket_data.h>
 #include <spdnet/net/end_point.h>
-
+#include <spdnet/net/detail/impl_win/iocp_wakeup_channel.h>
+#include <spdnet/net/task_executor.h>
 namespace spdnet {
 	namespace net {
-		class EventLoop;
 		//ServiceThread
-		class AsyncConnector;
 		namespace detail {
-			class SocketRecieveChannel;
-			class SocketWakeupChannel;
-			class Channel;
-			class SocketImplData : public SocketDataBase {
+
+			class IocpImpl : public spdnet::base::NonCopyable ,std::enable_shared_from_this {
 			public:
-				friend class IocpImpl;
-				friend class SocketSendChannel;
-				friend class SocketRecieveChannel;
+				friend class IocpRecieveChannel;
+				friend class IocpSendChannel;
 
-				using Ptr = std::shared_ptr<SocketImplData>;
+				inline explicit IocpImpl(std::shared_ptr<TaskExecutor> task_executor , std::function<void(sock_t)>&& socket_close_notify_cb) noexcept;
 
-				SocketImplData(std::shared_ptr<EventLoop> loop, sock_t fd , bool is_server_side);
+				inline virtual ~IocpImpl() noexcept;
+
+				inline bool onSocketEnter(TcpSocketData& socket_data);
+
+				inline void send(TcpSocketData& socket_data, const char* data, size_t len);
+
+				inline void flushBuffer(TcpSocketData& socket_data);
+
+				inline void runOnce(uint32_t timeout);
+
+				inline void wakeup();
+
+				inline bool startAccept(sock_t listen_fd, Channel* op);
+
+				inline bool asyncConnect(sock_t fd , const EndPoint& addr , Channel* op);
+
+				inline void shutdownSocket(TcpSocketData& socket_data) {}
 			private:
-				std::shared_ptr<SocketRecieveChannel> recv_channel_;
-				std::shared_ptr<SocketSendChannel> send_channel_;
-			};
-
-			class SocketWakeupOp;
-			class IocpImpl : public spdnet::base::NonCopyable {
-			public:
-				friend class SocketRecieveChannel;
-				friend class SocketSendChannel;
-
-				explicit IocpImpl(EventLoop& loop) noexcept;
-
-				virtual ~IocpImpl() noexcept;
-
-				bool onSocketEnter(SocketImplData& socket_data);
-
-				void send(SocketImplData& socket_data, const char* data, size_t len);
-
-				void flushBuffer(SocketImplData& socket_data);
-
-				void runOnce(uint32_t timeout);
-
-				void wakeup();
-
-				bool startAccept(sock_t listen_fd, Channel* op);
-
-				bool asyncConnect(sock_t fd , const EndPoint& addr , Channel* op);
-
-				void shutdownSocket(SocketImplData& socket_data) {}
-			private:
-				void startRecv(SocketImplData& socket_data);
-
-				void closeSocket(SocketImplData& socket_data);
+				inline void closeSocket(TcpSocketData& socket_data);
 			private:
 				HANDLE  handle_;
-				EventLoop& loop_ref_;
-				std::shared_ptr<SocketWakeupChannel> wakeup_op_;
+				std::shared_ptr<IocpWakeupChannel> wakeup_op_;
 				std::atomic<void*> connect_ex_{nullptr};
 				std::vector<std::shared_ptr<Channel>> del_channel_list_;
+				std::shared_ptr<TaskExecutor> task_executor_;
+				std::function<void(sock_t)> socket_close_notify_cb_;
+				std::unordered_map<sock_t, std::pair<IocpSendChannel, IocpRecieveChannel>> channels_;
 			};
 		}
 	}
 }
+
+
+#include <spdnet/net/detail/impl_win/iocp_impl.ipp>
+
 #endif  // SPDNET_NET_IOCP_IMPL_H_

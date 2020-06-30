@@ -157,7 +157,7 @@ namespace spdnet {
 			context_ = std::make_unique<AcceptContext>(*this);
         }
 
-        void TcpAcceptor::start(const EndPoint &addr, TcpSession::TcpEnterCallback &&cb) {
+        void TcpAcceptor::start(const EndPoint &addr, TcpEnterCallback &&cb) {
 			addr_ = addr;
 			listen_fd_ = createListenSocket(addr);
             if (listen_fd_ == -1) {
@@ -167,7 +167,7 @@ namespace spdnet {
 			socket_ops::socketNonBlock(listen_fd_); 
 
             auto listen_loop = service_.getEventLoop(); 
-			if (!listen_loop->getImpl().startAccept(listen_fd_, context_.get())) {
+			if (!listen_loop->getImplRef().startAccept(listen_fd_, context_.get())) {
 				throw SpdnetException(std::string("listen error : ") + std::to_string(current_errno()));
 			}
 #if defined(SPDNET_PLATFORM_WINDOWS)

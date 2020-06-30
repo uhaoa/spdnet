@@ -1,3 +1,6 @@
+#ifndef SPDNET_NET_EVENT_LOOP_IPP_
+#define SPDNET_NET_EVENT_LOOP_IPP_
+
 #include <memory>
 #include <iostream>
 #include <cassert>
@@ -9,44 +12,26 @@
 #else
 #include <spdnet/net/detail/impl_win/iocp_impl.h>
 #endif
+
+
 namespace spdnet {
     namespace net {
 
-        EventLoop::EventLoop(unsigned int wait_timeout_ms) noexcept
-                : wait_timeout_ms_(wait_timeout_ms) {
-#ifdef SPDNET_PLATFORM_LINUX
-            io_impl_.reset(new detail::EpollImpl(*this));
-#else
-            io_impl_.reset(new detail::IocpImpl(*this));
-#endif
+        EventLoop::EventLoop(unsigned int wait_timeout_ms)
+                : wait_timeout_ms_(wait_timeout_ms) 
+		{
+			task_executor_ = std::make_shared<TaskExecutor>(); 
+			io_impl_ = std::make_shared<IoObjectImplType>(task_executor_, [this](sock_t fd) {
+				removeTcpSession(fd); 
+			});
         }
 
 
-        void EventLoop::post(AsynLoopTask &&task) {
-            if (SPDNET_PREDICT_FALSE(isInLoopThread())) {
-                task();
-            } else {
-                {
-                    std::lock_guard<std::mutex> lck(task_mutex_);
-                    async_tasks.emplace_back(std::move(task));
-                }
-                io_impl_->wakeup();
-            }
+		void EventLoop::post(AsynTaskFunctor&& task) {
+			task_executor_->post(std::move(task)); 
+		}
 
-        }
-
-        void EventLoop::execAsyncTasks() {
-            {
-                std::lock_guard<std::mutex> lck(task_mutex_);
-                tmp_async_tasks.swap(async_tasks);
-            }
-            for (auto &task : tmp_async_tasks) {
-                task();
-            }
-            tmp_async_tasks.clear();
-        }
-
-        TcpSession::Ptr EventLoop::getTcpSession(sock_t fd) {
+		std::shared_ptr<TcpSession> EventLoop::getTcpSession(sock_t fd) {
             auto iter = tcp_sessions_.find(fd);
             if (iter != tcp_sessions_.end())
                 return iter->second;
@@ -54,7 +39,7 @@ namespace spdnet {
                 return nullptr;
         }
 
-        void EventLoop::addTcpSession(TcpSession::Ptr session) {
+        void EventLoop::addTcpSession(std::shared_ptr<TcpSession> session) {
             tcp_sessions_[session->sock_fd()] = std::move(session);
         }
 
@@ -68,7 +53,7 @@ namespace spdnet {
         }
 
         void
-        EventLoop::onTcpSessionEnter(TcpSession::Ptr tcp_session, const TcpSession::TcpEnterCallback &enter_callback) {
+        EventLoop::onTcpSessionEnter(std::shared_ptr<TcpSession> tcp_session, const TcpEnterCallback &enter_callback) {
             assert(isInLoopThread());
             if (!io_impl_->onSocketEnter(*tcp_session->socket_data_)) {
                 return;
@@ -83,12 +68,16 @@ namespace spdnet {
         void EventLoop::run(std::shared_ptr<bool> is_run) {
             loop_thread_ = std::make_shared<std::thread>([is_run, this]() {
                 thread_id_ = current_thread::tid();
+				task_executor_->setThreadId(thread_id_); 
                 while (*is_run) {
+					// run io 
                     io_impl_->runOnce(wait_timeout_ms_);
-
-                    execAsyncTasks();
+					// do task
+					task_executor_->run(); 
                 }
             });
         }
     }
 }
+
+#endif // SPDNET_NET_EVENT_LOOP_IPP_

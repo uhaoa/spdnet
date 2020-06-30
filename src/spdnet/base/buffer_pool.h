@@ -7,10 +7,11 @@
 #include <cassert>
 #include <limits>
 #include <spdnet/base/buffer.h>
+#include <spdnet/base/singleton.h>
 
 namespace spdnet {
     namespace base {
-        class BufferPool {
+        class BufferPool : public spdnet::base::Singleton<BufferPool> {
         public:
             static constexpr size_t max_pool_size = 32;
 

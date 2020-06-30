@@ -7,26 +7,35 @@
 #include <spdnet/base/buffer.h>
 #include <spdnet/base/spin_lock.h>
 #include <spdnet/net/socket_ops.h>
+#include <spdnet/net/io_type_define.h>
+#include <spdnet/base/buffer_pool.h>
 
 namespace spdnet {
     namespace net {
-		class SocketDataBase : public base::NonCopyable {
+		namespace detail
+		{
+			class IocpSendChannel;
+			class IocpRecieveChannel;
+			class EpollChannel;
+			class TcpSessionChannel;
+		}
+		class TcpSocketData : public spdnet::base::NonCopyable {
 		public:
 			using TcpDataCallback = std::function<size_t(const char*, size_t len)>;
 			using TcpDisconnectCallback = std::function<void()>;
 
-			SocketDataBase(sock_t fd , bool is_server_side)
+			TcpSocketData(sock_t fd , bool is_server_side)
 				:fd_(fd), is_server_side_(is_server_side)
 			{
 
 			}
 
-			~SocketDataBase() {
+			virtual ~TcpSocketData() {
 				for (auto buffer : send_buffer_list_){
-					delete buffer; 
+					base::BufferPool::instance().recycleBuffer(buffer);
 				}
 				for (auto buffer : pending_buffer_list_) {
-					delete buffer;
+					base::BufferPool::instance().recycleBuffer(buffer);
 				}
 				send_buffer_list_.clear();
 				pending_buffer_list_.clear();
@@ -48,7 +57,7 @@ namespace spdnet {
 				max_recv_buffer_size_ = max_size;
 			}
 			bool isServerSide() { return is_server_side_; }
-		protected:
+		public:
 			sock_t fd_;
 			bool is_server_side_{ false }; 
 			TcpDisconnectCallback disconnect_callback_;
@@ -61,6 +70,13 @@ namespace spdnet {
 			volatile bool has_closed_{ false };
 			volatile bool is_post_flush_{ false };
 			volatile bool is_can_write_{ true };
+
+#if defined(SPDNET_PLATFORM_WINDOWS)
+			std::shared_ptr<detail::IocpRecieveChannel> recv_channel_;
+			std::shared_ptr<detail::IocpSendChannel> send_channel_;
+#else		
+			std::shared_ptr<detail::TcpSessionChannel> channel_;
+#endif
 		};
     }
 }

@@ -35,7 +35,7 @@ namespace spdnet {
                 return connecting_context_.erase(fd) > 0;
             }
 
-            void AsyncConnector::asyncConnect(const EndPoint& addr, TcpSession::TcpEnterCallback&& enter_cb,
+            void AsyncConnector::asyncConnect(const EndPoint& addr, TcpEnterCallback&& enter_cb,
                 std::function<void()>&& failed_cb) {
                 sock_t client_fd = socket_ops::createSocket(addr.family(), SOCK_STREAM, 0);
                 if (client_fd == invalid_socket)
@@ -92,7 +92,7 @@ namespace spdnet {
                         connecting_context_[client_fd] = context;
                     }
 					context->reset(); 
-                    loop->getImpl().asyncConnect(client_fd, addr, context.get());
+                    loop->getImplRef().asyncConnect(client_fd, addr, context.get());
                     return;
 
                 }

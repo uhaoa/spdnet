@@ -9,78 +9,65 @@
 #include <spdnet/base/noncopyable.h>
 #include <spdnet/base/platform.h>
 #include <spdnet/net/current_thread.h>
-#include <spdnet/net/tcp_session.h>
 #include <spdnet/base/buffer_pool.h>
+#include <spdnet/net/io_type_define.h>
+#include <spdnet/net/task_executor.h>
+#include <spdnet/net/tcp_session.h>
 
 namespace spdnet {
     namespace net {
-        using namespace base;
-        namespace detail {
-            class EpollImpl;
-        }
+		using TcpEnterCallback = std::function<void(std::shared_ptr<TcpSession>)>;
 
-        class SPDNET_EXPORT EventLoop : public base::NonCopyable {
+        class SPDNET_EXPORT EventLoop : public spdnet::base::NonCopyable {
         public:
-            using AsynLoopTask = std::function<void()>;
-        public:
-            explicit EventLoop(unsigned int) noexcept;
+            inline explicit EventLoop(unsigned int);
 
-            ~EventLoop() = default;
+			inline ~EventLoop() = default;
 
-            void run(std::shared_ptr<bool>);
+			inline void run(std::shared_ptr<bool>);
 
             inline bool isInLoopThread() const {
                 return thread_id_ == current_thread::tid();
             }
 
-            void post(AsynLoopTask&& task);
+			inline void post(AsynTaskFunctor&& task);
 
-            void onTcpSessionEnter(TcpSession::Ptr tcp_session, const TcpSession::TcpEnterCallback& enter_callback);
+			inline void onTcpSessionEnter(std::shared_ptr<TcpSession> tcp_session, const TcpEnterCallback& enter_callback);
 
-            TcpSession::Ptr getTcpSession(sock_t fd);
+			inline std::shared_ptr<TcpSession> getTcpSession(sock_t fd);
 
-            void addTcpSession(TcpSession::Ptr);
+			inline void addTcpSession(std::shared_ptr<TcpSession>);
 
-            void removeTcpSession(sock_t fd);
+			inline void removeTcpSession(sock_t fd);
 
-            const std::shared_ptr<std::thread>& getLoopThread() const {
+			inline const std::shared_ptr<std::thread>& getLoopThread() const {
                 return loop_thread_;
             }
 
-            spdnet::base::Buffer* allocBufferBySize(size_t size) {
-                return buffer_pool_.allocBufferBySize(size);
-            }
-
-            void recycleBuffer(spdnet::base::Buffer* buffer) {
-                buffer_pool_.recycleBuffer(buffer);
-            }
-#if defined SPDNET_PLATFORM_LINUX
-            detail::EpollImpl& getImpl() {
-                return *io_impl_.get();
-            }
-#else
-			detail::IocpImpl& getImpl() {
+			inline IoObjectImplType& getImplRef() {
 				return *io_impl_.get();
 			}
-#endif
-        private:
-            void execAsyncTasks();
 
+			inline std::shared_ptr<IoObjectImplType> getImpl() {
+				return io_impl_;
+			}
+
+			std::shared_ptr<TaskExecutor> getExecutor() {
+				return task_executor_; 
+			}
+
+			thread_id_t thread_id() const { return thread_id_; }
         private:
-            current_thread::THREAD_ID_TYPE thread_id_;
-#if defined SPDNET_PLATFORM_LINUX
-            std::shared_ptr<detail::EpollImpl> io_impl_;
-#else
-            std::shared_ptr<detail::IocpImpl> io_impl_;
-#endif
-            std::mutex task_mutex_;
-            std::vector<AsynLoopTask> async_tasks;
-            std::vector<AsynLoopTask> tmp_async_tasks;
+            thread_id_t thread_id_;
+            std::shared_ptr<IoObjectImplType> io_impl_;
+			std::shared_ptr<TaskExecutor> task_executor_;
             std::shared_ptr<std::thread> loop_thread_;
             unsigned int wait_timeout_ms_;
-            std::unordered_map<sock_t, TcpSession::Ptr> tcp_sessions_;
-            spdnet::base::BufferPool buffer_pool_;
+            std::unordered_map<sock_t, std::shared_ptr<TcpSession>> tcp_sessions_;
         };
     }
 }
+
+#include <spdnet/net/event_loop.ipp>
+
 #endif  // SPDNET_NET_EVENT_LOOP_H_
