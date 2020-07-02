@@ -166,8 +166,8 @@ namespace spdnet {
             enter_callback_ = std::move(cb);
 			socket_ops::socketNonBlock(listen_fd_); 
 
-            auto listen_loop = service_.getEventLoop(); 
-			if (!listen_loop->getImplRef().startAccept(listen_fd_, context_.get())) {
+            auto listen_thread = service_.getServiceThread(); 
+			if (!listen_thread->getImpl()->startAccept(listen_fd_, context_.get())) {
 				throw SpdnetException(std::string("listen error : ") + std::to_string(current_errno()));
 			}
 #if defined(SPDNET_PLATFORM_WINDOWS)

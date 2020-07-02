@@ -14,8 +14,8 @@ namespace spdnet {
 			class ConnectContext : public Channel
 			{
 			public:
-				ConnectContext(sock_t fd, std::shared_ptr<EventLoop> loop, std::function<void()>&& success_cb, std::function<void()>&& failed_cb)
-					: fd_(fd), loop_(loop),
+				ConnectContext(sock_t fd, std::shared_ptr<ServiceThread> service_thread, std::function<void()>&& success_cb, std::function<void()>&& failed_cb)
+					: fd_(fd), service_thread_(service_thread),
 					success_cb_(std::move(success_cb)),
 					failed_cb_(std::move(failed_cb)) {
 
@@ -34,12 +34,12 @@ namespace spdnet {
 					}
 				}
 
-				std::shared_ptr<EventLoop> getLoop() {
-					return loop_;
+				std::shared_ptr<ServiceThread> getServiceThread() {
+					return service_thread_;
 				}
 			private:
 				sock_t fd_{ invalid_socket };
-				std::shared_ptr<EventLoop> loop_;
+				std::shared_ptr<ServiceThread> service_thread_;
 				std::function<void()> success_cb_;
 				std::function<void()> failed_cb_;
 			};

@@ -2,36 +2,39 @@
 #define SPDNET_NET_SOCKET_DATA_H_
 
 #include <memory>
+#include <deque>
+#include <functional>
 #include <spdnet/base/platform.h>
 #include <spdnet/base/noncopyable.h>
 #include <spdnet/base/buffer.h>
 #include <spdnet/base/spin_lock.h>
 #include <spdnet/net/socket_ops.h>
-#include <spdnet/net/io_type_define.h>
 #include <spdnet/base/buffer_pool.h>
 
 namespace spdnet {
-    namespace net {
+	namespace net {
 		namespace detail
 		{
+#if defined(SPDNET_PLATFORM_WINDOWS)
+			class IocpRecvChannel; 
 			class IocpSendChannel;
-			class IocpRecieveChannel;
-			class EpollChannel;
-			class TcpSessionChannel;
+#else
+			class TcpSessionChannel; 
+#endif
 		}
-		class TcpSocketData : public spdnet::base::NonCopyable {
+		class SocketData : public spdnet::base::NonCopyable {
 		public:
 			using TcpDataCallback = std::function<size_t(const char*, size_t len)>;
 			using TcpDisconnectCallback = std::function<void()>;
 
-			TcpSocketData(sock_t fd , bool is_server_side)
+			SocketData(sock_t fd, bool is_server_side)
 				:fd_(fd), is_server_side_(is_server_side)
 			{
 
 			}
 
-			virtual ~TcpSocketData() {
-				for (auto buffer : send_buffer_list_){
+			virtual ~SocketData() {
+				for (auto buffer : send_buffer_list_) {
 					base::BufferPool::instance().recycleBuffer(buffer);
 				}
 				for (auto buffer : pending_buffer_list_) {
@@ -48,7 +51,7 @@ namespace spdnet {
 				data_callback_ = callback;
 			}
 			void setNodelay() {
-				socket_ops::socketNoDelay(fd_); 
+				socket_ops::socketNoDelay(fd_);
 			}
 			sock_t sock_fd() const {
 				return fd_;
@@ -59,7 +62,7 @@ namespace spdnet {
 			bool isServerSide() { return is_server_side_; }
 		public:
 			sock_t fd_;
-			bool is_server_side_{ false }; 
+			bool is_server_side_{ false };
 			TcpDisconnectCallback disconnect_callback_;
 			TcpDataCallback data_callback_;
 			spdnet::base::Buffer recv_buffer_;
@@ -70,15 +73,15 @@ namespace spdnet {
 			volatile bool has_closed_{ false };
 			volatile bool is_post_flush_{ false };
 			volatile bool is_can_write_{ true };
-
+			
 #if defined(SPDNET_PLATFORM_WINDOWS)
-			std::shared_ptr<detail::IocpRecieveChannel> recv_channel_;
+			std::shared_ptr<detail::IocpRecvChannel> recv_channel_;
 			std::shared_ptr<detail::IocpSendChannel> send_channel_;
-#else		
+#else
 			std::shared_ptr<detail::TcpSessionChannel> channel_;
 #endif
 		};
-    }
-}
+	}
 
+}
 #endif  // SPDNET_NET_SOCKET_DATA_H_

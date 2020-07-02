@@ -9,7 +9,7 @@
 #include <iostream>
 #include <spdnet/base/noncopyable.h>
 #include <spdnet/base/platform.h>
-#include <spdnet/net/event_loop.h>
+#include <spdnet/net/service_thread.h>
 #include <spdnet/net/env_init.h>
 
 namespace spdnet {
@@ -26,14 +26,13 @@ namespace spdnet {
 
             void runThread(size_t thread_num);
 
-            std::shared_ptr<EventLoop> getEventLoop();
+            std::shared_ptr<ServiceThread> getServiceThread();
 
         private:
             void stop();
-
         private:
-            std::shared_ptr<bool> run_loop_;
-            std::vector<std::shared_ptr<EventLoop>> loops_;
+            std::shared_ptr<bool> run_thread_;
+            std::vector<std::shared_ptr<ServiceThread>> threads_;
             std::mt19937 random_;
             EnvInit env_;
         };

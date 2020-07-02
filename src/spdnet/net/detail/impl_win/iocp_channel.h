@@ -3,12 +3,13 @@
 #include <system_error>
 #include <spdnet/base/noncopyable.h>
 #include <spdnet/base/platform.h>
-#include <spdnet/net/io_type_define.h>
+#include <spdnet/net/socket_data.h>
 
 namespace spdnet {
     namespace net {
-		class TcpSocketData;
         namespace detail {
+           // class IocpSocketData; 
+            class IocpImpl; 
             class Channel : public OVERLAPPED
             {
             public:
@@ -27,17 +28,18 @@ namespace spdnet {
 					hEvent = 0;
                 }
             };
+
             class SocketChannel : public Channel {
             public:
-				SocketChannel(TcpSocketData& data, std::shared_ptr<IoObjectImplType> io_impl)
+				SocketChannel(SocketData& data, std::shared_ptr<IocpImpl> io_impl)
                     :socket_data_(data), io_impl_(io_impl)
                 {
 
                 }
                 virtual ~SocketChannel() noexcept {}
             protected:
-				TcpSocketData& socket_data_;
-                std::shared_ptr<IoObjectImplType> io_impl_;
+                SocketData& socket_data_;
+                std::shared_ptr<IocpImpl> io_impl_;
             };
 
         }

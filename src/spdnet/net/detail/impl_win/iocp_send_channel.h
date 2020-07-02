@@ -13,11 +13,12 @@ namespace spdnet {
 			class IocpSendChannel : public SocketChannel
 			{
 			public:
-				IocpSendChannel(TcpSocketData& data, std::shared_ptr<IoObjectImplType> io_impl)
+				IocpSendChannel(SocketData& data, std::shared_ptr<IoObjectImplType> io_impl)
 					:SocketChannel(data, io_impl)
 				{
 
 				}
+
 				void doComplete(size_t bytes_transferred, std::error_code ec) override
 				{
 					if (bytes_transferred == 0 || ec) {

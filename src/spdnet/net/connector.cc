@@ -22,8 +22,8 @@ namespace spdnet {
                for (auto& pair : connecting_context_)
                {
                    auto context = pair.second; 
-                   auto loop = context->getLoop(); 
-				   loop->post([context]() mutable {
+                   auto service_thread = context->getServiceThread(); 
+                   service_thread->getExecutor()->post([context]() mutable {
                        context = nullptr;
                    });
                }
@@ -60,24 +60,24 @@ namespace spdnet {
 #endif
 */
                 /*else*/ {
-                    auto loop = service_.getEventLoop();
+                    auto service_thread = service_.getServiceThread();
                     auto enter = std::move(enter_cb);
                     auto failed = std::move(failed_cb);
                     auto fd = client_fd;
                     auto& this_ref = *this;
                     std::weak_ptr<char> cancel_token = cancel_token_;
-                    auto success_notify = [fd, enter, loop, cancel_token, &this_ref]() {
+                    auto success_notify = [fd, enter, service_thread, cancel_token, &this_ref]() {
                         auto share_token = cancel_token.lock();
                         if (share_token)
                             this_ref.service_.addTcpSession(fd, false , enter);
-						loop->post([fd, cancel_token, &this_ref]() mutable {
+                        service_thread->getExecutor()->post([fd, cancel_token, &this_ref]() mutable {
 							auto token = cancel_token.lock();
 							if (token)
 								this_ref.removeContext(fd);
 							});
                     };
-                    auto failed_notify = [fd, failed, loop, cancel_token, &this_ref]() mutable {
-                        loop->post([fd , cancel_token  , &this_ref]() {
+                    auto failed_notify = [fd, failed, service_thread, cancel_token, &this_ref]() mutable {
+                        service_thread->getExecutor()->post([fd , cancel_token  , &this_ref]() {
                             auto token = cancel_token.lock();
                             if (token)
                                 this_ref.removeContext(fd);
@@ -86,13 +86,13 @@ namespace spdnet {
                         if (failed)
                             failed();
                     };
-                    auto context = std::make_shared<detail::ConnectContext>(client_fd, loop, success_notify, failed_notify);
+                    auto context = std::make_shared<detail::ConnectContext>(client_fd, service_thread, success_notify, failed_notify);
                     {
                         std::lock_guard<std::mutex> lck(context_guard_);
                         connecting_context_[client_fd] = context;
                     }
 					context->reset(); 
-                    loop->getImplRef().asyncConnect(client_fd, addr, context.get());
+                    service_thread->getImpl()->asyncConnect(client_fd, addr, context.get());
                     return;
 
                 }

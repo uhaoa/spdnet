@@ -3,16 +3,17 @@
 #include <system_error>
 #include <spdnet/base/noncopyable.h>
 #include <spdnet/base/platform.h>
+#include <iostream>
 #include <spdnet/net/detail/impl_win/iocp_impl.h>
 #include <spdnet/net/detail/impl_win/iocp_channel.h>
 
 namespace spdnet {
     namespace net {
         namespace detail {
-			class IocpRecieveChannel : public SocketChannel
+			class IocpRecvChannel : public SocketChannel
 			{
 			public:
-				IocpRecieveChannel(TcpSocketData& data, std::shared_ptr<IoObjectImplType> impl)
+				IocpRecvChannel(SocketData& data, std::shared_ptr<IocpImpl> impl)
                     :SocketChannel(data, impl)
                 {
 
@@ -25,11 +26,11 @@ namespace spdnet {
 
 					DWORD bytes_transferred = 0;
 					DWORD recv_flags = 0;
-					socket_data_.recv_channel_->reset();
+					reset();
 					int result = ::WSARecv(socket_data_.sock_fd(), &buf, 1, &bytes_transferred, &recv_flags, (LPOVERLAPPED)this, 0);
 					DWORD last_error = ::WSAGetLastError();
 					if (result != 0 && last_error != WSA_IO_PENDING) {
-						closeSocket(socket_data_);
+						io_impl_->closeSocket(socket_data_);
 					}
 				}
 			private:
@@ -74,7 +75,7 @@ namespace spdnet {
                     if (force_close)
                         io_impl_->closeSocket(socket_data_);
                     else 
-						io_impl_->startRecv(socket_data_);
+						this->startRecv();
 				}
 			};
         }

@@ -3,7 +3,6 @@
 
 #include <iostream>
 #include <spdnet/base/platform.h>
-#include <spdnet/net/io_type_define.h>
 #include <spdnet/net/current_thread.h>
 #if defined(SPDNET_PLATFORM_LINUX)
 #include <spdnet/net/detail/impl_win/epoll_wakeup_channel.h>

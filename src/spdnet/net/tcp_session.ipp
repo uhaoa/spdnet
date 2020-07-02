@@ -5,16 +5,17 @@
 #include <cassert>
 #include <iostream>
 #include <string.h>
-
+#include <spdnet/net/socket_data.h>
+#include <spdnet/net/service_thread.h>
 namespace spdnet {
     namespace net {
-        TcpSession::TcpSession(sock_t fd, bool is_server_side , std::shared_ptr<IoObjectImplType> impl , std::shared_ptr<TaskExecutor> task_executor)
-                :io_impl_(impl), task_executor_(task_executor){
-			socket_data_ = std::make_shared<TcpSocketData>(fd , is_server_side);
+        TcpSession::TcpSession(sock_t fd, bool is_server_side , std::shared_ptr<ServiceThread> service_thread)
+                :service_thread_(service_thread){
+			socket_data_ = std::make_shared<SocketData>(fd , is_server_side);
         }
 
-        TcpSession::Ptr TcpSession::create(sock_t fd, bool is_server_side , std::shared_ptr<IoObjectImplType> impl, std::shared_ptr<TaskExecutor> task_executor) {
-            return std::make_shared<TcpSession>(fd, is_server_side ,  impl , task_executor);
+        std::shared_ptr<TcpSession> TcpSession::create(sock_t fd, bool is_server_side , std::shared_ptr<ServiceThread> service_thread ) {
+            return std::make_shared<TcpSession>(fd, is_server_side , service_thread);
         }
 
 		void TcpSession::setDisconnectCallback(TcpDisconnectCallback&& callback) {
@@ -31,14 +32,13 @@ namespace spdnet {
         void TcpSession::send(const char *data, size_t len) {
             if (len <= 0)
                 return;
-			io_impl_->send(*socket_data_ , data , len);
+            service_thread_->getImpl()->send(*socket_data_ , data , len);
         }
 
         void TcpSession::postShutDown() {
-            auto io_impl = io_impl_;
             auto this_ptr = shared_from_this();
-			task_executor_->post([io_impl, this_ptr]() {
-				io_impl->shutdownSocket(*this_ptr->socket_data_);
+            service_thread_->getExecutor()->post([this_ptr]() {
+                this_ptr->service_thread_->getImpl()->shutdownSocket(*this_ptr->socket_data_);
             });
         }
 

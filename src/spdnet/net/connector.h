@@ -7,8 +7,7 @@
 #include <spdnet/net/tcp_session.h>
 #include <spdnet/net/end_point.h>
 #include <spdnet/base/platform.h>
-#include <spdnet/net/io_type_define.h>
-#include <spdnet/net/event_loop.h>
+#include <spdnet/net/service_thread.h>
 #if defined(SPDNET_PLATFORM_LINUX)
 #include <spdnet/net/detail/impl_linux/connect_context.h>
 #else

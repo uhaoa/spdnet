@@ -17,22 +17,22 @@ namespace spdnet {
             stop();
         }
 
-        std::shared_ptr<EventLoop> EventService::getEventLoop() {
+        std::shared_ptr<ServiceThread> EventService::getServiceThread() {
             auto rand_num = random_();
-            return loops_[rand_num % loops_.size()];
+            return threads_[rand_num % threads_.size()];
         }
 
         void EventService::addTcpSession(sock_t fd, bool is_server_side ,  const TcpEnterCallback &enter_callback) {
-            std::shared_ptr<EventLoop> loop = getEventLoop();
-            TcpSession::Ptr new_session = TcpSession::create(fd , is_server_side , loop->getImpl() , loop->getExecutor());
-            loop->post([loop, new_session, enter_callback]() {
+            std::shared_ptr<ServiceThread> service_thread = getServiceThread();
+            std::shared_ptr<TcpSession> new_session = TcpSession::create(fd , is_server_side , service_thread);
+            service_thread->getExecutor()->post([service_thread, new_session, enter_callback]() {
                 /*
                 if (loop->getImpl().onSocketEnter(*new_session->socket_data_)){
                     if (enter_callback)
                         enter_callback(new_session);
                 }
                 */
-                loop->onTcpSessionEnter(new_session, enter_callback);
+                service_thread->onTcpSessionEnter(new_session->sock_fd() , new_session, enter_callback);
             });
         }
 
@@ -40,24 +40,24 @@ namespace spdnet {
             if (thread_num <= 0)
                 throw SpdnetException(std::string("thread_num must > 0 "));
 
-            run_loop_ = std::make_shared<bool>(true);
+            run_thread_ = std::make_shared<bool>(true);
             for (size_t i = 0; i < thread_num; i++) {
-                auto loop = std::make_shared<EventLoop>(kDefaultLoopTimeout);
-                loop->run(run_loop_);
-                loops_.push_back(loop);
+                auto service_thread = std::make_shared<ServiceThread>(kDefaultLoopTimeout);
+                service_thread->run(run_thread_);
+                threads_.push_back(service_thread);
             }
         }
 
         void EventService::stop() {
             try {
-                if (run_loop_) {
-                    *run_loop_ = false;
-                    for (auto &loop : loops_) {
-                        if (loop->getLoopThread()->joinable())
-                            loop->getLoopThread()->join();
+                if (*run_thread_) {
+                    *run_thread_ = false;
+                    for (auto & service_thread : threads_) {
+                        if (service_thread->getThread()->joinable())
+                            service_thread->getThread()->join();
                     }
 
-                    loops_.clear();
+                    threads_.clear();
                 }
             }
             catch (std::system_error &err) {
