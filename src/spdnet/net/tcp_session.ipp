@@ -15,9 +15,9 @@ namespace spdnet {
             socket_data_ = std::make_shared<SocketData>(fd, is_server_side);
         }
 
-		TcpSession::~TcpSession() {
-            
-		}
+        TcpSession::~TcpSession() {
+
+        }
 
         std::shared_ptr<TcpSession>
         TcpSession::create(sock_t fd, bool is_server_side, std::shared_ptr<ServiceThread> service_thread) {

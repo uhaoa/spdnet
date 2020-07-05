@@ -69,19 +69,19 @@ namespace spdnet {
 
             void close() {
 #if defined(SPDNET_PLATFORM_WINDOWS)
-			    recv_channel_ = nullptr;
-			    send_channel_ = nullptr;
+                recv_channel_ = nullptr;
+                send_channel_ = nullptr;
 #else
-				channel_ = nullptr;
+                channel_ = nullptr;
 #endif
-				if (disconnect_callback_)
-					disconnect_callback_();
+                if (disconnect_callback_)
+                    disconnect_callback_();
 
-                disconnect_callback_ = nullptr; 
-                data_callback_ = nullptr; 
+                disconnect_callback_ = nullptr;
+                data_callback_ = nullptr;
 
-				has_closed_ = true;
-				is_can_write_ = false;
+                has_closed_ = true;
+                is_can_write_ = false;
 
                 socket_ops::closeSocket(fd_);
             }
