@@ -19,7 +19,7 @@ namespace spdnet {
 			class IocpRecvChannel; 
 			class IocpSendChannel;
 #else
-			class TcpSessionChannel; 
+			class EPollSocketChannel;
 #endif
 		}
 		class SocketData : public spdnet::base::NonCopyable {
@@ -79,7 +79,7 @@ namespace spdnet {
 			std::shared_ptr<detail::IocpRecvChannel> recv_channel_;
 			std::shared_ptr<detail::IocpSendChannel> send_channel_;
 #else
-			std::shared_ptr<detail::TcpSocketChannel> channel_;
+			std::shared_ptr<detail::EPollSocketChannel> channel_;
 #endif
 		};
 	}

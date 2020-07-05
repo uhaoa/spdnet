@@ -23,7 +23,7 @@ namespace spdnet {
 			class IocpRecieveChannel; 
 			class IocpSendChannel; 
 
-			class IocpImpl : public spdnet::base::NonCopyable ,std::enable_shared_from_this<IocpImpl> {
+			class IocpImpl : public spdnet::base::NonCopyable ,public std::enable_shared_from_this<IocpImpl> {
 			public:
 				friend class IocpRecvChannel;
 				friend class IocpSendChannel;

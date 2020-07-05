@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
     service.runThread(atoi(argv[2]));
     spdnet::net::TcpAcceptor acceptor(service);
 
-    acceptor.start(spdnet::net::EndPoint::ipv4("0.0.0.0", atoi(argv[1])), [](spdnet::net::TcpSession::Ptr new_conn) {
+    acceptor.start(spdnet::net::EndPoint::ipv4("0.0.0.0", atoi(argv[1])), [](std::shared_ptr<spdnet::net::TcpSession> new_conn) {
         total_client_num++;
         bool session_recv = false;
         auto session_ptr = std::make_shared<SessionMessage>();
@@ -85,7 +85,7 @@ int main(int argc, char *argv[]) {
                     len -= sizeof(int);
                     data += sizeof(int);
                 }
-                assert(len <= payload_len);
+                assert(len <= (size_t)payload_len);
                 memcpy(payload_data + session_ptr->length - payload_len, data, len);
                 payload_len -= len;
                 if (payload_len == 0) {
@@ -97,7 +97,7 @@ int main(int argc, char *argv[]) {
             }
             return 0;
         });
-        new_conn->setDisconnectCallback([](spdnet::net::TcpSession::Ptr connection) {
+        new_conn->setDisconnectCallback([](std::shared_ptr<spdnet::net::TcpSession> connection) {
             total_client_num--;
         });
     });

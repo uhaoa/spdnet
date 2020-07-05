@@ -75,8 +75,9 @@ namespace spdnet {
 					std::lock_guard<std::mutex> lck(context_guard_);
 					connecting_context_[client_fd] = context;
 				}
-				context->reset();
-				service_thread->getImpl()->asyncConnect(client_fd, addr, context.get());
+                if (!service_thread->getImpl()->asyncConnect(client_fd, addr, context.get())){
+                    removeContext(client_fd);
+                }
             }
 
     }

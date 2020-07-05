@@ -16,9 +16,10 @@ namespace spdnet {
                 : wait_timeout_ms_(wait_timeout_ms) 
 		{
 			task_executor_ = std::make_shared<TaskExecutor>(this); 
-			io_impl_ = std::make_shared<detail::IoObjectImplType>(task_executor_, [this](sock_t fd) {
+			auto impl = std::make_shared<detail::IoObjectImplType>(task_executor_, [this](sock_t fd) {
 				removeTcpSession(fd); 
 			});
+			io_impl_ = impl;
         }
 
 

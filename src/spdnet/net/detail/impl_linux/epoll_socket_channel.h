@@ -9,20 +9,22 @@
 namespace spdnet {
     namespace net {
         namespace detail {
-            class TcpSocketChannel : public Channel {
+            class EPollSocketChannel : public Channel {
             public:
                 friend class EpollImpl;
 
-                TcpSocketChannel(std::shared_ptr<EpollImpl> impl, SocketData::Ptr data)
+                EPollSocketChannel(std::shared_ptr<EpollImpl> impl, SocketData::Ptr data)
                     :impl_(impl), data_(data)
 				{
 
                 }
 
 				void flushBuffer() {
+                    if (data_->has_closed_)
+                        return ;
 					bool force_close = false;
 					{
-						std::lock_guard<SpinLock> lck(data_->send_guard_);
+						std::lock_guard<spdnet::base::SpinLock> lck(data_->send_guard_);
 						if (SPDNET_PREDICT_TRUE(data_->pending_buffer_list_.empty())) {
 							data_->pending_buffer_list_.swap(data_->send_buffer_list_);
 						}
@@ -50,7 +52,7 @@ namespace spdnet {
 						const int send_len = ::writev(data_->sock_fd(), iov, static_cast<int>(cnt));
 						if (SPDNET_PREDICT_FALSE(send_len < 0)) {
 							if (errno == EAGAIN) {
-								addWriteEvent(data_);
+								impl_->addWriteEvent(data_);
 								data_->is_can_write_ = false;
 							}
 							else {
@@ -65,7 +67,7 @@ namespace spdnet {
 								if (SPDNET_PREDICT_TRUE(buffer->getLength() <= tmp_len)) {
 									tmp_len -= buffer->getLength();
 									buffer->clear();
-									loop_ref_.recycleBuffer(buffer);
+                                    spdnet::base::BufferPool::instance().recycleBuffer(buffer);
 									iter = data_->pending_buffer_list_.erase(iter);
 								}
 								else {
@@ -84,12 +86,12 @@ namespace spdnet {
 
 			private:
                 void trySend() override {
-                    flushBuffer(data_);
                     impl_->cancelWriteEvent(data_);
+                    flushBuffer();
                 }
 
                 void tryRecv() override {
-                    doRecv(data_);
+                    doRecv();
                 }
 
                 void onClose() override {

@@ -17,8 +17,9 @@ namespace spdnet {
 				ConnectContext(sock_t fd, std::shared_ptr<ServiceThread> service_thread, std::function<void()>&& success_cb, std::function<void()>&& failed_cb)
 					: fd_(fd), service_thread_(service_thread),
 					success_cb_(std::move(success_cb)),
-					failed_cb_(std::move(failed_cb)) {
-
+					failed_cb_(std::move(failed_cb))
+				{
+                    reset();
 				}
 
 				void doComplete(size_t bytes_transferred, std::error_code ec) override

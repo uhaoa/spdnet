@@ -5,12 +5,14 @@
 #include <mutex>
 #include <vector>
 #include <atomic>
+#include <iostream>
 #include <unordered_map>
 #include <spdnet/base/noncopyable.h>
 #include <spdnet/base/platform.h>
 #include <spdnet/base/buffer.h>
 #include <spdnet/net/socket_data.h>
 #include <spdnet/net/end_point.h>
+#include <spdnet/net/detail/impl_linux/epoll_wakeup_channel.h>
 
 namespace spdnet {
     namespace net {
@@ -18,11 +20,9 @@ namespace spdnet {
         class AsyncConnector;
         namespace detail {
             class Channel;
-            class WakeupChannel;
-
-            class EpollImpl : public spdnet::base::NonCopyable {
+            class EpollImpl : public spdnet::base::NonCopyable , public std::enable_shared_from_this<EpollImpl>{
             public:
-                friend class TcpSocketChannel;
+                friend class EPollSocketChannel;
 
                 explicit EpollImpl(std::shared_ptr<TaskExecutor> task_executor, std::function<void(sock_t)>&& socket_close_notify_cb) ;
 
@@ -62,7 +62,11 @@ namespace spdnet {
 				std::function<void(sock_t)> socket_close_notify_cb_;
                 std::vector<std::shared_ptr<Channel>> del_channel_list_;
             };
+
+            using IoObjectImplType = EpollImpl;
         }
     }
 }
+
+#include <spdnet/net/detail/impl_linux/epoll_impl.ipp>
 #endif  // SPDNET_NET_EPOLL_IMPL_H_

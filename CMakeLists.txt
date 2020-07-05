@@ -25,7 +25,7 @@ endif()
 
 
 SET(INCLUDE_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/include")
-install(DIRECTORY include/spdnet
+install(DIRECTORY src/spdnet
   DESTINATION "${INCLUDE_INSTALL_DIR}")
    
 

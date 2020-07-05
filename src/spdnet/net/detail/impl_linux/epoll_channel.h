@@ -1,9 +1,6 @@
 #ifndef SPDNET_NET_EPOLL_CHANNEL_H_
 #define SPDNET_NET_EPOLL_CHANNEL_H_
 
-#include <spdnet/base/noncopyable.h>
-#include <spdnet/base/platform.h>
-
 namespace spdnet {
     namespace net {
         namespace detail {
@@ -17,8 +14,6 @@ namespace spdnet {
 
                 virtual void onClose() = 0;
 
-                // whether the session is valid
-                volatile bool cancel_token_ = false; 
             };
 
         }

@@ -9,7 +9,7 @@
 #include <sys/epoll.h>
 #include <spdnet/base/platform.h>
 #include <spdnet/net/task_executor.h>
-#include <spdnet/net/detail/impl_linux/epoll_wakeup_channel.h>
+#include <spdnet/net/detail/impl_linux/epoll_socket_channel.h>
 
 namespace spdnet {
     namespace net {
@@ -32,7 +32,7 @@ namespace spdnet {
                 struct epoll_event event{0, {nullptr}};
                 event.events = EPOLLET | EPOLLIN | EPOLLOUT | EPOLLRDHUP;
                 event.data.ptr = data->channel_.get();
-                ::epoll_ctl(epoll_fd_, EPOLL_CTL_MOD, socket_data.sock_fd(), &event);
+                ::epoll_ctl(epoll_fd_, EPOLL_CTL_MOD, data->sock_fd(), &event);
             }
 
             void EpollImpl::cancelWriteEvent(SocketData::Ptr data) {
@@ -59,7 +59,7 @@ namespace spdnet {
 					std::lock_guard<spdnet::base::SpinLock> lck(socket_data->send_guard_);
                     socket_data->send_buffer_list_.push_back(buffer);
 				}
-                if (socket_data.is_post_flush_) {
+                if (socket_data->is_post_flush_) {
                     return;
                 }
 				socket_data->is_post_flush_ = true;
@@ -67,7 +67,7 @@ namespace spdnet {
 			    task_executor_->post([socket_data]() {
                     if (socket_data->is_can_write_) {
                         socket_data->channel_->flushBuffer();
-						socket_data.is_post_flush_ = false;
+						socket_data->is_post_flush_ = false;
                     }
                 });
             }
@@ -86,6 +86,14 @@ namespace spdnet {
 
             bool EpollImpl::asyncConnect(sock_t client_fd, const EndPoint& addr, Channel* channel)
             {
+                int ret = ::connect(client_fd, addr.socket_addr(), addr.socket_addr_len());
+                if (ret == 0) {
+                    channel->trySend();
+                    return true;
+                } else if (errno != EINPROGRESS) {
+                    channel->onClose();
+                    return true;
+                }
                 return linkChannel(client_fd, channel, EPOLLET | EPOLLOUT | EPOLLRDHUP);
             }
 
@@ -100,9 +108,10 @@ namespace spdnet {
                 data->has_closed_ = true;
                 data->is_can_write_ = false;
 
-                // Prevent the channel from being released
+                // closeSocket函数可能正在被channel调用 ， 将channel加入到待删除列表 ，是防止channel被立即释放引起crash
                 del_channel_list_.emplace_back(data->channel_);
-
+                // 切断data与channel的循环引用
+                data->channel_ = nullptr;
 				// cancel event
                 struct epoll_event ev{0, {nullptr}};
                 ::epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, data->sock_fd(), &ev);
@@ -122,7 +131,7 @@ namespace spdnet {
 
             bool EpollImpl::onSocketEnter(SocketData::Ptr data) {
                 auto impl = shared_from_this();
-                data->channel_ = std::make_shared<TcpSocketChannel>(impl, data); 
+                data->channel_ = std::make_shared<EPollSocketChannel>(impl, data);
                 return linkChannel(data->sock_fd(), data->channel_.get(), EPOLLET | EPOLLIN | EPOLLRDHUP);
             }
 
@@ -134,20 +143,17 @@ namespace spdnet {
                     auto channel = static_cast<Channel *>(event_entries_[i].data.ptr);
                     auto event = event_entries_[i].events;
 
-                    if (!channel->cancel_token_) {
-						if (SPDNET_PREDICT_FALSE(event & EPOLLRDHUP)) {
-							channel->tryRecv();
-							channel->onClose();
-							continue;
-						}
-						if (SPDNET_PREDICT_TRUE(event & EPOLLIN)) {
-							channel->tryRecv();
-						}
-						if (event & EPOLLOUT) {
-							channel->trySend();
-						}
+                    if (SPDNET_PREDICT_FALSE(event & EPOLLRDHUP)) {
+                        channel->tryRecv();
+                        channel->onClose();
+                        continue;
                     }
-
+                    if (SPDNET_PREDICT_TRUE(event & EPOLLIN)) {
+                        channel->tryRecv();
+                    }
+                    if (event & EPOLLOUT) {
+                        channel->trySend();
+                    }
                 }
 
                 if (SPDNET_PREDICT_FALSE(num_events == static_cast<int>(event_entries_.size()))) {

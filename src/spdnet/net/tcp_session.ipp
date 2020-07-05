@@ -16,8 +16,12 @@ namespace spdnet {
 
         TcpSession::~TcpSession()
         {
+#if defined(SPDNET_PLATFORM_WINDOWS)
             socket_data_->send_channel_ = nullptr; 
-            socket_data_->recv_channel_ = nullptr; 
+            socket_data_->recv_channel_ = nullptr;
+#else
+            socket_data_->channel_ = nullptr;
+#endif
         }
 
         std::shared_ptr<TcpSession> TcpSession::create(sock_t fd, bool is_server_side , std::shared_ptr<ServiceThread> service_thread ) {

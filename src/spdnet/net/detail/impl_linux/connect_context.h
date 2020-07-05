@@ -7,7 +7,6 @@
 #include <spdnet/net/tcp_session.h>
 #include <spdnet/net/end_point.h>
 #include <spdnet/base/platform.h>
-#include <spdnet/net/event_loop.h>
 #include <spdnet/net/detail/impl_linux/epoll_channel.h>
 #include <spdnet/net/detail/impl_linux/epoll_impl.h>
 
@@ -16,26 +15,19 @@ namespace spdnet {
         namespace detail {
             class ConnectContext : public detail::Channel {
             public:
-                ConnectContext(sock_t fd, std::shared_ptr<EventLoop> loop, std::function<void()> &&success_cb,
+                ConnectContext(sock_t fd, std::shared_ptr<ServiceThread> service_thread, std::function<void()> &&success_cb,
                                std::function<void()> &&failed_cb)
-                        : fd_(fd), loop_(loop),
+                        : fd_(fd), service_thread_(service_thread),
                           success_cb_(std::move(success_cb)),
                           failed_cb_(std::move(failed_cb)) {
 
-                }
-
-                ~ConnectContext() {
-                    if (fd_ != invalid_socket) {
-                        cancelEvent();
-                        socket_ops::closeSocket(fd_);
-                    }
                 }
 
                 void trySend() override {
                     cancelEvent();
                     int result = 0;
                     socklen_t result_len = sizeof(result);
-                    if (SPDNET_PREDICT_FALSE(getsockopt(fd_, SOL_SOCKET, SO_ERROR, &result, &result_len) == -1
+                    if (SPDNET_PREDICT_FALSE(getsockopt(fd_, SOL_SOCKET, SO_ERROR, &result, &result_len) == SPDNET_SOCKET_ERROR
                                              || result != 0
                                              || socket_ops::checkSelfConnect(fd_))) {
                         assert(failed_cb_ != nullptr);
@@ -67,16 +59,16 @@ namespace spdnet {
 
                 void cancelEvent() {
                     struct epoll_event ev{0, {nullptr}};
-                    ::epoll_ctl(loop_->getImpl().epoll_fd(), EPOLL_CTL_DEL, fd_, &ev);
+                    ::epoll_ctl(service_thread_->getImpl()->epoll_fd(), EPOLL_CTL_DEL, fd_, &ev);
                 }
 
-                std::shared_ptr<EventLoop> getLoop() {
-                    return loop_;
+                std::shared_ptr<ServiceThread> getServiceThread() {
+                    return service_thread_;
                 }
 
             private:
                 sock_t fd_{invalid_socket};
-                std::shared_ptr<EventLoop> loop_;
+                std::shared_ptr<ServiceThread> service_thread_;
                 std::function<void()> success_cb_;
                 std::function<void()> failed_cb_;
             };

@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
         std::shared_ptr<int> number_ptr = std::make_shared<int>(number);
         connector.asyncConnect(spdnet::net::EndPoint::ipv4(argv[1], atoi(argv[2])),
                                [&service, session_msg, msg, number_ptr, length, &cur_client_num](
-                                       spdnet::net::TcpSession::Ptr new_conn) {
+                                       std::shared_ptr<spdnet::net::TcpSession> new_conn) {
                                    new_conn->setDataCallback(
                                            [new_conn, msg, number_ptr, length, &cur_client_num](const char *data,
                                                                                                 size_t len) mutable -> size_t {
@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
                                                }
                                                return 0;
                                            });
-                                   new_conn->setDisconnectCallback([](spdnet::net::TcpSession::Ptr connection) {
+                                   new_conn->setDisconnectCallback([](std::shared_ptr<spdnet::net::TcpSession> connection) {
                                        std::cout << "tcp connection disconnect " << std::endl;
 
                                    });
