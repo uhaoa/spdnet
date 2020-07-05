@@ -49,16 +49,19 @@ namespace spdnet {
                 size_t index = getIndex(size);
                 assert(index < pool_.size());
                 auto &pool_head = pool_[index];
+                /*
                 Buffer *buffer = pool_head.load(std::memory_order_acquire);
                 if (SPDNET_PREDICT_FALSE(!buffer)) {
                     return new Buffer(size);
                 }
+                */
                 Buffer *ptr = nullptr;
                 do {
                     ptr = pool_head.load(std::memory_order_relaxed);
-                } while (!pool_head.compare_exchange_weak(
+                } while (ptr && !pool_head.compare_exchange_weak(
                         ptr, ptr->getNext(), std::memory_order_release, std::memory_order_relaxed));
-
+                if (!ptr)
+                    ptr = new Buffer(size);
                 return ptr;
             }
 

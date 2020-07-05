@@ -54,16 +54,13 @@ namespace spdnet {
             void IocpImpl::closeSocket(SocketData::Ptr data) {
                 if (data->has_closed_)
                     return;
-                data->has_closed_ = true;
-                data->is_can_write_ = false;
 
                 del_channel_list_.emplace_back(data->send_channel_);
                 del_channel_list_.emplace_back(data->recv_channel_);
 
-                socket_ops::closeSocket(data->sock_fd());
                 socket_close_notify_cb_(data->sock_fd());
-                if (data->disconnect_callback_)
-                    data->disconnect_callback_();
+
+                data->close();
             }
 
             bool IocpImpl::asyncConnect(sock_t fd, const EndPoint &addr, Channel *op) {

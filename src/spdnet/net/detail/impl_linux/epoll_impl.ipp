@@ -102,21 +102,17 @@ namespace spdnet {
             void EpollImpl::closeSocket(SocketData::Ptr data) {
                 if (data->has_closed_)
                     return;
-                data->has_closed_ = true;
-                data->is_can_write_ = false;
 
                 // closeSocket函数可能正在被channel调用 ， 将channel加入到待删除列表 ，是防止channel被立即释放引起crash
                 del_channel_list_.emplace_back(data->channel_);
-                // 切断data与channel的循环引用
-                data->channel_ = nullptr;
+
                 // cancel event
                 struct epoll_event ev{0, {nullptr}};
                 ::epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, data->sock_fd(), &ev);
 
-                socket_ops::closeSocket(data->sock_fd());
                 socket_close_notify_cb_(data->sock_fd());
-                if (data->disconnect_callback_)
-                    data->disconnect_callback_();
+
+                data->close();
             }
 
             void EpollImpl::shutdownSocket(SocketData::Ptr data) {

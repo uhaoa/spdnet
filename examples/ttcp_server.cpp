@@ -28,16 +28,17 @@ void gprofStartAndStop(int signum) {
     }
 }
 */
+#pragma pack (1)
 struct SessionMessage {
     int number;
     int length;
-} __attribute__ ((__packed__));
+} ;
 
 struct PayloadMessage {
     int length;
     char data[0];
 };
-
+#pragma pack(pop)
 
 int main(int argc, char *argv[]) {
     if (argc != 3) {

@@ -5,15 +5,17 @@
 #include <atomic>
 //#include <gperftools/profiler.h>
 
+#pragma pack (1)
 struct SessionMessage {
     int number;
     int length;
-}__attribute__((__packed__));
+};
 
 struct PayloadMessage {
     int length;
     char data[0];
 };
+#pragma pack(pop)
 
 /*
 void gprofStartAndStop(int signum) {

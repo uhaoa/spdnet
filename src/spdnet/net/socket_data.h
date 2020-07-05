@@ -67,6 +67,25 @@ namespace spdnet {
 
             bool isServerSide() { return is_server_side_; }
 
+            void close() {
+#if defined(SPDNET_PLATFORM_WINDOWS)
+			    recv_channel_ = nullptr;
+			    send_channel_ = nullptr;
+#else
+				channel_ = nullptr;
+#endif
+				if (disconnect_callback_)
+					disconnect_callback_();
+
+                disconnect_callback_ = nullptr; 
+                data_callback_ = nullptr; 
+
+				has_closed_ = true;
+				is_can_write_ = false;
+
+                socket_ops::closeSocket(fd_);
+            }
+
         public:
             sock_t fd_;
             bool is_server_side_{false};

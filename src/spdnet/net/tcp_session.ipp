@@ -15,14 +15,9 @@ namespace spdnet {
             socket_data_ = std::make_shared<SocketData>(fd, is_server_side);
         }
 
-        TcpSession::~TcpSession() {
-#if defined(SPDNET_PLATFORM_WINDOWS)
-            socket_data_->send_channel_ = nullptr; 
-            socket_data_->recv_channel_ = nullptr;
-#else
-            socket_data_->channel_ = nullptr;
-#endif
-        }
+		TcpSession::~TcpSession() {
+            
+		}
 
         std::shared_ptr<TcpSession>
         TcpSession::create(sock_t fd, bool is_server_side, std::shared_ptr<ServiceThread> service_thread) {
@@ -32,10 +27,11 @@ namespace spdnet {
         void TcpSession::setDisconnectCallback(TcpDisconnectCallback &&callback) {
             auto cb = std::move(callback);
             auto this_ptr = shared_from_this();
-            socket_data_->setDisconnectCallback([cb, this_ptr]() {
+            socket_data_->setDisconnectCallback([cb, this_ptr]() mutable {
                 if (cb) {
                     cb(this_ptr);
                 }
+                this_ptr = nullptr;
                 /*this_ptr->loop_owner_->removeTcpSession(this_ptr->sock_fd());*/
             });
         }
