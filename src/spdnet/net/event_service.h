@@ -22,7 +22,7 @@ namespace spdnet {
             ~EventService() noexcept;
 
             void
-            addTcpSession(sock_t fd, bool is_server_side , const TcpEnterCallback &enter_callback);
+            addTcpSession(sock_t fd, bool is_server_side, const TcpEnterCallback &enter_callback);
 
             void runThread(size_t thread_num);
 
@@ -30,6 +30,7 @@ namespace spdnet {
 
         private:
             void stop();
+
         private:
             std::shared_ptr<bool> run_thread_;
             std::vector<std::shared_ptr<ServiceThread>> threads_;
@@ -40,4 +41,5 @@ namespace spdnet {
 }
 
 #include <spdnet/net/event_service.ipp>
+
 #endif // SPDNET_NET_EVENTSERVICE_H_

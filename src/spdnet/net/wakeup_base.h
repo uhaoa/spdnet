@@ -5,7 +5,7 @@ namespace spdnet {
     namespace net {
         class WakeupBase {
         public:
-            virtual void wakeup() = 0; 
+            virtual void wakeup() = 0;
         };
     }
 }

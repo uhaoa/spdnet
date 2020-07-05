@@ -13,16 +13,17 @@ namespace spdnet {
                 explicit EpollWakeupChannel() noexcept
                         : fd_(::eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK)) {}
 
-                ~EpollWakeupChannel()
-                {
-                    socket_ops::closeSocket(fd_); 
+                ~EpollWakeupChannel() {
+                    socket_ops::closeSocket(fd_);
                 }
+
                 bool wakeup() {
                     int data = 1;
                     return ::write(fd_, &data, sizeof(data)) == 0;
                 }
 
                 sock_t eventfd() const { return fd_; }
+
             private:
                 void trySend() override {
 

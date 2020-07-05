@@ -20,22 +20,20 @@ namespace spdnet {
             explicit Buffer(size_t buffer_size = min_buffer_size) {
                 if (buffer_size < min_buffer_size)
                     buffer_size = min_buffer_size;
-                if ((data_ = (char*)malloc(sizeof(char) * buffer_size)) != nullptr)
+                if ((data_ = (char *) malloc(sizeof(char) * buffer_size)) != nullptr)
                     data_size_ = buffer_size;
             }
 
-            void write(const char* data, size_t len) {
+            void write(const char *data, size_t len) {
                 if (getWriteValidCount() >= len) {
                     memcpy(getWritePtr(), data, len);
                     addWritePos(len);
-                }
-                else {
+                } else {
                     size_t left_len = data_size_ - getLength();
                     if (left_len >= len) {
                         adjustToHead();
                         write(data, len);
-                    }
-                    else {
+                    } else {
                         size_t need_len = len - left_len;
                         if (need_len > 0) {
                             grow(need_len);
@@ -49,7 +47,7 @@ namespace spdnet {
                 return write_pos_ - read_pos_;
             }
 
-            char* getDataPtr() {
+            char *getDataPtr() {
                 if (read_pos_ < data_size_)
                     return data_ + read_pos_;
 
@@ -61,7 +59,7 @@ namespace spdnet {
                     read_pos_ = read_pos_ + len;
             }
 
-            void swap(Buffer& other) {
+            void swap(Buffer &other) {
                 std::swap(data_, other.data_);
                 std::swap(data_size_, other.data_size_);
                 std::swap(write_pos_, other.write_pos_);
@@ -74,7 +72,7 @@ namespace spdnet {
 
             void grow(size_t len) {
                 size_t n = data_size_ + len;
-                char* new_data = new char[n];
+                char *new_data = new char[n];
                 memcpy(new_data, data_, write_pos_);
                 data_size_ = n;
                 delete[] data_;
@@ -107,18 +105,18 @@ namespace spdnet {
             }
 
 
-            char* getWritePtr() {
+            char *getWritePtr() {
                 if (write_pos_ < data_size_)
                     return data_ + write_pos_;
                 else
                     return nullptr;
             }
 
-            void setNext(Buffer* next) {
+            void setNext(Buffer *next) {
                 next_ = next;
             }
 
-            Buffer* getNext() const {
+            Buffer *getNext() const {
                 return next_;
             }
 
@@ -129,13 +127,13 @@ namespace spdnet {
                 write_pos_ = 0;
             }
 
-            char* data_{ nullptr };
-            size_t data_size_{ 0 };
+            char *data_{nullptr};
+            size_t data_size_{0};
 
-            size_t write_pos_{ 0 };
-            size_t read_pos_{ 0 };
+            size_t write_pos_{0};
+            size_t read_pos_{0};
 
-            Buffer* next_{ nullptr };
+            Buffer *next_{nullptr};
         };
 
     }

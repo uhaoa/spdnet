@@ -11,22 +11,23 @@ namespace spdnet {
         public:
             EnvInit() {
 #ifdef SPDNET_PLATFORM_WINDOWS
-				static WSADATA gWsaData;
-				static bool winSockIsInit = false;
+                static WSADATA gWsaData;
+                static bool winSockIsInit = false;
                 if (!winSockIsInit)
                 {
-					if (WSAStartup(MAKEWORD(2, 2), &gWsaData) == 0){
+                    if (WSAStartup(MAKEWORD(2, 2), &gWsaData) == 0){
                         winSockIsInit = true;
-					}
+                    }
                 }
 
 #else
                 std::signal(SIGPIPE, SIG_IGN);
 #endif
             }
+
             ~EnvInit() {
 #ifdef SPDNET_PLATFORM_WINDOWS
-				WSACleanup();
+                WSACleanup();
 #endif
             }
         };

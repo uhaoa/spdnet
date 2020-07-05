@@ -14,11 +14,11 @@
 namespace spdnet {
     namespace net {
         namespace detail {
-            EpollImpl::EpollImpl(std::shared_ptr<TaskExecutor> task_executor, std::function<void(sock_t)>&& socket_close_notify_cb) 
+            EpollImpl::EpollImpl(std::shared_ptr<TaskExecutor> task_executor,
+                                 std::function<void(sock_t)> &&socket_close_notify_cb)
                     : epoll_fd_(::epoll_create(1)),
-                    task_executor_(task_executor),
-                    socket_close_notify_cb_(socket_close_notify_cb)
-            {
+                      task_executor_(task_executor),
+                      socket_close_notify_cb_(socket_close_notify_cb) {
                 linkChannel(wakeup_.eventfd(), &wakeup_, EPOLLET | EPOLLIN | EPOLLRDHUP);
                 event_entries_.resize(1024);
             }
@@ -49,43 +49,41 @@ namespace spdnet {
                 return ::epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, fd, &event) == 0;
             }
 
-            void EpollImpl::send(SocketData::Ptr socket_data, const char* data, size_t len) {
-				if (!socket_data->is_can_write_)
-					return; 
-				auto buffer = spdnet::base::BufferPool::instance().allocBufferBySize(len);
-				assert(buffer);
-				buffer->write(data, len);
-				{
-					std::lock_guard<spdnet::base::SpinLock> lck(socket_data->send_guard_);
+            void EpollImpl::send(SocketData::Ptr socket_data, const char *data, size_t len) {
+                if (!socket_data->is_can_write_)
+                    return;
+                auto buffer = spdnet::base::BufferPool::instance().allocBufferBySize(len);
+                assert(buffer);
+                buffer->write(data, len);
+                {
+                    std::lock_guard<spdnet::base::SpinLock> lck(socket_data->send_guard_);
                     socket_data->send_buffer_list_.push_back(buffer);
-				}
+                }
                 if (socket_data->is_post_flush_) {
                     return;
                 }
-				socket_data->is_post_flush_ = true;
+                socket_data->is_post_flush_ = true;
 
-			    task_executor_->post([socket_data]() {
+                task_executor_->post([socket_data]() {
                     if (socket_data->is_can_write_) {
                         socket_data->channel_->flushBuffer();
-						socket_data->is_post_flush_ = false;
+                        socket_data->is_post_flush_ = false;
                     }
                 });
             }
 
-            bool EpollImpl::startAccept(sock_t listen_fd, const Channel* channel)
-            {
-				struct epoll_event ev;
-				ev.events = EPOLLIN;
-				ev.data.ptr = (void*)channel;
-				if (epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, listen_fd, &ev) != 0) {
-                    return false; 
-				}
+            bool EpollImpl::startAccept(sock_t listen_fd, const Channel *channel) {
+                struct epoll_event ev;
+                ev.events = EPOLLIN;
+                ev.data.ptr = (void *) channel;
+                if (epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, listen_fd, &ev) != 0) {
+                    return false;
+                }
 
-                return true; 
+                return true;
             }
 
-            bool EpollImpl::asyncConnect(sock_t client_fd, const EndPoint& addr, Channel* channel)
-            {
+            bool EpollImpl::asyncConnect(sock_t client_fd, const EndPoint &addr, Channel *channel) {
                 int ret = ::connect(client_fd, addr.socket_addr(), addr.socket_addr_len());
                 if (ret == 0) {
                     channel->trySend();
@@ -97,10 +95,9 @@ namespace spdnet {
                 return linkChannel(client_fd, channel, EPOLLET | EPOLLOUT | EPOLLRDHUP);
             }
 
-			void EpollImpl::wakeup()
-			{
+            void EpollImpl::wakeup() {
                 wakeup_.wakeup();
-			}
+            }
 
             void EpollImpl::closeSocket(SocketData::Ptr data) {
                 if (data->has_closed_)
@@ -112,13 +109,13 @@ namespace spdnet {
                 del_channel_list_.emplace_back(data->channel_);
                 // 切断data与channel的循环引用
                 data->channel_ = nullptr;
-				// cancel event
+                // cancel event
                 struct epoll_event ev{0, {nullptr}};
                 ::epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, data->sock_fd(), &ev);
 
                 socket_ops::closeSocket(data->sock_fd());
-                socket_close_notify_cb_(data->sock_fd()); 
-				if (data->disconnect_callback_)
+                socket_close_notify_cb_(data->sock_fd());
+                if (data->disconnect_callback_)
                     data->disconnect_callback_();
             }
 
@@ -135,7 +132,6 @@ namespace spdnet {
                 return linkChannel(data->sock_fd(), data->channel_.get(), EPOLLET | EPOLLIN | EPOLLRDHUP);
             }
 
-   
 
             void EpollImpl::runOnce(uint32_t timeout) {
                 int num_events = ::epoll_wait(epoll_fd_, event_entries_.data(), event_entries_.size(), timeout);

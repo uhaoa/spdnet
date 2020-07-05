@@ -17,14 +17,17 @@
 namespace spdnet {
     namespace net {
         class TaskExecutor;
+
         class AsyncConnector;
         namespace detail {
             class Channel;
-            class EpollImpl : public spdnet::base::NonCopyable , public std::enable_shared_from_this<EpollImpl>{
+
+            class EpollImpl : public spdnet::base::NonCopyable, public std::enable_shared_from_this<EpollImpl> {
             public:
                 friend class EPollSocketChannel;
 
-                explicit EpollImpl(std::shared_ptr<TaskExecutor> task_executor, std::function<void(sock_t)>&& socket_close_notify_cb) ;
+                explicit EpollImpl(std::shared_ptr<TaskExecutor> task_executor,
+                                   std::function<void(sock_t)> &&socket_close_notify_cb);
 
                 virtual ~EpollImpl() noexcept;
 
@@ -32,19 +35,20 @@ namespace spdnet {
 
                 void runOnce(uint32_t timeout);
 
-                void send(SocketData::Ptr socket_data, const char* data, size_t len);
+                void send(SocketData::Ptr socket_data, const char *data, size_t len);
 
                 void shutdownSocket(SocketData::Ptr data);
 
                 int epoll_fd() const { return epoll_fd_; }
 
-                bool linkChannel(int fd, const Channel* channel, uint32_t events);
+                bool linkChannel(int fd, const Channel *channel, uint32_t events);
 
-                bool startAccept(sock_t listen_fd, const Channel* channel);
+                bool startAccept(sock_t listen_fd, const Channel *channel);
 
-                bool asyncConnect(sock_t client_fd, const EndPoint& addr, Channel* channel);
+                bool asyncConnect(sock_t client_fd, const EndPoint &addr, Channel *channel);
 
                 inline void wakeup();
+
             private:
                 void closeSocket(SocketData::Ptr data);
 
@@ -58,8 +62,8 @@ namespace spdnet {
                 int epoll_fd_;
                 EpollWakeupChannel wakeup_;
                 std::vector<epoll_event> event_entries_;
-				std::shared_ptr<TaskExecutor> task_executor_;
-				std::function<void(sock_t)> socket_close_notify_cb_;
+                std::shared_ptr<TaskExecutor> task_executor_;
+                std::function<void(sock_t)> socket_close_notify_cb_;
                 std::vector<std::shared_ptr<Channel>> del_channel_list_;
             };
 
@@ -69,4 +73,5 @@ namespace spdnet {
 }
 
 #include <spdnet/net/detail/impl_linux/epoll_impl.ipp>
+
 #endif  // SPDNET_NET_EPOLL_IMPL_H_

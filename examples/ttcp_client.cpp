@@ -79,10 +79,11 @@ int main(int argc, char *argv[]) {
                                                }
                                                return 0;
                                            });
-                                   new_conn->setDisconnectCallback([](std::shared_ptr<spdnet::net::TcpSession> connection) {
-                                       std::cout << "tcp connection disconnect " << std::endl;
+                                   new_conn->setDisconnectCallback(
+                                           [](std::shared_ptr<spdnet::net::TcpSession> connection) {
+                                               std::cout << "tcp connection disconnect " << std::endl;
 
-                                   });
+                                           });
                                    new_conn->send((char *) &*session_msg, sizeof(SessionMessage));
                                },
                 // failed cb

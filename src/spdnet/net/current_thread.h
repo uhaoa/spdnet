@@ -19,7 +19,7 @@
 namespace spdnet {
     namespace net {
         namespace current_thread {
-            inline thread_id_t& tid() {
+            inline thread_id_t &tid() {
                 static THREAD_LOCAL thread_id_t cached_tid = 0;
                 if (cached_tid == 0) {
 #if defined SPDNET_PLATFORM_WINDOWS

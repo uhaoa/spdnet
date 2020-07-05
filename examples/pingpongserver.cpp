@@ -24,7 +24,7 @@ void gprofStartAndStop(int signum) {
     }
 }
 */
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     if (argc != 3) {
         fprintf(stderr, "usage : <port> <thread num>\n");
         exit(-1);
@@ -33,25 +33,26 @@ int main(int argc, char* argv[]) {
     spdnet::net::EventService service;
     service.runThread(atoi(argv[2]));
     spdnet::net::TcpAcceptor acceptor(service);
-    acceptor.start(spdnet::net::EndPoint::ipv4("0.0.0.0", atoi(argv[1])), [](std::shared_ptr<spdnet::net::TcpSession> session) {
-        total_client_num++;
-        session->setDataCallback([session](const char* data, size_t len) -> size_t {
-            session->send(data, len);
-            total_recv_size += len;
-            total_packet_num++;
-            return len;
-            });
-        session->setDisconnectCallback([](std::shared_ptr<spdnet::net::TcpSession> connection) {
-            total_client_num--;
-            });
-        session->setNodelay();
-        });
+    acceptor.start(spdnet::net::EndPoint::ipv4("0.0.0.0", atoi(argv[1])),
+                   [](std::shared_ptr<spdnet::net::TcpSession> session) {
+                       total_client_num++;
+                       session->setDataCallback([session](const char *data, size_t len) -> size_t {
+                           session->send(data, len);
+                           total_recv_size += len;
+                           total_packet_num++;
+                           return len;
+                       });
+                       session->setDisconnectCallback([](std::shared_ptr<spdnet::net::TcpSession> connection) {
+                           total_client_num--;
+                       });
+                       session->setNodelay();
+                   });
 
 
     while (true) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
         std::cout << "total recv : " << (total_recv_size / 1024) / 1024 << " M /s, of client num:" << total_client_num
-            << std::endl;
+                  << std::endl;
         std::cout << "packet num:" << total_packet_num << std::endl;
         total_packet_num = 0;
         total_recv_size = 0;

@@ -15,7 +15,8 @@ namespace spdnet {
         namespace detail {
             class ConnectContext : public detail::Channel {
             public:
-                ConnectContext(sock_t fd, std::shared_ptr<ServiceThread> service_thread, std::function<void()> &&success_cb,
+                ConnectContext(sock_t fd, std::shared_ptr<ServiceThread> service_thread,
+                               std::function<void()> &&success_cb,
                                std::function<void()> &&failed_cb)
                         : fd_(fd), service_thread_(service_thread),
                           success_cb_(std::move(success_cb)),
@@ -27,9 +28,10 @@ namespace spdnet {
                     cancelEvent();
                     int result = 0;
                     socklen_t result_len = sizeof(result);
-                    if (SPDNET_PREDICT_FALSE(getsockopt(fd_, SOL_SOCKET, SO_ERROR, &result, &result_len) == SPDNET_SOCKET_ERROR
-                                             || result != 0
-                                             || socket_ops::checkSelfConnect(fd_))) {
+                    if (SPDNET_PREDICT_FALSE(
+                            getsockopt(fd_, SOL_SOCKET, SO_ERROR, &result, &result_len) == SPDNET_SOCKET_ERROR
+                            || result != 0
+                            || socket_ops::checkSelfConnect(fd_))) {
                         assert(failed_cb_ != nullptr);
                         failed_cb_();
                         socket_ops::closeSocket(fd_);

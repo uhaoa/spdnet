@@ -5,9 +5,9 @@ namespace spdnet {
     namespace base {
         class NonCopyable {
         public:
-            NonCopyable(const NonCopyable&) = delete;
+            NonCopyable(const NonCopyable &) = delete;
 
-            void operator=(const NonCopyable&) = delete;
+            void operator=(const NonCopyable &) = delete;
 
         protected:
             NonCopyable() = default;

@@ -1,5 +1,6 @@
 #ifndef SPDNET_NET_EVENTSERVICE_IPP_
 #define SPDNET_NET_EVENTSERVICE_IPP_
+
 #include <spdnet/net/event_service.h>
 #include <iostream>
 #include <spdnet/net/socket_ops.h>
@@ -24,9 +25,9 @@ namespace spdnet {
             return threads_[rand_num % threads_.size()];
         }
 
-        void EventService::addTcpSession(sock_t fd, bool is_server_side ,  const TcpEnterCallback &enter_callback) {
+        void EventService::addTcpSession(sock_t fd, bool is_server_side, const TcpEnterCallback &enter_callback) {
             std::shared_ptr<ServiceThread> service_thread = getServiceThread();
-            std::shared_ptr<TcpSession> new_session = TcpSession::create(fd , is_server_side , service_thread);
+            std::shared_ptr<TcpSession> new_session = TcpSession::create(fd, is_server_side, service_thread);
             service_thread->getExecutor()->post([service_thread, new_session, enter_callback]() {
                 /*
                 if (loop->getImpl().onSocketEnter(*new_session->socket_data_)){
@@ -34,7 +35,7 @@ namespace spdnet {
                         enter_callback(new_session);
                 }
                 */
-                service_thread->onTcpSessionEnter(new_session->sock_fd() , new_session, enter_callback);
+                service_thread->onTcpSessionEnter(new_session->sock_fd(), new_session, enter_callback);
             });
         }
 
@@ -54,7 +55,7 @@ namespace spdnet {
             try {
                 if (*run_thread_) {
                     *run_thread_ = false;
-                    for (auto & service_thread : threads_) {
+                    for (auto &service_thread : threads_) {
                         if (service_thread->getThread()->joinable())
                             service_thread->getThread()->join();
                     }

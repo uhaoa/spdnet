@@ -51,12 +51,12 @@ using sock_t = int;
 constexpr sock_t invalid_socket = -1;
 
 inline int current_errno() {
-	return errno;
+    return errno;
 }
 
 #define SPDNET_SOCKET_ERROR -1
 
-using thread_id_t = int; 
+using thread_id_t = int;
 #else
 #include <winsock2.h>
 #include <mswsock.h>
@@ -69,7 +69,7 @@ using sock_t = SOCKET;
 constexpr sock_t invalid_socket = INVALID_SOCKET;
 
 inline int current_errno() {
-	return WSAGetLastError();
+    return WSAGetLastError();
 }
 
 #define SPDNET_SOCKET_ERROR SOCKET_ERROR

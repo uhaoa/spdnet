@@ -12,9 +12,11 @@ namespace spdnet {
 
         class EndPoint {
         public:
-            EndPoint() = default; 
+            EndPoint() = default;
+
             ~EndPoint() = default;
-            static EndPoint ipv4(const std::string& ip, const uint16_t port) {
+
+            static EndPoint ipv4(const std::string &ip, const uint16_t port) {
                 EndPoint ret;
                 ::memset(&ret.addr_, 0, sizeof(ret.addr_));
                 ret.addr_.sin_family = AF_INET;
@@ -23,7 +25,7 @@ namespace spdnet {
                 return ret;
             }
 
-            static EndPoint ipv6(const std::string& ip, const uint16_t port) {
+            static EndPoint ipv6(const std::string &ip, const uint16_t port) {
                 EndPoint ret;
                 ::memset(&ret.addr6_, 0, sizeof(ret.addr6_));
                 ret.addr6_.sin6_family = AF_INET6;
@@ -37,8 +39,7 @@ namespace spdnet {
                     char buf[INET_ADDRSTRLEN] = "";
                     ::inet_ntop(AF_INET, &addr_.sin_addr, buf, INET_ADDRSTRLEN);
                     return std::string(buf);
-                }
-                else if (addr_.sin_family == AF_INET6) {
+                } else if (addr_.sin_family == AF_INET6) {
                     char buf[INET6_ADDRSTRLEN] = "";
                     ::inet_ntop(AF_INET6, &addr6_.sin6_addr, buf, INET6_ADDRSTRLEN);
                     return std::string(buf);
@@ -58,8 +59,8 @@ namespace spdnet {
             }
 
             // support ipv4 and ipv6
-            const struct sockaddr*
-                socket_addr() const { return static_cast<const struct sockaddr*>((const void*)(&addr6_)); }
+            const struct sockaddr *
+            socket_addr() const { return static_cast<const struct sockaddr *>((const void *) (&addr6_)); }
 
             // support ipv4 and ipv6
             size_t socket_addr_len() const { return sizeof(sockaddr_in6); };

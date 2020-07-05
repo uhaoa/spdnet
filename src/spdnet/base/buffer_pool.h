@@ -23,9 +23,9 @@ namespace spdnet {
 
             ~BufferPool() {
                 for (size_t i = 0; i < max_pool_size; i++) {
-                    Buffer* ptr = pool_[i].load(std::memory_order_relaxed);
+                    Buffer *ptr = pool_[i].load(std::memory_order_relaxed);
                     while (ptr) {
-                        Buffer* next = ptr->getNext();
+                        Buffer *next = ptr->getNext();
                         delete ptr;
                         ptr = next;
                     }
@@ -33,31 +33,31 @@ namespace spdnet {
                 }
             }
 
-            void recycleBuffer(Buffer* buffer) {
+            void recycleBuffer(Buffer *buffer) {
                 assert(buffer != nullptr);
                 uint32_t index = getIndex(buffer->getCapacity());
-                auto& pool_head = pool_[index];
-                Buffer* ptr = nullptr;
+                auto &pool_head = pool_[index];
+                Buffer *ptr = nullptr;
                 do {
                     ptr = pool_head.load(std::memory_order_relaxed);
                     buffer->setNext(ptr);
                 } while (!pool_head.compare_exchange_weak(
-                    ptr, buffer, std::memory_order_release, std::memory_order_relaxed));
+                        ptr, buffer, std::memory_order_release, std::memory_order_relaxed));
             }
 
-            Buffer* allocBufferBySize(size_t size) {
+            Buffer *allocBufferBySize(size_t size) {
                 size_t index = getIndex(size);
                 assert(index < pool_.size());
-                auto& pool_head = pool_[index];
-                Buffer* buffer = pool_head.load(std::memory_order_acquire);
+                auto &pool_head = pool_[index];
+                Buffer *buffer = pool_head.load(std::memory_order_acquire);
                 if (SPDNET_PREDICT_FALSE(!buffer)) {
                     return new Buffer(size);
                 }
-                Buffer* ptr = nullptr;
+                Buffer *ptr = nullptr;
                 do {
                     ptr = pool_head.load(std::memory_order_relaxed);
                 } while (!pool_head.compare_exchange_weak(
-                    ptr, ptr->getNext(), std::memory_order_release, std::memory_order_relaxed));
+                        ptr, ptr->getNext(), std::memory_order_release, std::memory_order_relaxed));
 
                 return ptr;
             }
@@ -78,7 +78,7 @@ namespace spdnet {
             }
 
         private:
-            std::array<std::atomic<Buffer*>, max_pool_size> pool_;
+            std::array<std::atomic<Buffer *>, max_pool_size> pool_;
         };
 
     }

@@ -9,7 +9,7 @@ namespace spdnet {
         class SpinLock {
         public:
             SpinLock()
-                : atomic_lock_(false) {
+                    : atomic_lock_(false) {
             }
 
             inline void lock() {
