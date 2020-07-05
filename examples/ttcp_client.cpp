@@ -5,7 +5,7 @@
 #include <atomic>
 //#include <gperftools/profiler.h>
 
-#pragma pack (1)
+#pragma pack(push, 1)
 struct SessionMessage {
     int number;
     int length;

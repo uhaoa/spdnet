@@ -28,7 +28,7 @@ void gprofStartAndStop(int signum) {
     }
 }
 */
-#pragma pack (1)
+#pragma pack(push, 1)
 struct SessionMessage {
     int number;
     int length;
