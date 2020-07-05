@@ -15,7 +15,7 @@ namespace spdnet {
     namespace net {
         class EventService;
 
-        class SPDNET_EXPORT TcpAcceptor : public spdnet::base::NonCopyable {
+        class TcpAcceptor : public spdnet::base::NonCopyable {
 		private:
 			class AcceptContext;
 			friend class AcceptContext; 
@@ -40,5 +40,6 @@ namespace spdnet {
     }
 }
 
+#include <spdnet/net/acceptor.ipp>
 
 #endif  // SPDNET_NET_ACCEPTOR_H_

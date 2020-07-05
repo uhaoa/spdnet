@@ -9,11 +9,10 @@
 #include <spdnet/base/spin_lock.h>
 #include <spdnet/base/platform.h>
 #include <spdnet/net/socket_data.h>
-//#include <spdnet/net/service_thread.h>
 namespace spdnet {
     namespace net {
 		class ServiceThread; 
-		class SPDNET_EXPORT TcpSession : public spdnet::base::NonCopyable, public std::enable_shared_from_this<TcpSession> {
+		class TcpSession : public spdnet::base::NonCopyable, public std::enable_shared_from_this<TcpSession> {
 		public:
 			friend class ServiceThread;
 			friend class EventService;
@@ -22,7 +21,7 @@ namespace spdnet {
 		public:
 			inline TcpSession(sock_t fd, bool is_server_side, std::shared_ptr<ServiceThread> service_thread);
 
-			inline ~TcpSession() = default;
+			inline ~TcpSession() ;
 
 			inline void postShutDown();
 

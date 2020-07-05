@@ -1,3 +1,5 @@
+#ifndef SPDNET_NET_ACCEPTOR_IPP_
+#define SPDNET_NET_ACCEPTOR_IPP_
 #include <spdnet/net/acceptor.h>
 #include <unordered_map>
 #include <chrono>
@@ -206,3 +208,5 @@ namespace spdnet {
         }
     }
 }
+
+#endif // SPDNET_NET_ACCEPTOR_IPP_

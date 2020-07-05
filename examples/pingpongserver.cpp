@@ -33,18 +33,18 @@ int main(int argc, char* argv[]) {
     spdnet::net::EventService service;
     service.runThread(atoi(argv[2]));
     spdnet::net::TcpAcceptor acceptor(service);
-    acceptor.start(spdnet::net::EndPoint::ipv4("0.0.0.0", atoi(argv[1])), [](spdnet::net::TcpSession::Ptr new_conn) {
+    acceptor.start(spdnet::net::EndPoint::ipv4("0.0.0.0", atoi(argv[1])), [](std::shared_ptr<spdnet::net::TcpSession> session) {
         total_client_num++;
-        new_conn->setDataCallback([new_conn](const char* data, size_t len) -> size_t {
-            new_conn->send(data, len);
+        session->setDataCallback([session](const char* data, size_t len) -> size_t {
+            session->send(data, len);
             total_recv_size += len;
             total_packet_num++;
             return len;
             });
-        new_conn->setDisconnectCallback([](spdnet::net::TcpSession::Ptr connection) {
+        session->setDisconnectCallback([](std::shared_ptr<spdnet::net::TcpSession> connection) {
             total_client_num--;
             });
-        new_conn->setNodelay();
+        session->setNodelay();
         });
 
 

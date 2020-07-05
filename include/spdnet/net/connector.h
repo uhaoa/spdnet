@@ -18,7 +18,7 @@ namespace spdnet {
     namespace net {
         class EventService;
 
-        class SPDNET_EXPORT AsyncConnector : public base::NonCopyable {
+        class AsyncConnector : public base::NonCopyable {
         public:
             AsyncConnector(EventService& service); 
             ~AsyncConnector();
@@ -36,4 +36,6 @@ namespace spdnet {
 
     }
 }
+
+#include <spdnet/net/connector.ipp>
 #endif  // SPDNET_NET_CONNECTOR_H_

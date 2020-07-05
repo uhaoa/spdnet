@@ -13,7 +13,7 @@ namespace spdnet {
 			class IocpRecvChannel : public SocketChannel
 			{
 			public:
-				IocpRecvChannel(SocketData& data, std::shared_ptr<IocpImpl> impl)
+				IocpRecvChannel(SocketData::Ptr data, std::shared_ptr<IocpImpl> impl)
                     :SocketChannel(data, impl)
                 {
 
@@ -21,16 +21,16 @@ namespace spdnet {
 				void startRecv()
 				{
 					static WSABUF  buf = { 0, 0 };
-					buf.len = socket_data_.recv_buffer_.getWriteValidCount();
-					buf.buf = socket_data_.recv_buffer_.getWritePtr();
+					buf.len = data_->recv_buffer_.getWriteValidCount();
+					buf.buf = data_->recv_buffer_.getWritePtr();
 
 					DWORD bytes_transferred = 0;
 					DWORD recv_flags = 0;
 					reset();
-					int result = ::WSARecv(socket_data_.sock_fd(), &buf, 1, &bytes_transferred, &recv_flags, (LPOVERLAPPED)this, 0);
+					int result = ::WSARecv(data_->sock_fd(), &buf, 1, &bytes_transferred, &recv_flags, (LPOVERLAPPED)this, 0);
 					DWORD last_error = ::WSAGetLastError();
 					if (result != 0 && last_error != WSA_IO_PENDING) {
-						io_impl_->closeSocket(socket_data_);
+						io_impl_->closeSocket(data_);
 					}
 				}
 			private:
@@ -42,11 +42,11 @@ namespace spdnet {
                         force_close = true; 
                     }
                     else {
-                        auto& recv_buffer = socket_data_.recv_buffer_; 
+                        auto& recv_buffer = data_->recv_buffer_;
                         auto post_len = recv_buffer.getWriteValidCount(); 
                         recv_buffer.addWritePos(bytes_transferred);
-                        if (nullptr != socket_data_.data_callback_) {
-							size_t len = socket_data_.data_callback_(recv_buffer.getDataPtr(), recv_buffer.getLength());
+                        if (nullptr != data_->data_callback_) {
+							size_t len = data_->data_callback_(recv_buffer.getDataPtr(), recv_buffer.getLength());
 							assert(len <= recv_buffer.getLength());
 							if (len <= recv_buffer.getLength()) {
                                 recv_buffer.removeLength(len); 
@@ -58,10 +58,10 @@ namespace spdnet {
 
                         if (post_len == bytes_transferred) {
 							size_t grow_len = 0;
-							if (recv_buffer.getCapacity() * 2 <= socket_data_.max_recv_buffer_size_)
+							if (recv_buffer.getCapacity() * 2 <= data_->max_recv_buffer_size_)
 								grow_len = recv_buffer.getCapacity();
 							else
-								grow_len = socket_data_.max_recv_buffer_size_ - recv_buffer.getCapacity();
+								grow_len = data_->max_recv_buffer_size_ - recv_buffer.getCapacity();
 
 							if (grow_len > 0)
 								recv_buffer.grow(grow_len);
@@ -73,7 +73,7 @@ namespace spdnet {
                     
                     
                     if (force_close)
-                        io_impl_->closeSocket(socket_data_);
+                        io_impl_->closeSocket(data_);
                     else 
 						this->startRecv();
 				}

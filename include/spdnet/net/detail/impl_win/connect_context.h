@@ -26,11 +26,13 @@ namespace spdnet {
 					if (!ec) {
 						assert(success_cb_ != nullptr);
 						success_cb_();
+						fd_ = invalid_socket; 
 					}
 					else {
 						// ...
 						assert(failed_cb_ != nullptr);
 						failed_cb_();
+						socket_ops::closeSocket(fd_); 
 					}
 				}
 

@@ -22,18 +22,13 @@ namespace spdnet {
 		class TcpSession; 
 		using TcpEnterCallback = std::function<void(std::shared_ptr<TcpSession>)>;
 		
-        class SPDNET_EXPORT ServiceThread : public spdnet::base::NonCopyable {
+        class ServiceThread : public spdnet::net::WakeupBase , spdnet::base::NonCopyable {
         public:
             inline explicit ServiceThread(unsigned int);
 
 			inline ~ServiceThread() = default;
 
 			inline void run(std::shared_ptr<bool>);
-
-			/*
-            inline bool isInLoopThread() const {
-                return thread_id_ == current_thread::tid();
-            }*/
 
 			inline void post(AsynTaskFunctor&& task);
 
@@ -58,6 +53,10 @@ namespace spdnet {
 			}
 
 			thread_id_t thread_id() const { return thread_id_; }
+		private:
+			inline void wakeup() override {
+				io_impl_->wakeup(); 
+			}
         private:
             thread_id_t thread_id_;
             std::shared_ptr<detail::IoObjectImplType> io_impl_;

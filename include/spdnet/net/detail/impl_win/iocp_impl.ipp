@@ -16,11 +16,10 @@ namespace spdnet {
 		namespace detail {
 			IocpImpl::IocpImpl(std::shared_ptr<TaskExecutor> task_executor , std::function<void(sock_t)>&& socket_close_notify_cb) noexcept
 				: handle_(CreateIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 1))
+				, wakeup_op_(handle_)
 				,task_executor_(task_executor) 
 				, socket_close_notify_cb_(socket_close_notify_cb)
 			{
-				wakeup_op_ = std::make_shared<IocpWakeupChannel>(handle_);
-				task_executor_->setWakeupChannel(wakeup_op_); 
 			}
 
 			IocpImpl::~IocpImpl() noexcept {
@@ -28,13 +27,16 @@ namespace spdnet {
 				handle_ = INVALID_HANDLE_VALUE;
 			}
 
-			bool IocpImpl::onSocketEnter(SocketData& socket_data) {
-				if (socket_data.isServerSide()) {
-					if (CreateIoCompletionPort((HANDLE)socket_data.sock_fd(), handle_, 0, 0) == 0) {
+			bool IocpImpl::onSocketEnter(SocketData::Ptr data) {
+				if (data->isServerSide()) {
+					if (CreateIoCompletionPort((HANDLE)data->sock_fd(), handle_, 0, 0) == 0) {
 						return false;
 					}
 				}
-				//startRecv(socket_data);
+				auto impl = shared_from_this();
+				data->recv_channel_ = std::make_shared<IocpRecvChannel>(data , impl);
+				data->send_channel_ = std::make_shared<IocpSendChannel>(data, impl);
+				data->recv_channel_->startRecv(); 
 				return true;
 			}
 
@@ -48,21 +50,25 @@ namespace spdnet {
 				return true;
 			}
 
-			void IocpImpl::closeSocket(SocketData& socket_data)
+			void IocpImpl::wakeup()
 			{
-				if (socket_data.has_closed_)
-					return;
-				socket_data.has_closed_ = true;
-				socket_data.is_can_write_ = false;
+				wakeup_op_.wakeup(); 
+			}
 
-				/*
-				del_channel_list_.push_back(socket_data.send_channel_);
-				del_channel_list_.push_back(socket_data.recv_channel_);
-				*/
-				socket_ops::closeSocket(socket_data.sock_fd());
-				socket_close_notify_cb_(socket_data.sock_fd());
-				if (socket_data.disconnect_callback_)
-					socket_data.disconnect_callback_();
+			void IocpImpl::closeSocket(SocketData::Ptr data)
+			{
+				if (data->has_closed_)
+					return;
+				data->has_closed_ = true;
+				data->is_can_write_ = false;
+
+				del_channel_list_.emplace_back(data->send_channel_);
+				del_channel_list_.emplace_back(data->recv_channel_);
+				
+				socket_ops::closeSocket(data->sock_fd());
+				socket_close_notify_cb_(data->sock_fd());
+				if (data->disconnect_callback_)
+					data->disconnect_callback_();
 			}
 
 			bool IocpImpl::asyncConnect(sock_t fd, const EndPoint& addr , Channel* op)
@@ -115,75 +121,38 @@ namespace spdnet {
 				return true;
 			}
 
-			void IocpImpl::send(SocketData& socket_data, const char* data, size_t len) {
-				//auto buffer = loop_ref_.allocBufferBySize(len);
+			void IocpImpl::send(SocketData::Ptr socket_data, const char* data, size_t len) {
 				auto buffer = spdnet::base::BufferPool::instance().allocBufferBySize(len);
 				assert(buffer);
 				buffer->write(data, len);
 				{
-					std::lock_guard<base::SpinLock> lck(socket_data.send_guard_);
-					socket_data.send_buffer_list_.push_back(buffer);
+					std::lock_guard<spdnet::base::SpinLock> lck(socket_data->send_guard_);
+					socket_data->send_buffer_list_.push_back(buffer);
 				}
-				if (socket_data.is_post_flush_) {
+				if (socket_data->is_post_flush_) {
 					return;
 				}
-				socket_data.is_post_flush_ = true;
-				auto& this_ref = *this;
-				task_executor_->post([&socket_data, &this_ref]() {
-					if (socket_data.is_can_write_) {
-						this_ref.flushBuffer(socket_data);
+				socket_data->is_post_flush_ = true;
+				task_executor_->post([socket_data, this]() {
+					if (socket_data->is_can_write_) {
+						socket_data->send_channel_->flushBuffer();
 					}
 			    });
 			}
 
-            void IocpImpl::flushBuffer(SocketData& socket_data)
-            {
-				//assert(loop_ref_.isInLoopThread());
-				{
-					std::lock_guard<base::SpinLock> lck(socket_data.send_guard_);
-					if (SPDNET_PREDICT_TRUE(socket_data.pending_buffer_list_.empty())) {
-						socket_data.pending_buffer_list_.swap(socket_data.send_buffer_list_);
-					}
-					else {
-						for (const auto buffer : socket_data.send_buffer_list_)
-							socket_data.pending_buffer_list_.push_back(buffer);
-						socket_data.send_buffer_list_.clear();
-					}
-				}
-
-				constexpr size_t MAX_BUF_CNT = 1024;
-				WSABUF send_buf[MAX_BUF_CNT]; 
-
-				size_t cnt = 0;
-				size_t prepare_send_len = 0;
-				for (const auto buffer : socket_data.pending_buffer_list_) {
-					send_buf[cnt].buf = buffer->getDataPtr();
-					send_buf[cnt].len = buffer->getLength();
-					cnt++;
-					if (cnt >= MAX_BUF_CNT)
-						break;
-				}
-				assert(cnt > 0);
-
-				DWORD send_len = 0;
-				const int result = ::WSASend(socket_data.sock_fd(),
-					send_buf,
-					cnt,
-					&send_len,
-					0,
-					(LPOVERLAPPED)socket_data.send_channel_.get(),
-					0);
-				DWORD last_error = current_errno(); 
-				if (result != 0 && last_error != WSA_IO_PENDING) {
-					closeSocket(socket_data);
-				}
-            }
-
+			void IocpImpl::shutdownSocket(SocketData::Ptr data)
+			{
+				if (data->has_closed_)
+					return;
+				::shutdown(data->sock_fd(), SD_SEND);
+				data->is_can_write_ = false;
+			}
+			/*
 			void IocpImpl::wakeup()
 			{
 				::PostQueuedCompletionStatus(handle_,0,0, (LPOVERLAPPED)wakeup_op_.get());
 			}
-
+			*/
             void IocpImpl::runOnce(uint32_t timeout)
             {
 				for (;;)

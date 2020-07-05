@@ -1,3 +1,5 @@
+#ifndef SPDNET_NET_EVENTSERVICE_IPP_
+#define SPDNET_NET_EVENTSERVICE_IPP_
 #include <spdnet/net/event_service.h>
 #include <iostream>
 #include <spdnet/net/socket_ops.h>
@@ -6,7 +8,7 @@
 
 namespace spdnet {
     namespace net {
-        const static unsigned int kDefaultLoopTimeout = 100;
+        const static unsigned int default_loop_timeout = 100;
 
         EventService::EventService() noexcept
                 : random_(time(0)) {
@@ -42,7 +44,7 @@ namespace spdnet {
 
             run_thread_ = std::make_shared<bool>(true);
             for (size_t i = 0; i < thread_num; i++) {
-                auto service_thread = std::make_shared<ServiceThread>(kDefaultLoopTimeout);
+                auto service_thread = std::make_shared<ServiceThread>(default_loop_timeout);
                 service_thread->run(run_thread_);
                 threads_.push_back(service_thread);
             }
@@ -69,3 +71,4 @@ namespace spdnet {
     }
 }
 
+#endif //SPDNET_NET_EVENTSERVICE_IPP_

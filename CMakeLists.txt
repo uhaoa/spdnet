@@ -1,7 +1,6 @@
 cmake_minimum_required (VERSION 2.6)
 
 project(spdnet)
-#add_definitions(-DPLATFORM_LINUX)
 
 
 if(WIN32)
@@ -24,27 +23,11 @@ elseif(UNIX)
 	set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS} -fPIC")
 endif()
 
-set(LIBRARY_OUTPUT_PATH "${PROJECT_BINARY_DIR}/lib")
 
-file(GLOB_RECURSE ALL_SRC 
-  ${PROJECT_SOURCE_DIR}/src/*.cpp 
-  ${PROJECT_SOURCE_DIR}/src/*.cc 
-  ${PROJECT_SOURCE_DIR}/src/*.c)
-
-include_directories("${PROJECT_SOURCE_DIR}/src/")
-add_library(spdnet SHARED ${ALL_SRC})
-
-if(WIN32)
-  target_link_libraries(spdnet ws2_32)
-elseif(UNIX)
-  find_package(Threads REQUIRED)
-  target_link_libraries(spdnet pthread)
-endif()
-
-install(TARGETS spdnet DESTINATION lib)
-
-file(GLOB SPDNET_NET_PUBLIC_HEADERS ${PROJECT_SOURCE_DIR}/src/spdnet/net/*.h)
-install (FILES ${SPDNET_NET_PUBLIC_HEADERS} DESTINATION "include/spdnet/net")
+SET(INCLUDE_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/include")
+install(DIRECTORY include/spdnet
+  DESTINATION "${INCLUDE_INSTALL_DIR}")
+   
 
 option(BUILD_EXAMPLES "build examples" ON)
 if (BUILD_EXAMPLES)

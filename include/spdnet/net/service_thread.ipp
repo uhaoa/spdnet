@@ -15,7 +15,7 @@ namespace spdnet {
         ServiceThread::ServiceThread(unsigned int wait_timeout_ms)
                 : wait_timeout_ms_(wait_timeout_ms) 
 		{
-			task_executor_ = std::make_shared<TaskExecutor>(); 
+			task_executor_ = std::make_shared<TaskExecutor>(this); 
 			io_impl_ = std::make_shared<detail::IoObjectImplType>(task_executor_, [this](sock_t fd) {
 				removeTcpSession(fd); 
 			});
@@ -50,7 +50,7 @@ namespace spdnet {
         
         void
             ServiceThread::onTcpSessionEnter(sock_t fd, std::shared_ptr<TcpSession> tcp_session, const TcpEnterCallback &enter_callback) {
-            if (!io_impl_->onSocketEnter(*tcp_session->socket_data_)) {
+            if (!io_impl_->onSocketEnter(tcp_session->socket_data_)) {
                 return;
             }
             if (nullptr != enter_callback)

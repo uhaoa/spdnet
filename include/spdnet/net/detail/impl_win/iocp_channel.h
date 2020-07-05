@@ -31,14 +31,14 @@ namespace spdnet {
 
             class SocketChannel : public Channel {
             public:
-				SocketChannel(SocketData& data, std::shared_ptr<IocpImpl> io_impl)
-                    :socket_data_(data), io_impl_(io_impl)
+				SocketChannel(SocketData::Ptr data, std::shared_ptr<IocpImpl> io_impl)
+                    :data_(data), io_impl_(io_impl)
                 {
 
                 }
                 virtual ~SocketChannel() noexcept {}
             protected:
-                SocketData& socket_data_;
+                SocketData::Ptr data_;
                 std::shared_ptr<IocpImpl> io_impl_;
             };
 

@@ -24,6 +24,7 @@ namespace spdnet {
 		}
 		class SocketData : public spdnet::base::NonCopyable {
 		public:
+			using Ptr = std::shared_ptr<SocketData>; 
 			using TcpDataCallback = std::function<size_t(const char*, size_t len)>;
 			using TcpDisconnectCallback = std::function<void()>;
 
@@ -78,7 +79,7 @@ namespace spdnet {
 			std::shared_ptr<detail::IocpRecvChannel> recv_channel_;
 			std::shared_ptr<detail::IocpSendChannel> send_channel_;
 #else
-			std::shared_ptr<detail::TcpSessionChannel> channel_;
+			std::shared_ptr<detail::TcpSocketChannel> channel_;
 #endif
 		};
 	}

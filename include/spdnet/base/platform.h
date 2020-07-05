@@ -56,14 +56,11 @@ inline int current_errno() {
 
 #define SPDNET_SOCKET_ERROR -1
 
-#define SPDNET_EXPORT
-
 using thread_id_t = int; 
 #else
 #include <winsock2.h>
 #include <mswsock.h>
 #include <WinError.h>
-//#include <winsock.h>
 #include <Ws2tcpip.h>
 #include <errno.h>
 
@@ -76,8 +73,6 @@ inline int current_errno() {
 }
 
 #define SPDNET_SOCKET_ERROR SOCKET_ERROR
-
-#define SPDNET_EXPORT  __declspec(dllexport)
 
 using thread_id_t = DWORD;
 #endif

@@ -14,6 +14,12 @@ namespace spdnet {
 			socket_data_ = std::make_shared<SocketData>(fd , is_server_side);
         }
 
+        TcpSession::~TcpSession()
+        {
+            socket_data_->send_channel_ = nullptr; 
+            socket_data_->recv_channel_ = nullptr; 
+        }
+
         std::shared_ptr<TcpSession> TcpSession::create(sock_t fd, bool is_server_side , std::shared_ptr<ServiceThread> service_thread ) {
             return std::make_shared<TcpSession>(fd, is_server_side , service_thread);
         }
@@ -32,13 +38,13 @@ namespace spdnet {
         void TcpSession::send(const char *data, size_t len) {
             if (len <= 0)
                 return;
-            service_thread_->getImpl()->send(*socket_data_ , data , len);
+            service_thread_->getImpl()->send(socket_data_ , data , len);
         }
 
         void TcpSession::postShutDown() {
             auto this_ptr = shared_from_this();
             service_thread_->getExecutor()->post([this_ptr]() {
-                this_ptr->service_thread_->getImpl()->shutdownSocket(*this_ptr->socket_data_);
+                this_ptr->service_thread_->getImpl()->shutdownSocket(this_ptr->socket_data_);
             });
         }
 

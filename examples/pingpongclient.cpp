@@ -16,17 +16,17 @@ int main(int argc, char *argv[]) {
 
     for (int i = 0; i < atoi(argv[5]); i++) {
         connector.asyncConnect(spdnet::net::EndPoint::ipv4(argv[1], atoi(argv[2])),
-                               [send_data](spdnet::net::TcpSession::Ptr new_conn) {
+                               [send_data](std::shared_ptr<spdnet::net::TcpSession> session) {
                                    //std::cout << "connect success " << std::endl;
-                                   new_conn->setDataCallback([new_conn](const char *data, size_t len) -> size_t {
-                                       new_conn->send(data, len);
+                                   session->setDataCallback([session](const char *data, size_t len) -> size_t {
+                                       session->send(data, len);
                                        return len;
                                    });
-                                   new_conn->setDisconnectCallback([](spdnet::net::TcpSession::Ptr connection) {
+                                   session->setDisconnectCallback([](std::shared_ptr<spdnet::net::TcpSession> session) {
                                        std::cout << "tcp connection disconnect " << std::endl;
                                    });
 
-                                   new_conn->send(send_data->c_str(), send_data->length());
+                                   session->send(send_data->c_str(), send_data->length());
                                },
 
                                []() {

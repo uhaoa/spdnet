@@ -14,7 +14,7 @@
 
 namespace spdnet {
     namespace net {
-        class SPDNET_EXPORT EventService : public base::NonCopyable {
+        class EventService : public base::NonCopyable {
         public:
 
             EventService() noexcept;
@@ -39,5 +39,5 @@ namespace spdnet {
     }
 }
 
-
+#include <spdnet/net/event_service.ipp>
 #endif // SPDNET_NET_EVENTSERVICE_H_

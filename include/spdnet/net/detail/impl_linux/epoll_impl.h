@@ -14,42 +14,27 @@
 
 namespace spdnet {
     namespace net {
-        class EventLoop;
-
+        class TaskExecutor;
         class AsyncConnector;
         namespace detail {
             class Channel;
             class WakeupChannel;
-            class TcpSessionChannel;
-
-            class SocketImplData : public SocketDataBase {
-            public:
-                friend class EpollImpl;
-                using Ptr = std::shared_ptr<SocketImplData>;
-
-                SocketImplData(std::shared_ptr<EventLoop> loop, sock_t fd , bool is_server_side);
-            private:
-                std::shared_ptr<TcpSessionChannel> channel_;
-            };
-
 
             class EpollImpl : public spdnet::base::NonCopyable {
             public:
-                friend class TcpSessionChannel;
+                friend class TcpSocketChannel;
 
-                explicit EpollImpl(EventLoop& loop_owner) noexcept;
+                explicit EpollImpl(std::shared_ptr<TaskExecutor> task_executor, std::function<void(sock_t)>&& socket_close_notify_cb) ;
 
                 virtual ~EpollImpl() noexcept;
 
-                bool onSocketEnter(SocketImplData& socket_data);
+                bool onSocketEnter(SocketData::Ptr data);
 
                 void runOnce(uint32_t timeout);
 
-                void send(SocketImplData& socket_data, const char* data, size_t len);
+                void send(SocketData::Ptr socket_data, const char* data, size_t len);
 
-                void wakeup();
-
-                void shutdownSocket(SocketImplData& socket_data);
+                void shutdownSocket(SocketData::Ptr data);
 
                 int epoll_fd() const { return epoll_fd_; }
 
@@ -58,22 +43,23 @@ namespace spdnet {
                 bool startAccept(sock_t listen_fd, const Channel* channel);
 
                 bool asyncConnect(sock_t client_fd, const EndPoint& addr, Channel* channel);
+
+                inline void wakeup();
             private:
-                void closeSocket(SocketImplData& socket_data);
+                void closeSocket(SocketData::Ptr data);
 
-                void addWriteEvent(SocketImplData& socket_data);
+                void addWriteEvent(SocketData::Ptr data);
 
-                void cancelWriteEvent(SocketImplData& socket_data);
+                void cancelWriteEvent(SocketData::Ptr data);
 
-                void flushBuffer(SocketImplData& socket_data);
-
-                void doRecv(SocketImplData& socket_data);
+                void doRecv(SocketData::Ptr data);
 
             private:
                 int epoll_fd_;
-                std::unique_ptr<WakeupChannel> wake_up_;
+                EpollWakeupChannel wakeup_;
                 std::vector<epoll_event> event_entries_;
-                EventLoop& loop_ref_;
+				std::shared_ptr<TaskExecutor> task_executor_;
+				std::function<void(sock_t)> socket_close_notify_cb_;
                 std::vector<std::shared_ptr<Channel>> del_channel_list_;
             };
         }
