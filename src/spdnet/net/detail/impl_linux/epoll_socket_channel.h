@@ -64,7 +64,7 @@ namespace spdnet {
                                 if (SPDNET_PREDICT_TRUE(buffer->getLength() <= tmp_len)) {
                                     tmp_len -= buffer->getLength();
                                     buffer->clear();
-                                    spdnet::base::BufferPool::instance().recycleBuffer(buffer);
+                                    impl_->recycleBuffer(buffer);
                                     iter = data_->pending_buffer_list_.erase(iter);
                                 } else {
                                     buffer->removeLength(tmp_len);

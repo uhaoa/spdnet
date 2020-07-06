@@ -52,7 +52,7 @@ namespace spdnet {
             void EpollImpl::send(SocketData::Ptr socket_data, const char *data, size_t len) {
                 if (!socket_data->is_can_write_)
                     return;
-                auto buffer = spdnet::base::BufferPool::instance().allocBufferBySize(len);
+                auto buffer = allocBufferBySize(len);
                 assert(buffer);
                 buffer->write(data, len);
                 {

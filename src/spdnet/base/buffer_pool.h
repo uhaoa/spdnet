@@ -11,7 +11,7 @@
 
 namespace spdnet {
     namespace base {
-        class BufferPool : public spdnet::base::Singleton<BufferPool> {
+        class BufferPool :public spdnet::base::NonCopyable {
         public:
             static constexpr size_t max_pool_size = 32;
 

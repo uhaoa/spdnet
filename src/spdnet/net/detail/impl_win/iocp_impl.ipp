@@ -111,7 +111,7 @@ namespace spdnet {
             }
 
             void IocpImpl::send(SocketData::Ptr socket_data, const char *data, size_t len) {
-                auto buffer = spdnet::base::BufferPool::instance().allocBufferBySize(len);
+                auto buffer =  allocBufferBySize(len);
                 assert(buffer);
                 buffer->write(data, len);
                 {

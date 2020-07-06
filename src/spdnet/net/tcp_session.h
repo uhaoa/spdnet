@@ -55,7 +55,7 @@ namespace spdnet {
             create(sock_t fd, bool is_server_side, std::shared_ptr<ServiceThread> service_thread);
 
         private:
-            std::shared_ptr<SocketData> socket_data_;
+			SocketData::Ptr socket_data_;
             std::shared_ptr<ServiceThread> service_thread_;
         };
 

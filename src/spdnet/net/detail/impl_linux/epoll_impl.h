@@ -49,6 +49,14 @@ namespace spdnet {
 
                 inline void wakeup();
 
+				spdnet::base::Buffer* allocBufferBySize(size_t size) {
+					return buffer_pool_.allocBufferBySize(size); 
+				}
+
+				void recycleBuffer(spdnet::base::Buffer* buffer)
+				{
+					buffer_pool_.recycleBuffer(buffer); 
+				}
             private:
                 void closeSocket(SocketData::Ptr data);
 
@@ -61,6 +69,7 @@ namespace spdnet {
             private:
                 int epoll_fd_;
                 EpollWakeupChannel wakeup_;
+				spdnet::base::BufferPool buffer_pool_; 
                 std::vector<epoll_event> event_entries_;
                 std::shared_ptr<TaskExecutor> task_executor_;
                 std::function<void(sock_t)> socket_close_notify_cb_;

@@ -12,6 +12,7 @@
 #include <spdnet/base/buffer.h>
 #include <spdnet/net/socket_data.h>
 #include <spdnet/net/end_point.h>
+#include <spdnet/base/buffer_pool.h>
 #include <spdnet/net/detail/impl_win/iocp_wakeup_channel.h>
 
 namespace spdnet {
@@ -50,12 +51,21 @@ namespace spdnet {
 
                 inline void wakeup();
 
+				spdnet::base::Buffer* allocBufferBySize(size_t size) {
+					return buffer_pool_.allocBufferBySize(size);
+				}
+
+				void recycleBuffer(spdnet::base::Buffer* buffer)
+				{
+					buffer_pool_.recycleBuffer(buffer);
+				}
             private:
                 inline void closeSocket(SocketData::Ptr data);
 
             private:
                 HANDLE handle_;
                 IocpWakeupChannel wakeup_op_;
+				spdnet::base::BufferPool buffer_pool_;
                 std::atomic<void *> connect_ex_{nullptr};
                 std::vector<std::shared_ptr<Channel>> del_channel_list_;
                 std::shared_ptr<TaskExecutor> task_executor_;

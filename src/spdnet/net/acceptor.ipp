@@ -162,7 +162,7 @@ namespace spdnet {
 
         TcpAcceptor::TcpAcceptor(EventService &service)
                 : service_(service) {
-            context_ = std::make_unique<AcceptContext>(*this);
+            context_ = std::make_shared<AcceptContext>(*this);
         }
 
         void TcpAcceptor::start(const EndPoint &addr, TcpEnterCallback &&cb) {

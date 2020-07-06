@@ -12,7 +12,8 @@ namespace spdnet {
     namespace net {
         TcpSession::TcpSession(sock_t fd, bool is_server_side, std::shared_ptr<ServiceThread> service_thread)
                 : service_thread_(service_thread) {
-            socket_data_ = std::make_shared<SocketData>(fd, is_server_side);
+           // socket_data_ = std::make_shared<SocketData>(fd, is_server_side);
+			socket_data_ = new SocketData(fd , is_server_side);
         }
 
         TcpSession::~TcpSession() {
