@@ -39,7 +39,7 @@ namespace spdnet {
 
                 inline bool onSocketEnter(SocketData::Ptr data);
 
-                inline void send(SocketData::Ptr ssocket_data, const char *data, size_t len);
+                inline void send(SocketData* ssocket_data, const char *data, size_t len);
 
                 inline void runOnce(uint32_t timeout);
 
@@ -59,6 +59,11 @@ namespace spdnet {
 				{
 					buffer_pool_.recycleBuffer(buffer);
 				}
+
+                void releaseChannel()
+                {
+                    del_channel_list_.clear();
+                }
             private:
                 inline void closeSocket(SocketData::Ptr data);
 

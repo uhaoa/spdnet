@@ -10,7 +10,6 @@
 #include <spdnet/base/platform.h>
 #include <spdnet/net/task_executor.h>
 #include <spdnet/net/detail/impl_linux/epoll_socket_channel.h>
-
 namespace spdnet {
     namespace net {
         namespace detail {
@@ -49,7 +48,7 @@ namespace spdnet {
                 return ::epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, fd, &event) == 0;
             }
 
-            void EpollImpl::send(SocketData::Ptr socket_data, const char *data, size_t len) {
+            void EpollImpl::send(SocketData* socket_data, const char *data, size_t len) {
                 if (!socket_data->is_can_write_)
                     return;
                 auto buffer = allocBufferBySize(len);
@@ -153,7 +152,7 @@ namespace spdnet {
                 }
 
                 // release channel 
-                del_channel_list_.clear();
+                // del_channel_list_.clear();
             }
         }
     }

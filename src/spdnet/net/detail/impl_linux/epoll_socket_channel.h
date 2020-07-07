@@ -56,6 +56,7 @@ namespace spdnet {
                             } else {
                                 force_close = true;
                             }
+                            break;
                         } else {
                             size_t tmp_len = send_len;
                             for (auto iter = data_->pending_buffer_list_.begin();

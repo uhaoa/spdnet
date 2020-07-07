@@ -35,7 +35,7 @@ namespace spdnet {
 
                 void runOnce(uint32_t timeout);
 
-                void send(SocketData::Ptr socket_data, const char *data, size_t len);
+                void send(SocketData* socket_data, const char *data, size_t len);
 
                 void shutdownSocket(SocketData::Ptr data);
 
@@ -47,7 +47,7 @@ namespace spdnet {
 
                 bool asyncConnect(sock_t client_fd, const EndPoint &addr, Channel *channel);
 
-                inline void wakeup();
+                void wakeup();
 
 				spdnet::base::Buffer* allocBufferBySize(size_t size) {
 					return buffer_pool_.allocBufferBySize(size); 
@@ -57,6 +57,11 @@ namespace spdnet {
 				{
 					buffer_pool_.recycleBuffer(buffer); 
 				}
+
+				void releaseChannel()
+                {
+                    del_channel_list_.clear();
+                }
             private:
                 void closeSocket(SocketData::Ptr data);
 

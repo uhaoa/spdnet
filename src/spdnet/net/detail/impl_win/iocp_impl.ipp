@@ -110,7 +110,7 @@ namespace spdnet {
                 return true;
             }
 
-            void IocpImpl::send(SocketData::Ptr socket_data, const char *data, size_t len) {
+            void IocpImpl::send(SocketData* socket_data, const char *data, size_t len) {
                 auto buffer =  allocBufferBySize(len);
                 assert(buffer);
                 buffer->write(data, len);
@@ -163,7 +163,7 @@ namespace spdnet {
                     timeout = 0;
                 }
 
-                del_channel_list_.clear();
+                // del_channel_list_.clear();
             }
 
         }

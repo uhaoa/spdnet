@@ -58,7 +58,6 @@ namespace spdnet {
             }
 
             thread_id_t thread_id() const { return thread_id_; }
-
         private:
             inline void wakeup() override {
                 io_impl_->wakeup();

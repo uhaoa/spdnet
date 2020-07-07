@@ -68,6 +68,8 @@ namespace spdnet {
                     io_impl_->runOnce(wait_timeout_ms_);
                     // do task
                     task_executor_->run();
+                    // release channel
+                    io_impl_->releaseChannel();
                 }
             });
         }
