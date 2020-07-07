@@ -12,6 +12,7 @@
 #include <spdnet/base/buffer.h>
 #include <spdnet/net/socket_data.h>
 #include <spdnet/net/end_point.h>
+#include <spdnet/net/channel_collector.h>
 #include <spdnet/net/detail/impl_linux/epoll_wakeup_channel.h>
 
 namespace spdnet {
@@ -27,6 +28,7 @@ namespace spdnet {
                 friend class EPollSocketChannel;
 
                 explicit EpollImpl(std::shared_ptr<TaskExecutor> task_executor,
+                                   std::shared_ptr<ChannelCollector> channel_collector,
                                    std::function<void(sock_t)> &&socket_close_notify_cb);
 
                 virtual ~EpollImpl() noexcept;
@@ -35,7 +37,7 @@ namespace spdnet {
 
                 void runOnce(uint32_t timeout);
 
-                void send(SocketData* socket_data, const char *data, size_t len);
+                void send(SocketData *socket_data, const char *data, size_t len);
 
                 void shutdownSocket(SocketData::Ptr data);
 
@@ -49,19 +51,14 @@ namespace spdnet {
 
                 void wakeup();
 
-				spdnet::base::Buffer* allocBufferBySize(size_t size) {
-					return buffer_pool_.allocBufferBySize(size); 
-				}
-
-				void recycleBuffer(spdnet::base::Buffer* buffer)
-				{
-					buffer_pool_.recycleBuffer(buffer); 
-				}
-
-				void releaseChannel()
-                {
-                    del_channel_list_.clear();
+                spdnet::base::Buffer *allocBufferBySize(size_t size) {
+                    return buffer_pool_.allocBufferBySize(size);
                 }
+
+                void recycleBuffer(spdnet::base::Buffer *buffer) {
+                    buffer_pool_.recycleBuffer(buffer);
+                }
+
             private:
                 void closeSocket(SocketData::Ptr data);
 
@@ -74,11 +71,11 @@ namespace spdnet {
             private:
                 int epoll_fd_;
                 EpollWakeupChannel wakeup_;
-				spdnet::base::BufferPool buffer_pool_; 
+                spdnet::base::BufferPool buffer_pool_;
                 std::vector<epoll_event> event_entries_;
                 std::shared_ptr<TaskExecutor> task_executor_;
+                std::shared_ptr<ChannelCollector> channel_collector_;
                 std::function<void(sock_t)> socket_close_notify_cb_;
-                std::vector<std::shared_ptr<Channel>> del_channel_list_;
             };
 
             using IoObjectImplType = EpollImpl;

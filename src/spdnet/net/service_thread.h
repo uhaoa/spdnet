@@ -11,6 +11,7 @@
 #include <spdnet/net/current_thread.h>
 #include <spdnet/base/buffer_pool.h>
 #include <spdnet/net/task_executor.h>
+#include <spdnet/net/channel_collector.h>
 
 #ifdef SPDNET_PLATFORM_LINUX
 
@@ -58,6 +59,7 @@ namespace spdnet {
             }
 
             thread_id_t thread_id() const { return thread_id_; }
+
         private:
             inline void wakeup() override {
                 io_impl_->wakeup();
@@ -67,6 +69,7 @@ namespace spdnet {
             thread_id_t thread_id_;
             std::shared_ptr<detail::IoObjectImplType> io_impl_;
             std::shared_ptr<TaskExecutor> task_executor_;
+            std::shared_ptr<ChannelCollector> channel_collector_;
             std::shared_ptr<std::thread> thread_;
             unsigned int wait_timeout_ms_;
             std::unordered_map<sock_t, std::shared_ptr<TcpSession>> tcp_sessions_;

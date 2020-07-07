@@ -10,13 +10,16 @@
 #include <spdnet/base/platform.h>
 #include <spdnet/net/task_executor.h>
 #include <spdnet/net/detail/impl_linux/epoll_socket_channel.h>
+
 namespace spdnet {
     namespace net {
         namespace detail {
             EpollImpl::EpollImpl(std::shared_ptr<TaskExecutor> task_executor,
+                                 std::shared_ptr<ChannelCollector> channel_collector,
                                  std::function<void(sock_t)> &&socket_close_notify_cb)
                     : epoll_fd_(::epoll_create(1)),
                       task_executor_(task_executor),
+                      channel_collector_(channel_collector),
                       socket_close_notify_cb_(socket_close_notify_cb) {
                 linkChannel(wakeup_.eventfd(), &wakeup_, EPOLLET | EPOLLIN | EPOLLRDHUP);
                 event_entries_.resize(1024);
@@ -48,7 +51,7 @@ namespace spdnet {
                 return ::epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, fd, &event) == 0;
             }
 
-            void EpollImpl::send(SocketData* socket_data, const char *data, size_t len) {
+            void EpollImpl::send(SocketData *socket_data, const char *data, size_t len) {
                 if (!socket_data->is_can_write_)
                     return;
                 auto buffer = allocBufferBySize(len);
@@ -103,8 +106,7 @@ namespace spdnet {
                     return;
 
                 // closeSocket函数可能正在被channel调用 ， 将channel加入到待删除列表 ，是防止channel被立即释放引起crash
-                del_channel_list_.emplace_back(data->channel_);
-
+                channel_collector_->putChannel(data->channel_);
                 // cancel event
                 struct epoll_event ev{0, {nullptr}};
                 ::epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, data->sock_fd(), &ev);

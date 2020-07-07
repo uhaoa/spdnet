@@ -25,7 +25,7 @@ namespace spdnet {
         }
         class SocketData : public spdnet::base::NonCopyable {
         public:
-			using Ptr = std::shared_ptr<SocketData>;
+            using Ptr = std::shared_ptr<SocketData>;
             using TcpDataCallback = std::function<size_t(const char *, size_t len)>;
             using TcpDisconnectCallback = std::function<void()>;
 
@@ -36,10 +36,10 @@ namespace spdnet {
 
             virtual ~SocketData() {
                 for (auto buffer : send_buffer_list_) {
-					delete buffer; 
+                    delete buffer;
                 }
                 for (auto buffer : pending_buffer_list_) {
-					delete buffer;
+                    delete buffer;
                 }
                 send_buffer_list_.clear();
                 pending_buffer_list_.clear();

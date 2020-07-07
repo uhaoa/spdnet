@@ -39,7 +39,7 @@ namespace spdnet {
 
                 inline bool onSocketEnter(SocketData::Ptr data);
 
-                inline void send(SocketData* ssocket_data, const char *data, size_t len);
+                inline void send(SocketData *ssocket_data, const char *data, size_t len);
 
                 inline void runOnce(uint32_t timeout);
 
@@ -51,26 +51,25 @@ namespace spdnet {
 
                 inline void wakeup();
 
-				spdnet::base::Buffer* allocBufferBySize(size_t size) {
-					return buffer_pool_.allocBufferBySize(size);
-				}
+                spdnet::base::Buffer *allocBufferBySize(size_t size) {
+                    return buffer_pool_.allocBufferBySize(size);
+                }
 
-				void recycleBuffer(spdnet::base::Buffer* buffer)
-				{
-					buffer_pool_.recycleBuffer(buffer);
-				}
+                void recycleBuffer(spdnet::base::Buffer *buffer) {
+                    buffer_pool_.recycleBuffer(buffer);
+                }
 
-                void releaseChannel()
-                {
+                void releaseChannel() {
                     del_channel_list_.clear();
                 }
+
             private:
                 inline void closeSocket(SocketData::Ptr data);
 
             private:
                 HANDLE handle_;
                 IocpWakeupChannel wakeup_op_;
-				spdnet::base::BufferPool buffer_pool_;
+                spdnet::base::BufferPool buffer_pool_;
                 std::atomic<void *> connect_ex_{nullptr};
                 std::vector<std::shared_ptr<Channel>> del_channel_list_;
                 std::shared_ptr<TaskExecutor> task_executor_;

@@ -70,7 +70,7 @@ namespace spdnet {
                             if (SPDNET_PREDICT_TRUE(buffer->getLength() <= send_len)) {
                                 send_len -= buffer->getLength();
                                 buffer->clear();
-								io_impl_->recycleBuffer(buffer);
+                                io_impl_->recycleBuffer(buffer);
                                 iter = data_->pending_buffer_list_.erase(iter);
                             } else {
                                 buffer->removeLength(send_len);

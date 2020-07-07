@@ -110,8 +110,8 @@ namespace spdnet {
                 return true;
             }
 
-            void IocpImpl::send(SocketData* socket_data, const char *data, size_t len) {
-                auto buffer =  allocBufferBySize(len);
+            void IocpImpl::send(SocketData *socket_data, const char *data, size_t len) {
+                auto buffer = allocBufferBySize(len);
                 assert(buffer);
                 buffer->write(data, len);
                 {

@@ -15,9 +15,11 @@ namespace spdnet {
         ServiceThread::ServiceThread(unsigned int wait_timeout_ms)
                 : wait_timeout_ms_(wait_timeout_ms) {
             task_executor_ = std::make_shared<TaskExecutor>(this);
-            auto impl = std::make_shared<detail::IoObjectImplType>(task_executor_, [this](sock_t fd) {
-                removeTcpSession(fd);
-            });
+            channel_collector_ = std::make_shared<ChannelCollector>();
+            auto impl = std::make_shared<detail::IoObjectImplType>(task_executor_, channel_collector_,
+                                                                   [this](sock_t fd) {
+                                                                       removeTcpSession(fd);
+                                                                   });
             io_impl_ = impl;
         }
 
@@ -69,7 +71,7 @@ namespace spdnet {
                     // do task
                     task_executor_->run();
                     // release channel
-                    io_impl_->releaseChannel();
+                    channel_collector_->releaseChannel();
                 }
             });
         }
