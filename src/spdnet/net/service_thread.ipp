@@ -23,11 +23,6 @@ namespace spdnet {
             io_impl_ = impl;
         }
 
-
-        void ServiceThread::post(AsynTaskFunctor &&task) {
-            task_executor_->post(std::move(task));
-        }
-
         std::shared_ptr<TcpSession> ServiceThread::getTcpSession(sock_t fd) {
             auto iter = tcp_sessions_.find(fd);
             if (iter != tcp_sessions_.end())

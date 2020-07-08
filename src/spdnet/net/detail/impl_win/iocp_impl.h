@@ -32,7 +32,7 @@ namespace spdnet {
 
                 friend class IocpSendChannel;
 
-                inline explicit IocpImpl(std::shared_ptr<TaskExecutor> task_executor,
+                inline explicit IocpImpl(std::shared_ptr<TaskExecutor> task_executor, std::shared_ptr<ChannelCollector> channel_collector,
                                          std::function<void(sock_t)> &&socket_close_notify_cb) noexcept;
 
                 inline virtual ~IocpImpl() noexcept;
@@ -59,10 +59,6 @@ namespace spdnet {
                     buffer_pool_.recycleBuffer(buffer);
                 }
 
-                void releaseChannel() {
-                    del_channel_list_.clear();
-                }
-
             private:
                 inline void closeSocket(SocketData::Ptr data);
 
@@ -71,8 +67,8 @@ namespace spdnet {
                 IocpWakeupChannel wakeup_op_;
                 spdnet::base::BufferPool buffer_pool_;
                 std::atomic<void *> connect_ex_{nullptr};
-                std::vector<std::shared_ptr<Channel>> del_channel_list_;
                 std::shared_ptr<TaskExecutor> task_executor_;
+				std::shared_ptr<ChannelCollector> channel_collector_;
                 std::function<void(sock_t)> socket_close_notify_cb_;
             };
 

@@ -17,14 +17,14 @@ namespace spdnet {
 
             }
 
-            void post(AsynTaskFunctor &&task) {
-                if (current_thread::tid() == thread_id_) {
+			void post(AsynTaskFunctor&& task, bool is_try_immediate = true) {
+                if (is_try_immediate && current_thread::tid() == thread_id_) {
                     // immediate exec
                     task();
                 } else {
                     {
                         std::lock_guard<std::mutex> lck(task_mutex_);
-                        async_tasks.emplace_back(std::move(task));
+						async_tasks.emplace_back(std::move(task));
                     }
                     wakeup_->wakeup();
                 }

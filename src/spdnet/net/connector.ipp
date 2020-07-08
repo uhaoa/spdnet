@@ -45,27 +45,27 @@ namespace spdnet {
             auto service_thread = service_.getServiceThread();
             auto enter = std::move(enter_cb);
             auto failed = std::move(failed_cb);
-            auto fd = client_fd;
             auto &this_ref = *this;
             std::weak_ptr<char> cancel_token = cancel_token_;
-            auto success_notify = [fd, enter, service_thread, cancel_token, &this_ref]() {
+            auto success_notify = [client_fd, enter, service_thread, cancel_token, &this_ref]() {
                 auto share_token = cancel_token.lock();
                 if (share_token)
-                    this_ref.service_.addTcpSession(fd, false, enter);
-                service_thread->getExecutor()->post([fd, cancel_token, &this_ref]() mutable {
+                    this_ref.service_.addTcpSession(client_fd, false, enter);
+                service_thread->getExecutor()->post([client_fd, cancel_token, &this_ref]() mutable {
                     auto token = cancel_token.lock();
                     if (token)
-                        this_ref.removeContext(fd);
-                });
+                        this_ref.removeContext(client_fd);
+                }, false);
             };
-            auto failed_notify = [fd, failed, service_thread, cancel_token, &this_ref]() mutable {
-                service_thread->getExecutor()->post([fd, cancel_token, &this_ref]() {
+            auto failed_notify = [client_fd, failed, service_thread, cancel_token, &this_ref]() mutable {
+                service_thread->getExecutor()->post([client_fd, cancel_token, &this_ref]() {
                     auto token = cancel_token.lock();
                     if (token)
-                        this_ref.removeContext(fd);
-                });
+                        this_ref.removeContext(client_fd);
+                } , false);
                 if (failed)
                     failed();
+				socket_ops::closeSocket(client_fd);
             };
             auto context = std::make_shared<detail::ConnectContext>(client_fd, service_thread, success_notify,
                                                                     failed_notify);
@@ -75,6 +75,7 @@ namespace spdnet {
             }
             if (!service_thread->getImpl()->asyncConnect(client_fd, addr, context.get())) {
                 removeContext(client_fd);
+				socket_ops::closeSocket(client_fd);
             }
         }
 

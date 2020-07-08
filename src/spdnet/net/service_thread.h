@@ -35,8 +35,6 @@ namespace spdnet {
 
             inline void run(std::shared_ptr<bool>);
 
-            inline void post(AsynTaskFunctor &&task);
-
             inline void onTcpSessionEnter(sock_t fd, std::shared_ptr<TcpSession> tcp_session,
                                           const TcpEnterCallback &enter_callback);
 

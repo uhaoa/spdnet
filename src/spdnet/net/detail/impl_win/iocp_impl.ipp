@@ -16,9 +16,10 @@ namespace spdnet {
     namespace net {
         namespace detail {
             IocpImpl::IocpImpl(std::shared_ptr<TaskExecutor> task_executor,
+							   std::shared_ptr<ChannelCollector> channel_collector,
                                std::function<void(sock_t)> &&socket_close_notify_cb) noexcept
                     : handle_(CreateIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 1)), wakeup_op_(handle_),
-                      task_executor_(task_executor), socket_close_notify_cb_(socket_close_notify_cb) {
+                      task_executor_(task_executor), channel_collector_(channel_collector), socket_close_notify_cb_(socket_close_notify_cb) {
             }
 
             IocpImpl::~IocpImpl() noexcept {
@@ -55,8 +56,8 @@ namespace spdnet {
                 if (data->has_closed_)
                     return;
 
-                del_channel_list_.emplace_back(data->send_channel_);
-                del_channel_list_.emplace_back(data->recv_channel_);
+				channel_collector_->putChannel(data->recv_channel_);
+				channel_collector_->putChannel(data->send_channel_);
 
                 socket_close_notify_cb_(data->sock_fd());
 
@@ -126,7 +127,7 @@ namespace spdnet {
                     if (socket_data->is_can_write_) {
                         socket_data->send_channel_->flushBuffer();
                     }
-                });
+                } , false);
             }
 
             void IocpImpl::shutdownSocket(SocketData::Ptr data) {
