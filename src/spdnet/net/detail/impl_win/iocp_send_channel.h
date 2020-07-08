@@ -20,7 +20,7 @@ namespace spdnet {
 
                 void flushBuffer() {
                     {
-                        std::lock_guard<base::SpinLock> lck(data_->send_guard_);
+                        std::lock_guard<spdnet::base::SpinLock> lck(data_->send_guard_);
                         if (SPDNET_PREDICT_TRUE(data_->pending_buffer_list_.empty())) {
                             data_->pending_buffer_list_.swap(data_->send_buffer_list_);
                         } else {
@@ -79,10 +79,11 @@ namespace spdnet {
 
                         }
                         {
-                            std::lock_guard<base::SpinLock> lck(data_->send_guard_);
+                            std::unique_lock<spdnet::base::SpinLock> lck(data_->send_guard_);
                             if (data_->send_buffer_list_.empty() && data_->pending_buffer_list_.empty()) {
                                 data_->is_post_flush_ = false;
                             } else {
+                                lck.unlock(); 
                                 flushBuffer();
                             }
                         }

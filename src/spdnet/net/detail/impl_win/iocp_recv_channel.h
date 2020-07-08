@@ -19,14 +19,13 @@ namespace spdnet {
                 }
 
                 void startRecv() {
-                    static WSABUF buf = {0, 0};
-                    buf.len = data_->recv_buffer_.getWriteValidCount();
-                    buf.buf = data_->recv_buffer_.getWritePtr();
+                    buf_.len = data_->recv_buffer_.getWriteValidCount();
+                    buf_.buf = data_->recv_buffer_.getWritePtr();
 
                     DWORD bytes_transferred = 0;
                     DWORD recv_flags = 0;
                     reset();
-                    int result = ::WSARecv(data_->sock_fd(), &buf, 1, &bytes_transferred, &recv_flags, (LPOVERLAPPED)
+                    int result = ::WSARecv(data_->sock_fd(), &buf_, 1, &bytes_transferred, &recv_flags, (LPOVERLAPPED)
                     this, 0);
                     DWORD last_error = ::WSAGetLastError();
                     if (result != 0 && last_error != WSA_IO_PENDING) {
@@ -75,6 +74,8 @@ namespace spdnet {
                     else
                         this->startRecv();
                 }
+            private:
+                WSABUF buf_ = { 0, 0 };
             };
         }
     }
