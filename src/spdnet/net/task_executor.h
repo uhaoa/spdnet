@@ -17,16 +17,18 @@ namespace spdnet {
 
             }
 
-			void post(AsynTaskFunctor&& task, bool is_try_immediate = true) {
-                if (is_try_immediate && current_thread::tid() == thread_id_) {
+            void post(AsynTaskFunctor &&task, bool is_try_immediate = true) {
+                if (is_try_immediate && isInIoThread()) {
                     // immediate exec
                     task();
                 } else {
                     {
                         std::lock_guard<std::mutex> lck(task_mutex_);
-						async_tasks.emplace_back(std::move(task));
+                        async_tasks.emplace_back(std::move(task));
                     }
-                    wakeup_->wakeup();
+                    if (!isInIoThread()) {
+                        wakeup_->wakeup();
+                    }
                 }
             }
 
@@ -45,12 +47,16 @@ namespace spdnet {
                 thread_id_ = id;
             }
 
+            bool isInIoThread() const {
+                return current_thread::tid() == thread_id_;
+            }
+
         private:
-            thread_id_t thread_id_;
+            thread_id_t thread_id_{-1};
             std::mutex task_mutex_;
             std::vector<AsynTaskFunctor> async_tasks;
             std::vector<AsynTaskFunctor> tmp_async_tasks;
-            WakeupBase *wakeup_;
+            WakeupBase *wakeup_{nullptr};
         };
     }
 }

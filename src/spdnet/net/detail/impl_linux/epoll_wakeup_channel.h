@@ -17,9 +17,12 @@ namespace spdnet {
                     socket_ops::closeSocket(fd_);
                 }
 
-                bool wakeup() {
+                void wakeup() {
+                    if (flag_)
+                        return;
+                    flag_ = true;
                     int data = 1;
-                    return ::write(fd_, &data, sizeof(data)) == 0;
+                    ::write(fd_, &data, sizeof(data));
                 }
 
                 sock_t eventfd() const { return fd_; }
@@ -30,6 +33,7 @@ namespace spdnet {
                 }
 
                 void tryRecv() override {
+                    flag_ = false;
                     char buf[1024]{0};
                     while (true) {
                         auto ret = ::read(fd_, buf, sizeof(buf));
@@ -44,6 +48,7 @@ namespace spdnet {
 
             private:
                 sock_t fd_;
+                volatile bool flag_{false};
             };
 
         }

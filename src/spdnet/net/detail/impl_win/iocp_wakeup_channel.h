@@ -15,6 +15,9 @@ namespace spdnet {
                 }
 
                 void wakeup() {
+                    if (flag_)
+                        return true;
+                    flag_ = true;
                     ::PostQueuedCompletionStatus(handle_, 0, 0, (LPOVERLAPPED)
                     this);
                 }
@@ -22,10 +25,12 @@ namespace spdnet {
             private:
                 void doComplete(size_t bytes_transferred, std::error_code ec) override {
                     // ...
-                    // do nothing
+                    flag_ = false;
                 }
 
+            private:
                 HANDLE handle_;
+                volatile bool flag_{false};
             };
         }
     }
