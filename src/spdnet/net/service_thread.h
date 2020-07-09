@@ -58,6 +58,9 @@ namespace spdnet {
 
             thread_id_t thread_id() const { return thread_id_; }
 
+			std::shared_ptr<ChannelCollector> getChannelCollector() {
+				return channel_collector_; 
+			}
         private:
             inline void wakeup() override {
                 io_impl_->wakeup();

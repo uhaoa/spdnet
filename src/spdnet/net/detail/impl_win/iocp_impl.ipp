@@ -40,11 +40,11 @@ namespace spdnet {
                 return true;
             }
 
-            bool IocpImpl::startAccept(sock_t listen_fd, Channel *op) {
+            bool IocpImpl::startAccept(sock_t listen_fd, IocpAcceptChannel* channel) {
                 if (::CreateIoCompletionPort((HANDLE) listen_fd, handle_, 0, 0) == 0) {
                     return false;
                 }
-
+				channel->asyncAccept(); 
                 return true;
             }
 

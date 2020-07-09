@@ -7,9 +7,15 @@
 #include <mutex>
 #include <functional>
 #include <spdnet/base/noncopyable.h>
-#include <spdnet/net/tcp_session.h>
 #include <spdnet/net/end_point.h>
 #include <spdnet/net/service_thread.h>
+#ifdef SPDNET_PLATFORM_LINUX
+
+#include <spdnet/net/detail/impl_linux/epoll_accept_channel.h>
+
+#else
+#include <spdnet/net/detail/impl_win/iocp_accept_channel.h>
+#endif
 
 namespace spdnet {
     namespace net {
@@ -23,21 +29,18 @@ namespace spdnet {
 
         public:
             TcpAcceptor(EventService &service);
+			~TcpAcceptor(); 
 
-            void start(const EndPoint &addr, TcpEnterCallback &&cb);
+            void start(const EndPoint &addr, TcpEnterCallback && enter_cb);
 
         private:
             sock_t createListenSocket(const EndPoint &addr);
-
-            void onAcceptSuccess(sock_t new_socket);
-
         private:
             EventService &service_;
-            //std::shared_ptr<ListenSocket> listen_socket_;
             sock_t listen_fd_;
             EndPoint addr_;
-            TcpEnterCallback enter_callback_;
-            std::shared_ptr<AcceptContext> context_;
+			std::shared_ptr<ServiceThread> listen_thread_; 
+			std::shared_ptr<detail::AcceptChannelImpl> accept_channel_; 
         };
 
 
