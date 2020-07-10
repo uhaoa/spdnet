@@ -22,10 +22,14 @@ namespace spdnet {
                     // immediate exec
                     task();
                 } else {
+					if (!isInIoThread())
                     {
                         std::lock_guard<std::mutex> lck(task_mutex_);
                         async_tasks.emplace_back(std::move(task));
                     }
+					else {
+						async_tasks.emplace_back(std::move(task));
+					}
                     wakeup_->wakeup();
                 }
             }
