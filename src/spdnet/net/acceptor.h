@@ -33,6 +33,7 @@ namespace spdnet {
 
             void start(const EndPoint &addr, TcpEnterCallback && enter_cb);
 
+			void stop();
         private:
             sock_t createListenSocket(const EndPoint &addr);
         private:
@@ -40,6 +41,7 @@ namespace spdnet {
             sock_t listen_fd_;
             EndPoint addr_;
 			std::shared_ptr<ServiceThread> listen_thread_; 
+			std::shared_ptr<bool> run_listen_;
 			std::shared_ptr<detail::AcceptChannelImpl> accept_channel_; 
         };
 

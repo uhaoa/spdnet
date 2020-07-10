@@ -26,9 +26,7 @@ namespace spdnet {
                         std::lock_guard<std::mutex> lck(task_mutex_);
                         async_tasks.emplace_back(std::move(task));
                     }
-                    if (!isInIoThread()) {
-                        wakeup_->wakeup();
-                    }
+                    wakeup_->wakeup();
                 }
             }
 
@@ -52,7 +50,7 @@ namespace spdnet {
             }
 
         private:
-            thread_id_t thread_id_{-1};
+			thread_id_t thread_id_{ 0 };
             std::mutex task_mutex_;
             std::vector<AsynTaskFunctor> async_tasks;
             std::vector<AsynTaskFunctor> tmp_async_tasks;

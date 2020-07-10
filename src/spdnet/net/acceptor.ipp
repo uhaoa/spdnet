@@ -19,9 +19,12 @@ namespace spdnet {
 
 		TcpAcceptor::~TcpAcceptor()
 		{
-			auto collector = listen_thread_->getChannelCollector();
-			assert(collector); 
-			collector->putChannel(accept_channel_); 
+			if (listen_thread_) {
+				auto collector = listen_thread_->getChannelCollector();
+				assert(collector);
+				collector->putChannel(accept_channel_);
+			}
+			stop(); 
 		}
 
         void TcpAcceptor::start(const EndPoint &addr, TcpEnterCallback && enter_cb) {
@@ -42,12 +45,30 @@ namespace spdnet {
 				service.addTcpSession(new_socket, true, enter_cb);
 				});
 #endif
-
-			listen_thread_ = service_.getServiceThread();
+			run_listen_ = std::make_shared<bool>(true);
+			listen_thread_  = std::make_shared<ServiceThread>(default_loop_timeout);/*service_.getServiceThread();*/
+			listen_thread_->run(run_listen_);
             if (!listen_thread_->getImpl()->startAccept(listen_fd_, accept_channel_.get())) {
                 throw SpdnetException(std::string("listen error : ") + std::to_string(current_errno()));
             }
         }
+
+		void TcpAcceptor::stop()
+		{
+			try {
+				if (*run_listen_) {
+					*run_listen_ = false;
+					if (listen_thread_->getThread()->joinable())
+						listen_thread_->getThread()->join(); 
+					
+					listen_thread_ = nullptr; 
+				}
+			}
+			catch (std::system_error & err) {
+				(void)err;
+			}
+
+		}
 
         sock_t TcpAcceptor::createListenSocket(const EndPoint &addr) {
             sock_t fd = ::socket(addr.family(), SOCK_STREAM, 0);

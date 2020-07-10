@@ -18,9 +18,6 @@ namespace spdnet {
                 }
 
                 void wakeup() {
-                    if (flag_)
-                        return;
-                    flag_ = true;
                     int data = 1;
                     ::write(fd_, &data, sizeof(data));
                 }
@@ -33,7 +30,6 @@ namespace spdnet {
                 }
 
                 void tryRecv() override {
-                    flag_ = false;
                     char buf[1024]{0};
                     while (true) {
                         auto ret = ::read(fd_, buf, sizeof(buf));
@@ -48,7 +44,6 @@ namespace spdnet {
 
             private:
                 sock_t fd_;
-                volatile bool flag_{false};
             };
 
         }

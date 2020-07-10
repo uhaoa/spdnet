@@ -63,6 +63,9 @@ namespace spdnet {
                 while (*is_run) {
                     // run io
                     io_impl_->runOnce(wait_timeout_ms_);
+
+					clearWakeupFlag(); 
+
                     // do task
                     task_executor_->run();
                     // release channel

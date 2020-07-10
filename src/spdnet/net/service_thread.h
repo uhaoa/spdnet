@@ -29,26 +29,26 @@ namespace spdnet {
 
         class ServiceThread : public spdnet::net::WakeupBase, spdnet::base::NonCopyable {
         public:
-            inline explicit ServiceThread(unsigned int);
+            explicit ServiceThread(unsigned int);
 
-            inline ~ServiceThread() = default;
+            ~ServiceThread() = default;
 
-            inline void run(std::shared_ptr<bool>);
+            void run(std::shared_ptr<bool>);
 
-            inline void onTcpSessionEnter(sock_t fd, std::shared_ptr<TcpSession> tcp_session,
+            void onTcpSessionEnter(sock_t fd, std::shared_ptr<TcpSession> tcp_session,
                                           const TcpEnterCallback &enter_callback);
 
-            inline std::shared_ptr<TcpSession> getTcpSession(sock_t fd);
+            std::shared_ptr<TcpSession> getTcpSession(sock_t fd);
 
-            inline void removeTcpSession(sock_t fd);
+            void removeTcpSession(sock_t fd);
 
-            inline void addTcpSession(sock_t fd, std::shared_ptr<TcpSession>);
+            void addTcpSession(sock_t fd, std::shared_ptr<TcpSession>);
 
-            inline const std::shared_ptr<std::thread> &getThread() const {
+            const std::shared_ptr<std::thread> &getThread() const {
                 return thread_;
             }
 
-            inline std::shared_ptr<detail::IoObjectImplType> getImpl() {
+            std::shared_ptr<detail::IoObjectImplType> getImpl() {
                 return io_impl_;
             }
 
@@ -62,14 +62,21 @@ namespace spdnet {
 				return channel_collector_; 
 			}
         private:
-            inline void wakeup() override {
+            void wakeup() override {
+				if (!wakeup_flag_.exchange(true))
+					return;
                 io_impl_->wakeup();
             }
+
+			void clearWakeupFlag() {
+				wakeup_flag_ = false; 
+			}
 
         private:
             thread_id_t thread_id_;
             std::shared_ptr<detail::IoObjectImplType> io_impl_;
             std::shared_ptr<TaskExecutor> task_executor_;
+			std::atomic_bool wakeup_flag_{ false }; 
             std::shared_ptr<ChannelCollector> channel_collector_;
             std::shared_ptr<std::thread> thread_;
             unsigned int wait_timeout_ms_;
