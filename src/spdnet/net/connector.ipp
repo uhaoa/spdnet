@@ -15,23 +15,25 @@ namespace spdnet {
     namespace net {
         AsyncConnector::AsyncConnector(EventService &service)
                 : service_(service) {
-            cancel_token_ = std::make_shared<char>();
+            cancel_token_ = std::make_shared<std::atomic_bool>(false);
         }
 
         AsyncConnector::~AsyncConnector() {
+            while (!(*cancel_token_).exchange(true));
             std::lock_guard<std::mutex> lck(context_guard_);
             for (auto &pair : connecting_context_) {
+                socket_ops::closeSocket(pair.first); 
                 auto context = pair.second;
                 auto service_thread = context->getServiceThread();
-                service_thread->getExecutor()->post([context]() mutable {
-                    context = nullptr;
-                });
+                service_thread->getChannelCollector()->putChannel(context);
             }
             connecting_context_.clear();
         }
 
-        bool AsyncConnector::removeContext(sock_t fd) {
+        bool AsyncConnector::recycleContext(sock_t fd, std::shared_ptr<ServiceThread> service_thread) {
             std::lock_guard<std::mutex> lck(context_guard_);
+            assert(connecting_context_.count(fd) > 0);
+            service_thread->getChannelCollector()->putChannel(connecting_context_[fd]);
             return connecting_context_.erase(fd) > 0;
         }
 
@@ -46,26 +48,25 @@ namespace spdnet {
             auto enter = std::move(enter_cb);
             auto failed = std::move(failed_cb);
             auto &this_ref = *this;
-            std::weak_ptr<char> cancel_token = cancel_token_;
-            auto success_notify = [client_fd, enter, service_thread, cancel_token, &this_ref]() {
-                auto share_token = cancel_token.lock();
-                if (share_token)
-                    this_ref.service_.addTcpSession(client_fd, false, enter);
-                service_thread->getExecutor()->post([client_fd, cancel_token, &this_ref]() mutable {
-                    auto token = cancel_token.lock();
-                    if (token)
-                        this_ref.removeContext(client_fd);
-                }, false);
+            /*
+             * 当AsyncConnector析构时， 被success和failed lamba捕获的AsyncConnector引用也就失效了, 而IO线程还是可能在它析构后调用这个回调。 
+             * 这里使用一个shared_ptr的cancel_token_ ，主要是为了当io线程调用callback时通知这个AsyncConnector引用已经失效了 ， 
+             * 从而避免使用失效引用导至crash。
+            **/
+            auto cancel_token = cancel_token_; 
+            auto success_notify = [client_fd, enter, service_thread, &this_ref , cancel_token]() {
+                if (!(*cancel_token).exchange(true)) return; 
+                this_ref.service_.addTcpSession(client_fd, false, enter , service_thread);
+                this_ref.recycleContext(client_fd, service_thread); 
+                *cancel_token = false; 
             };
-            auto failed_notify = [client_fd, failed, service_thread, cancel_token, &this_ref]() mutable {
-                service_thread->getExecutor()->post([client_fd, cancel_token, &this_ref]() {
-                    auto token = cancel_token.lock();
-                    if (token)
-                        this_ref.removeContext(client_fd);
-                } , false);
+            auto failed_notify = [client_fd, failed, service_thread, &this_ref , cancel_token]() mutable {
+                if (!(*cancel_token).exchange(true)) return;
+                this_ref.recycleContext(client_fd, service_thread);
                 if (failed)
                     failed();
 				socket_ops::closeSocket(client_fd);
+                *cancel_token = false;
             };
             auto context = std::make_shared<detail::ConnectContext>(client_fd, service_thread, success_notify,
                                                                     failed_notify);
@@ -74,7 +75,7 @@ namespace spdnet {
                 connecting_context_[client_fd] = context;
             }
             if (!service_thread->getImpl()->asyncConnect(client_fd, addr, context.get())) {
-                removeContext(client_fd);
+                recycleContext(client_fd , service_thread);
 				socket_ops::closeSocket(client_fd);
             }
         }

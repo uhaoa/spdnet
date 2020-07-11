@@ -30,12 +30,12 @@ namespace spdnet {
             void asyncConnect(const EndPoint &addr, TcpEnterCallback &&success_cb, std::function<void()> &&failed_cb);
 
         private:
-            bool removeContext(sock_t fd);
+            bool recycleContext(sock_t fd, std::shared_ptr<ServiceThread> service_thread);
 
         private:
             EventService &service_;
-            std::shared_ptr<char> cancel_token_;
             std::mutex context_guard_;
+            std::shared_ptr<std::atomic_bool> cancel_token_;
             std::unordered_map<sock_t, std::shared_ptr<detail::ConnectContext>> connecting_context_;
         };
 
