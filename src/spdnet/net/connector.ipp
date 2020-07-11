@@ -49,9 +49,9 @@ namespace spdnet {
             auto failed = std::move(failed_cb);
             auto &this_ref = *this;
             /*
-             * µ±AsyncConnectorÎö¹¹Ê±£¬ ±»successºÍfailed lamba²¶»ñµÄAsyncConnectorÒıÓÃÒ²¾ÍÊ§Ğ§ÁË, ¶øIOÏß³Ì»¹ÊÇ¿ÉÄÜÔÚËüÎö¹¹ºóµ÷ÓÃÕâ¸ö»Øµ÷¡£ 
-             * ÕâÀïÊ¹ÓÃÒ»¸öshared_ptrµÄcancel_token_ £¬Ö÷ÒªÊÇÎªÁËµ±ioÏß³Ìµ÷ÓÃcallbackÊ±Í¨ÖªÕâ¸öAsyncConnectorÒıÓÃÒÑ¾­Ê§Ğ§ÁË £¬ 
-             * ´Ó¶ø±ÜÃâÊ¹ÓÃÊ§Ğ§ÒıÓÃµ¼ÖÁcrash¡£
+             * å½“AsyncConnectorææ„æ—¶ï¼Œ è¢«successå’Œfailed lambaæ•è·çš„AsyncConnectorå¼•ç”¨ä¹Ÿå°±å¤±æ•ˆäº†, è€ŒIOçº¿ç¨‹è¿˜æ˜¯å¯èƒ½åœ¨å®ƒææ„åè°ƒç”¨è¿™ä¸ªå›è°ƒã€‚
+             * è¿™é‡Œä½¿ç”¨ä¸€ä¸ªshared_ptrçš„cancel_token_ ï¼Œä¸»è¦æ˜¯ä¸ºäº†å½“ioçº¿ç¨‹è°ƒç”¨callbackæ—¶é€šçŸ¥è¿™ä¸ªAsyncConnectorå¼•ç”¨å·²ç»å¤±æ•ˆäº† ï¼Œ
+             * ä»è€Œé¿å…ä½¿ç”¨å¤±æ•ˆå¼•ç”¨å¯¼è‡³crashã€‚
             **/
             auto cancel_token = cancel_token_; 
             auto success_notify = [client_fd, enter, service_thread, &this_ref , cancel_token]() {

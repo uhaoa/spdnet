@@ -35,7 +35,7 @@ namespace spdnet {
             }
 
             void run() {
-                // 执行其它线程投递的task
+                // 鎵ц鍏跺畠绾跨▼鎶曢�掔殑task
                 {
                     std::lock_guard<std::mutex> lck(task_mutex_);
                     tmp_async_tasks.swap(async_tasks);
@@ -44,7 +44,7 @@ namespace spdnet {
                     task();
                 }
                 tmp_async_tasks.clear();
-                // 执行本线程投递的task
+                // 执鎵ц鏈嚎绋嬫姇閫掔殑task
                 tmp_sync_tasks.swap(sync_tasks);
 				for (auto& task : tmp_sync_tasks) {
 					task();
