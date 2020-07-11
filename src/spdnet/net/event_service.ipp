@@ -25,8 +25,9 @@ namespace spdnet {
             return threads_[rand_num % threads_.size()];
         }
 
-        void EventService::addTcpSession(sock_t fd, bool is_server_side, const TcpEnterCallback &enter_callback, std::shared_ptr<ServiceThread> service_thread) {
-            if (service_thread == nullptr )
+        void EventService::addTcpSession(sock_t fd, bool is_server_side, const TcpEnterCallback &enter_callback,
+                                         std::shared_ptr<ServiceThread> service_thread) {
+            if (service_thread == nullptr)
                 service_thread = getServiceThread();
             std::shared_ptr<TcpSession> new_session = TcpSession::create(fd, is_server_side, service_thread);
             service_thread->getExecutor()->post([service_thread, new_session, enter_callback]() {

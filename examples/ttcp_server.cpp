@@ -32,7 +32,7 @@ void gprofStartAndStop(int signum) {
 struct SessionMessage {
     int number;
     int length;
-} ;
+};
 
 struct PayloadMessage {
     int length;

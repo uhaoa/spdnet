@@ -9,6 +9,7 @@
 #include <spdnet/base/noncopyable.h>
 #include <spdnet/net/end_point.h>
 #include <spdnet/net/service_thread.h>
+
 #ifdef SPDNET_PLATFORM_LINUX
 
 #include <spdnet/net/detail/impl_linux/epoll_accept_channel.h>
@@ -29,20 +30,23 @@ namespace spdnet {
 
         public:
             TcpAcceptor(EventService &service);
-			~TcpAcceptor(); 
 
-            void start(const EndPoint &addr, TcpEnterCallback && enter_cb);
+            ~TcpAcceptor();
 
-			void stop();
+            void start(const EndPoint &addr, TcpEnterCallback &&enter_cb);
+
+            void stop();
+
         private:
             sock_t createListenSocket(const EndPoint &addr);
+
         private:
             EventService &service_;
             sock_t listen_fd_;
             EndPoint addr_;
-			std::shared_ptr<ServiceThread> listen_thread_; 
-			std::shared_ptr<bool> run_listen_;
-			std::shared_ptr<detail::AcceptChannelImpl> accept_channel_; 
+            std::shared_ptr<ServiceThread> listen_thread_;
+            std::shared_ptr<bool> run_listen_;
+            std::shared_ptr<detail::AcceptChannelImpl> accept_channel_;
         };
 
 

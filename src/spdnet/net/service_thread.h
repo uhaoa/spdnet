@@ -36,7 +36,7 @@ namespace spdnet {
             void run(std::shared_ptr<bool>);
 
             void onTcpSessionEnter(sock_t fd, std::shared_ptr<TcpSession> tcp_session,
-                                          const TcpEnterCallback &enter_callback);
+                                   const TcpEnterCallback &enter_callback);
 
             std::shared_ptr<TcpSession> getTcpSession(sock_t fd);
 
@@ -58,25 +58,26 @@ namespace spdnet {
 
             thread_id_t thread_id() const { return thread_id_; }
 
-			std::shared_ptr<ChannelCollector> getChannelCollector() {
-				return channel_collector_; 
-			}
+            std::shared_ptr<ChannelCollector> getChannelCollector() {
+                return channel_collector_;
+            }
+
         private:
             void wakeup() override {
-				if (!wakeup_flag_.exchange(true))
-					return;
+                if (!wakeup_flag_.exchange(true))
+                    return;
                 io_impl_->wakeup();
             }
 
-			void clearWakeupFlag() {
-				wakeup_flag_ = false; 
-			}
+            void clearWakeupFlag() {
+                wakeup_flag_ = false;
+            }
 
         private:
             thread_id_t thread_id_;
             std::shared_ptr<detail::IoObjectImplType> io_impl_;
             std::shared_ptr<TaskExecutor> task_executor_;
-			std::atomic_bool wakeup_flag_{ false }; 
+            std::atomic_bool wakeup_flag_{false};
             std::shared_ptr<ChannelCollector> channel_collector_;
             std::shared_ptr<std::thread> thread_;
             unsigned int wait_timeout_ms_;

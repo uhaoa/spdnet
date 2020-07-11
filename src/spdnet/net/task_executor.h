@@ -17,19 +17,17 @@ namespace spdnet {
 
             }
 
-            void post(TaskFunctor&&task, bool is_try_immediate = true) {
+            void post(TaskFunctor &&task, bool is_try_immediate = true) {
                 if (is_try_immediate && isInIoThread()) {
                     // immediate exec
                     task();
                 } else {
-					if (!isInIoThread())
-                    {
+                    if (!isInIoThread()) {
                         std::lock_guard<std::mutex> lck(task_mutex_);
                         async_tasks.emplace_back(std::move(task));
-                    }
-					else {
+                    } else {
                         sync_tasks.emplace_back(std::move(task));
-					}
+                    }
                     wakeup_->wakeup();
                 }
             }
@@ -46,9 +44,9 @@ namespace spdnet {
                 tmp_async_tasks.clear();
                 // ִ执行本线程投递的task
                 tmp_sync_tasks.swap(sync_tasks);
-				for (auto& task : tmp_sync_tasks) {
-					task();
-				}
+                for (auto &task : tmp_sync_tasks) {
+                    task();
+                }
                 tmp_sync_tasks.clear();
             }
 
@@ -61,7 +59,7 @@ namespace spdnet {
             }
 
         private:
-			thread_id_t thread_id_{ 0 };
+            thread_id_t thread_id_{0};
             std::mutex task_mutex_;
             std::vector<TaskFunctor> async_tasks;
             std::vector<TaskFunctor> sync_tasks;

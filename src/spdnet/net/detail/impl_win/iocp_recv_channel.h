@@ -74,8 +74,9 @@ namespace spdnet {
                     else
                         this->startRecv();
                 }
+
             private:
-                WSABUF buf_ = { 0, 0 };
+                WSABUF buf_ = {0, 0};
             };
         }
     }

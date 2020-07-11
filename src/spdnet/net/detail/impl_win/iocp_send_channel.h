@@ -83,7 +83,7 @@ namespace spdnet {
                             if (data_->send_buffer_list_.empty() && data_->pending_buffer_list_.empty()) {
                                 data_->is_post_flush_ = false;
                             } else {
-                                lck.unlock(); 
+                                lck.unlock();
                                 flushBuffer();
                             }
                         }
