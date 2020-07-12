@@ -6,10 +6,10 @@
 #include <memory>
 #include <thread>
 #include <random>
+#include <iostream>
 #include <spdnet/base/noncopyable.h>
-#include <spdnet/base/base.h>
-#include <spdnet/net/socket.h>
-#include <spdnet/net/event_loop.h>
+#include <spdnet/base/platform.h>
+#include <spdnet/net/service_thread.h>
 #include <spdnet/net/env_init.h>
 
 namespace spdnet {
@@ -22,23 +22,25 @@ namespace spdnet {
             ~EventService() noexcept;
 
             void
-            addTcpSession(std::shared_ptr<TcpSocket> tcp_socket, const TcpSession::TcpEnterCallback &enter_callback);
+            addTcpSession(sock_t fd, bool is_server_side, const TcpEnterCallback &enter_callback,
+                          std::shared_ptr<ServiceThread> service_thread = nullptr);
 
             void runThread(size_t thread_num);
 
-            EventLoop::Ptr getEventLoop();
+            std::shared_ptr<ServiceThread> getServiceThread();
 
         private:
             void stop();
 
         private:
-            std::shared_ptr<bool> run_loop_;
-            std::vector<EventLoop::Ptr> loops_;
+            std::shared_ptr<bool> run_thread_;
+            std::vector<std::shared_ptr<ServiceThread>> threads_;
             std::mt19937 random_;
             EnvInit env_;
         };
     }
 }
 
+#include <spdnet/net/event_service.ipp>
 
 #endif // SPDNET_NET_EVENTSERVICE_H_

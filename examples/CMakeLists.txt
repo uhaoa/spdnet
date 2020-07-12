@@ -1,16 +1,37 @@
-enable_testing()
+include_directories("${PROJECT_SOURCE_DIR}/src/")
 
-find_package(Threads REQUIRED)
+if (UNIX)
+    find_package(Threads REQUIRED)
+endif (UNIX)
 
 add_executable(pingpongclient pingpongclient.cpp)
-target_link_libraries(pingpongclient pthread spdnet)
+if (WIN32)
+    target_link_libraries(pingpongclient ws2_32)
+elseif (UNIX)
+    target_link_libraries(pingpongclient pthread)
+endif ()
 
 add_executable(pingpongserver pingpongserver.cpp)
-target_link_libraries(pingpongserver pthread spdnet)
+if (WIN32)
+    target_link_libraries(pingpongserver ws2_32)
+elseif (UNIX)
+    target_link_libraries(pingpongserver pthread)
+endif ()
+
 
 add_executable(ttcp_client ttcp_client.cpp)
-target_link_libraries(ttcp_client pthread spdnet)
+if (WIN32)
+    target_link_libraries(ttcp_client ws2_32)
+elseif (UNIX)
+    target_link_libraries(ttcp_client pthread)
+endif ()
+
 
 add_executable(ttcp_server ttcp_server.cpp)
-target_link_libraries(ttcp_server pthread spdnet)
+if (WIN32)
+    target_link_libraries(ttcp_server ws2_32)
+elseif (UNIX)
+    target_link_libraries(ttcp_server pthread)
+endif ()
+
 

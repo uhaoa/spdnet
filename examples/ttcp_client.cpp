@@ -1,20 +1,21 @@
 #include <stdio.h>
 #include <iostream>
 #include <spdnet/net/connector.h>
-#include <spdnet/net/socket.h>
 #include <spdnet/net/event_service.h>
 #include <atomic>
 //#include <gperftools/profiler.h>
 
+#pragma pack(push, 1)
 struct SessionMessage {
     int number;
     int length;
-}__attribute__((__packed__));
+};
 
 struct PayloadMessage {
     int length;
     char data[0];
 };
+#pragma pack(pop)
 
 /*
 void gprofStartAndStop(int signum) {
@@ -65,7 +66,7 @@ int main(int argc, char *argv[]) {
         std::shared_ptr<int> number_ptr = std::make_shared<int>(number);
         connector.asyncConnect(spdnet::net::EndPoint::ipv4(argv[1], atoi(argv[2])),
                                [&service, session_msg, msg, number_ptr, length, &cur_client_num](
-                                       spdnet::net::TcpSession::Ptr new_conn) {
+                                       std::shared_ptr<spdnet::net::TcpSession> new_conn) {
                                    new_conn->setDataCallback(
                                            [new_conn, msg, number_ptr, length, &cur_client_num](const char *data,
                                                                                                 size_t len) mutable -> size_t {
@@ -73,17 +74,18 @@ int main(int argc, char *argv[]) {
                                                    if (--*number_ptr > 0)
                                                        new_conn->send((char *) msg, length + sizeof(int));
                                                    else {
-                                                       new_conn->postDisconnect();
+                                                       new_conn->postShutDown();
                                                        --cur_client_num;
                                                    }
                                                    return sizeof(int);
                                                }
                                                return 0;
                                            });
-                                   new_conn->setDisconnectCallback([](spdnet::net::TcpSession::Ptr connection) {
-                                       std::cout << "tcp connection disconnect " << std::endl;
+                                   new_conn->setDisconnectCallback(
+                                           [](std::shared_ptr<spdnet::net::TcpSession> connection) {
+                                               std::cout << "tcp connection disconnect " << std::endl;
 
-                                   });
+                                           });
                                    new_conn->send((char *) &*session_msg, sizeof(SessionMessage));
                                },
                 // failed cb

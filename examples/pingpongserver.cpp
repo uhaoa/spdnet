@@ -13,7 +13,6 @@ std::atomic_llong total_packet_num = ATOMIC_VAR_INIT(0);
 void gprofStartAndStop(int signum) {
     static int isStarted = 0;
     if (signum != SIGUSR1) return;
-
     //通过isStarted标记未来控制第一次收到信号量开启性能分析，第二次收到关闭性能分析。
     if (!isStarted){
         isStarted = 1;
@@ -34,19 +33,20 @@ int main(int argc, char *argv[]) {
     spdnet::net::EventService service;
     service.runThread(atoi(argv[2]));
     spdnet::net::TcpAcceptor acceptor(service);
-    acceptor.start(spdnet::net::EndPoint::ipv4("0.0.0.0", atoi(argv[1])), [](spdnet::net::TcpSession::Ptr new_conn) {
-        total_client_num++;
-        new_conn->setDataCallback([new_conn](const char *data, size_t len) -> size_t {
-            new_conn->send(data, len);
-            total_recv_size += len;
-            total_packet_num++;
-            return len;
-        });
-        new_conn->setDisconnectCallback([](spdnet::net::TcpSession::Ptr connection) {
-            total_client_num--;
-        });
-        new_conn->setNodelay();
-    });
+    acceptor.start(spdnet::net::EndPoint::ipv4("0.0.0.0", atoi(argv[1])),
+                   [](std::shared_ptr<spdnet::net::TcpSession> session) {
+                       total_client_num++;
+                       session->setDataCallback([session](const char *data, size_t len) -> size_t {
+                           session->send(data, len);
+                           total_recv_size += len;
+                           total_packet_num++;
+                           return len;
+                       });
+                       session->setDisconnectCallback([](std::shared_ptr<spdnet::net::TcpSession> connection) {
+                           total_client_num--;
+                       });
+                       session->setNodelay();
+                   });
 
 
     while (true) {
@@ -61,4 +61,4 @@ int main(int argc, char *argv[]) {
     getchar();
     return 0;
 
-} 
+}
