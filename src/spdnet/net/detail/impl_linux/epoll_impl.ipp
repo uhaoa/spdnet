@@ -52,8 +52,6 @@ namespace spdnet {
             }
 
             void EpollImpl::send(SocketData *socket_data, const char *data, size_t len) {
-                if (!socket_data->is_can_write_)
-                    return;
                 auto buffer = allocBufferBySize(len);
                 assert(buffer);
                 buffer->write(data, len);
@@ -69,9 +67,9 @@ namespace spdnet {
                 task_executor_->post([socket_data]() {
                     if (socket_data->is_can_write_) {
                         socket_data->channel_->flushBuffer();
-                        socket_data->is_post_flush_ = false;
                     }
-                }, false);
+                    socket_data->is_post_flush_ = false;
+                } , false);
             }
 
             bool EpollImpl::startAccept(sock_t listen_fd, const Channel *channel) {
