@@ -19,7 +19,8 @@ namespace spdnet {
         }
 
         AsyncConnector::~AsyncConnector() {
-            while (!(*cancel_token_).exchange(true));
+            // lock
+            while (cancel_token_->exchange(true));
             std::lock_guard<std::mutex> lck(context_guard_);
             for (auto &pair : connecting_context_) {
                 socket_ops::closeSocket(pair.first);
@@ -54,22 +55,23 @@ namespace spdnet {
              * 从而避免使用失效引用导至crash。
             **/
             auto cancel_token = cancel_token_;
-            auto success_notify = [client_fd, enter, service_thread, &this_ref, cancel_token]() {
-                if (!(*cancel_token).exchange(true)) return;
+            auto&& success_notify = [client_fd, enter, service_thread, &this_ref, cancel_token]() {
+                // try lock
+                if (cancel_token->exchange(true)) { return; }
                 this_ref.service_.addTcpSession(client_fd, false, enter, service_thread);
                 this_ref.recycleContext(client_fd, service_thread);
-                *cancel_token = false;
+                cancel_token->exchange(false); 
             };
-            auto failed_notify = [client_fd, failed, service_thread, &this_ref, cancel_token]() mutable {
-                if (!(*cancel_token).exchange(true)) return;
+            auto&& failed_notify = [client_fd, failed, service_thread, &this_ref, cancel_token]() mutable {
+                // try lock
+                if (cancel_token->exchange(true)) { return; }
                 this_ref.recycleContext(client_fd, service_thread);
                 if (failed)
                     failed();
                 socket_ops::closeSocket(client_fd);
-                *cancel_token = false;
+                cancel_token->exchange(false);
             };
-            auto context = std::make_shared<detail::ConnectContext>(client_fd, service_thread, success_notify,
-                                                                    failed_notify);
+            auto context = std::make_shared<detail::ConnectContext>(client_fd, service_thread, std::move(success_notify),std::move(failed_notify));
             {
                 std::lock_guard<std::mutex> lck(context_guard_);
                 connecting_context_[client_fd] = context;
