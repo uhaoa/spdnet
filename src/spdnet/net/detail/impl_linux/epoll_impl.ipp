@@ -44,10 +44,10 @@ namespace spdnet {
                 ::epoll_ctl(epoll_fd_, EPOLL_CTL_MOD, data->sock_fd(), &event);
             }
 
-            bool epoll_impl::link_channel(int fd, const channel *channel, uint32_t events) {
+            bool epoll_impl::link_channel(int fd, const channel *ch, uint32_t events) {
                 struct epoll_event event{0, {nullptr}};
                 event.events = events;
-                event.data.ptr = (void *) (channel);
+                event.data.ptr = (void *) (ch);
                 return ::epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, fd, &event) == 0;
             }
 
@@ -72,10 +72,10 @@ namespace spdnet {
                 } , false);
             }
 
-            bool epoll_impl::start_accept(sock_t listen_fd, const channel *channel) {
+            bool epoll_impl::start_accept(sock_t listen_fd, const channel *ch) {
                 struct epoll_event ev;
                 ev.events = EPOLLIN;
-                ev.data.ptr = (void *) channel;
+                ev.data.ptr = (void *) ch;
                 if (epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, listen_fd, &ev) != 0) {
                     return false;
                 }
@@ -83,16 +83,16 @@ namespace spdnet {
                 return true;
             }
 
-            bool epoll_impl::async_connect(sock_t client_fd, const end_point &addr, channel *channel) {
+            bool epoll_impl::async_connect(sock_t client_fd, const end_point &addr, channel *ch) {
                 int ret = ::connect(client_fd, addr.socket_addr(), addr.socket_addr_len());
                 if (ret == 0) {
-                    channel->on_send();
+                    ch->on_send();
                     return true;
                 } else if (errno != EINPROGRESS) {
-                    channel->on_close();
+                    ch->on_close();
                     return true;
                 }
-                return link_channel(client_fd, channel, EPOLLET | EPOLLOUT | EPOLLRDHUP);
+                return link_channel(client_fd, ch, EPOLLET | EPOLLOUT | EPOLLRDHUP);
             }
 
             void epoll_impl::wakeup() {
@@ -131,19 +131,19 @@ namespace spdnet {
             void epoll_impl::run_once(uint32_t timeout) {
                 int num_events = ::epoll_wait(epoll_fd_, event_entries_.data(), event_entries_.size(), timeout);
                 for (int i = 0; i < num_events; i++) {
-                    auto channel = static_cast<channel *>(event_entries_[i].data.ptr);
+                    auto ch = static_cast<channel *>(event_entries_[i].data.ptr);
                     auto event = event_entries_[i].events;
 
                     if (SPDNET_PREDICT_FALSE(event & EPOLLRDHUP)) {
-                        channel->on_recv();
-                        channel->on_close();
+                        ch->on_recv();
+                        ch->on_close();
                         continue;
                     }
                     if (SPDNET_PREDICT_TRUE(event & EPOLLIN)) {
-                        channel->on_recv();
+                        ch->on_recv();
                     }
                     if (event & EPOLLOUT) {
-                        channel->on_send();
+                        ch->on_send();
                     }
                 }
 
@@ -151,7 +151,7 @@ namespace spdnet {
                     event_entries_.resize(event_entries_.size() * 2);
                 }
 
-                // release channel 
+                // release channel
                 // del_channel_list_.clear();
             }
         }

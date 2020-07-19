@@ -3,32 +3,19 @@
 
 #include <memory>
 #include <spdnet/base/noncopyable.h>
-#include <spdnet/net/http/http_parser.h
+#include <spdnet/net/http/http_parser.h>
 
 namespace spdnet {
     namespace net {
         namespace http {
-            class HttpSession : public spdnet::base::noncopyable, public std::enable_shared_from_this<HttpSession> {
+            class http_session : public spdnet::base::noncopyable, public std::enable_shared_from_this<HttpSession> {
             public:
-                HttpSession(http_parser_type parser_type);
+                http_session(std::shared_ptr<tcp_session>);
 
-                ~HttpSession();
+                ~http_session();
             private:
-                static int  onChunkHeader(http_parser* parser);
-                static int  onChunkComplete(http_parser* parser);
-                static int  onMessageBegin(http_parser* parser);
-                static int  onMessageEnd(http_parser* parser);
-                static int  onHeadComplete(http_parser* parser);
-                static int  onUrlHandle(http_parser* parser, const char* url, size_t length);
-                static int  onHeadValue(http_parser* parser, const char* at, size_t length);
-                static int  onHeadField(http_parser* parser, const char* at, size_t length);
             private:
-                http_parser_type parser_type_;
-                http_parser_settings setting_;
-                bool is_keep_alive_ {false};
-                bool is_finish_ {false};
-                std::string  current_field_;
-                std::string  current_value_;
+                std::shared_ptr<tcp_session> session_;
             };
         }
     }
