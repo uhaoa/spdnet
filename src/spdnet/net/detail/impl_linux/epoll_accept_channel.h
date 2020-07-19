@@ -9,19 +9,19 @@
 namespace spdnet {
     namespace net {
         namespace detail {
-            class EpollAcceptChannel : public Channel {
+            class epoll_accept_channel : public channel {
             public:
-                EpollAcceptChannel(sock_t listen_fd, std::function<void(sock_t fd)> &&success_cb)
+                epoll_accept_channel(sock_t listen_fd, std::function<void(sock_t fd)> &&success_cb)
                         : listen_fd_(listen_fd), success_cb_(success_cb),
                           idle_fd_(::open("/dev/null", O_RDONLY | O_CLOEXEC)) {
 
                 }
 
-                void trySend() override {}
+                void on_send() override {}
 
-                void onClose() override {}
+                void on_close() override {}
 
-                void tryRecv() override {
+                void on_recv() override {
                     sock_t accept_fd = ::accept(listen_fd_, nullptr, nullptr);
                     if (accept_fd == -1) {
                         if (current_errno() == EMFILE) {
@@ -36,8 +36,8 @@ namespace spdnet {
                     success_cb_(accept_fd);
                 }
 
-                ~EpollAcceptChannel() {
-                    socket_ops::closeSocket(idle_fd_);
+                ~epoll_accept_channel() {
+                    socket_ops::close_socket(idle_fd_);
                 }
 
             private:
@@ -47,7 +47,7 @@ namespace spdnet {
             };
 
 
-            using AcceptChannelImpl = EpollAcceptChannel;
+            using accept_channel_impl = epoll_accept_channel;
 
         }
     }

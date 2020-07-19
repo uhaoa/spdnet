@@ -10,14 +10,14 @@
 namespace spdnet {
     namespace net {
 
-        class EndPoint {
+        class end_point {
         public:
-            EndPoint() = default;
+            end_point() = default;
 
-            ~EndPoint() = default;
+            ~end_point() = default;
 
-            static EndPoint ipv4(const std::string &ip, const uint16_t port) {
-                EndPoint ret;
+            static end_point ipv4(const std::string &ip, const uint16_t port) {
+                end_point ret;
                 ::memset(&ret.addr_, 0, sizeof(ret.addr_));
                 ret.addr_.sin_family = AF_INET;
                 ret.addr_.sin_port = ::htons(port);
@@ -25,8 +25,8 @@ namespace spdnet {
                 return ret;
             }
 
-            static EndPoint ipv6(const std::string &ip, const uint16_t port) {
-                EndPoint ret;
+            static end_point ipv6(const std::string &ip, const uint16_t port) {
+                end_point ret;
                 ::memset(&ret.addr6_, 0, sizeof(ret.addr6_));
                 ret.addr6_.sin6_family = AF_INET6;
                 ret.addr6_.sin6_port = ::htons(port);

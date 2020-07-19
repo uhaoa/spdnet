@@ -8,7 +8,7 @@
 namespace spdnet {
     namespace net {
         namespace http {
-            class HttpSession : public spdnet::base::NonCopyable, public std::enable_shared_from_this<HttpSession> {
+            class HttpSession : public spdnet::base::noncopyable, public std::enable_shared_from_this<HttpSession> {
             public:
                 HttpSession(http_parser_type parser_type);
 

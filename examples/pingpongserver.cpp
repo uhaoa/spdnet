@@ -30,22 +30,22 @@ int main(int argc, char *argv[]) {
         exit(-1);
     }
     ///signal(SIGUSR1, gprofStartAndStop);
-    spdnet::net::EventService service;
-    service.runThread(atoi(argv[2]));
-    spdnet::net::TcpAcceptor acceptor(service);
-    acceptor.start(spdnet::net::EndPoint::ipv4("0.0.0.0", atoi(argv[1])),
-                   [](std::shared_ptr<spdnet::net::TcpSession> session) {
+    spdnet::net::event_service service;
+    service.run_thread(atoi(argv[2]));
+    spdnet::net::tcp_acceptor acceptor(service);
+    acceptor.start(spdnet::net::end_point::ipv4("0.0.0.0", atoi(argv[1])),
+                   [](std::shared_ptr<spdnet::net::tcp_session> session) {
                        total_client_num++;
-                       session->setDataCallback([session](const char *data, size_t len) -> size_t {
+                       session->set_data_callback([session](const char *data, size_t len) -> size_t {
                            session->send(data, len);
                            total_recv_size += len;
                            total_packet_num++;
                            return len;
                        });
-                       session->setDisconnectCallback([](std::shared_ptr<spdnet::net::TcpSession> connection) {
+                       session->set_disconnect_callback([](std::shared_ptr<spdnet::net::tcp_session> connection) {
                            total_client_num--;
                        });
-                       session->setNodelay();
+                       session->set_no_delay();
                    });
 
 

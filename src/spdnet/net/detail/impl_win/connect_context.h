@@ -11,17 +11,17 @@
 namespace spdnet {
     namespace net {
         namespace detail {
-            class ConnectContext : public Channel {
+            class connect_context : public channel {
             public:
-                ConnectContext(sock_t fd, std::shared_ptr<ServiceThread> service_thread,
+                connect_context(sock_t fd, std::shared_ptr<service_thread> thread,
                                std::function<void()> &&success_cb, std::function<void()> &&failed_cb)
-                        : fd_(fd), service_thread_(service_thread),
+                        : fd_(fd), thread_(thread),
                           success_cb_(std::move(success_cb)),
                           failed_cb_(std::move(failed_cb)) {
                     reset();
                 }
 
-                void doComplete(size_t bytes_transferred, std::error_code ec) override {
+                void do_complete(size_t bytes_transferred, std::error_code ec) override {
                     if (!ec) {
                         assert(success_cb_ != nullptr);
                         success_cb_();
@@ -30,17 +30,17 @@ namespace spdnet {
                         // ...
                         assert(failed_cb_ != nullptr);
                         failed_cb_();
-                        socket_ops::closeSocket(fd_);
+                        socket_ops::close_socket(fd_);
                     }
                 }
 
-                std::shared_ptr<ServiceThread> getServiceThread() {
-                    return service_thread_;
+                std::shared_ptr<service_thread> get_service_thread() {
+                    return thread_;
                 }
 
             private:
                 sock_t fd_{invalid_socket};
-                std::shared_ptr<ServiceThread> service_thread_;
+                std::shared_ptr<service_thread> thread_;
                 std::function<void()> success_cb_;
                 std::function<void()> failed_cb_;
             };

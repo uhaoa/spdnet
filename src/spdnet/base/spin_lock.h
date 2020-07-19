@@ -6,9 +6,9 @@
 namespace spdnet {
     namespace base {
 
-        class SpinLock {
+        class spin_lock {
         public:
-            SpinLock()
+            spin_lock()
                     : atomic_lock_(false) {
             }
 
@@ -20,7 +20,7 @@ namespace spdnet {
                 atomic_lock_ = false;
             }
 
-            inline bool isLocked() const {
+            inline bool is_locked() const {
                 return atomic_lock_;
             }
 

@@ -45,9 +45,9 @@ int main(int argc, char *argv[]) {
 
     std::atomic_int cur_client_num = ATOMIC_VAR_INIT(0);
 
-    spdnet::net::EventService service;
-    service.runThread(atoi(argv[3]));
-    spdnet::net::AsyncConnector connector(service);
+    spdnet::net::event_service service;
+    service.run_thread(atoi(argv[3]));
+    spdnet::net::async_connector connector(service);
 
     auto session_msg = std::make_shared<SessionMessage>();
     int number = atoi(argv[5]);
@@ -64,25 +64,25 @@ int main(int argc, char *argv[]) {
 
     for (int i = 0; i < cur_client_num; i++) {
         std::shared_ptr<int> number_ptr = std::make_shared<int>(number);
-        connector.asyncConnect(spdnet::net::EndPoint::ipv4(argv[1], atoi(argv[2])),
+        connector.async_connect(spdnet::net::end_point::ipv4(argv[1], atoi(argv[2])),
                                [&service, session_msg, msg, number_ptr, length, &cur_client_num](
-                                       std::shared_ptr<spdnet::net::TcpSession> new_conn) {
-                                   new_conn->setDataCallback(
+                                       std::shared_ptr<spdnet::net::tcp_session> new_conn) {
+                                   new_conn->set_data_callback(
                                            [new_conn, msg, number_ptr, length, &cur_client_num](const char *data,
                                                                                                 size_t len) mutable -> size_t {
                                                if (len >= static_cast<size_t>(sizeof(int))) {
                                                    if (--*number_ptr > 0)
                                                        new_conn->send((char *) msg, length + sizeof(int));
                                                    else {
-                                                       new_conn->postShutDown();
+                                                       new_conn->post_shutdown();
                                                        --cur_client_num;
                                                    }
                                                    return sizeof(int);
                                                }
                                                return 0;
                                            });
-                                   new_conn->setDisconnectCallback(
-                                           [](std::shared_ptr<spdnet::net::TcpSession> connection) {
+                                   new_conn->set_disconnect_callback(
+                                           [](std::shared_ptr<spdnet::net::tcp_session> connection) {
                                                std::cout << "tcp connection disconnect " << std::endl;
 
                                            });

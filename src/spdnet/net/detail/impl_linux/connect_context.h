@@ -13,9 +13,9 @@
 namespace spdnet {
     namespace net {
         namespace detail {
-            class ConnectContext : public detail::Channel {
+            class connect_context : public detail::channel {
             public:
-                ConnectContext(sock_t fd, std::shared_ptr<ServiceThread> service_thread,
+                connect_context(sock_t fd, std::shared_ptr<service_thread> service_thread,
                                std::function<void()> &&success_cb,
                                std::function<void()> &&failed_cb)
                         : fd_(fd), service_thread_(service_thread),
@@ -24,53 +24,53 @@ namespace spdnet {
 
                 }
 
-                void trySend() override {
-                    cancelEvent();
+                void on_send() override {
+                    cancel_event();
                     int result = 0;
                     socklen_t result_len = sizeof(result);
                     if (SPDNET_PREDICT_FALSE(
                             getsockopt(fd_, SOL_SOCKET, SO_ERROR, &result, &result_len) == SPDNET_SOCKET_ERROR
                             || result != 0
-                            || socket_ops::checkSelfConnect(fd_))) {
+                            || socket_ops::check_self_connect(fd_))) {
                         assert(failed_cb_ != nullptr);
                         failed_cb_();
-                        socket_ops::closeSocket(fd_);
+                        socket_ops::close_socket(fd_);
                         fd_ = invalid_socket;
                         return;
                     } else {
                         /*
-                        auto new_conn = TcpSession::create(fd_, loop_owner_);
-                        loop_owner_->onTcpSessionEnter(new_conn, enter_cb_);
+                        auto new_conn = tcp_session::create(fd_, loop_owner_);
+                        loop_owner_->on_tcp_session_enter(new_conn, enter_cb_);
                         */
                         assert(success_cb_ != nullptr);
                         success_cb_();
                     }
                 }
 
-                void tryRecv() override {
+                void on_recv() override {
                     /*assert(false);*/
                 }
 
-                void onClose() override {
+                void on_close() override {
                     assert(failed_cb_ != nullptr);
                     failed_cb_();
-                    cancelEvent();
-                    socket_ops::closeSocket(fd_);
+                    cancel_event();
+                    socket_ops::close_socket(fd_);
                     fd_ = invalid_socket;
                 }
 
-                void cancelEvent() {
+                void cancel_event() {
                     struct epoll_event ev{0, {nullptr}};
-                    ::epoll_ctl(service_thread_->getImpl()->epoll_fd(), EPOLL_CTL_DEL, fd_, &ev);
+                    ::epoll_ctl(service_thread_->get_impl()->epoll_fd(), EPOLL_CTL_DEL, fd_, &ev);
                 }
 
-                std::shared_ptr<ServiceThread> getServiceThread() {
+                std::shared_ptr<service_thread> service_thread() {
                     return service_thread_;
                 }
 
             private:
                 sock_t fd_{invalid_socket};
-                std::shared_ptr<ServiceThread> service_thread_;
+                std::shared_ptr<service_thread> service_thread_;
                 std::function<void()> success_cb_;
                 std::function<void()> failed_cb_;
             };

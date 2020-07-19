@@ -9,7 +9,7 @@
 namespace spdnet {
     namespace net {
         namespace detail {
-            class IocpAcceptChannel : public Channel {
+            class iocp_accept_channel : public channel {
             public:
                 typedef
                 BOOL
@@ -35,18 +35,18 @@ namespace spdnet {
                 LPOVERLAPPED lpOverlapped
                 );
 
-                IocpAcceptChannel(sock_t listen_fd, EndPoint addr, std::function<void(sock_t fd)> &&success_cb)
+                iocp_accept_channel(sock_t listen_fd, end_point addr, std::function<void(sock_t fd)> &&success_cb)
                         : listen_fd_(listen_fd), addr_(addr), success_cb_(std::move(success_cb)) {
                 }
 
-                ~IocpAcceptChannel() {
-                    socket_ops::closeSocket(fd_);
+                ~iocp_accept_channel() {
+                    socket_ops::close_socket(fd_);
                 }
 
-                void doComplete(size_t /*bytes_transferred*/, std::error_code ec) override {
+                void do_complete(size_t /*bytes_transferred*/, std::error_code ec) override {
                     if (!ec) {
                         success_cb_(fd_);
-                        asyncAccept();
+                        async_accept();
                     } else {
                         // ...
                     }
@@ -56,22 +56,22 @@ namespace spdnet {
                     return buffer_;
                 }
 
-                sock_t newSocket() {
-                    fd_ = socket_ops::createSocket(addr_.family(), SOCK_STREAM, 0);
+                sock_t new_socket() {
+                    fd_ = socket_ops::create_socket(addr_.family(), SOCK_STREAM, 0);
                     return fd_;
                 }
 
-                void asyncAccept() {
+                void async_accept() {
                     if (!accept_ex_) {
                         DWORD bytes = 0;
                         GUID guid = WSAID_ACCEPTEX; //{ 0xb5367df1,0xcbac,0x11cf,{0x95,0xca,0x00,0x80,0x5f,0x48,0xa1,0x92} };
                         void *ptr = nullptr;
-                        if (::WSAIoctl(newSocket(), SIO_GET_EXTENSION_FUNCTION_POINTER,
+                        if (::WSAIoctl(new_socket(), SIO_GET_EXTENSION_FUNCTION_POINTER,
                                        &guid, sizeof(guid), &ptr, sizeof(ptr), &bytes, 0, 0) != 0) {
                             // ...
                         }
                         if (fd_ != invalid_socket)
-                            socket_ops::closeSocket(fd_);
+                            socket_ops::close_socket(fd_);
                         accept_ex_ = ptr;
                     }
                     if (accept_ex_) {
@@ -80,7 +80,7 @@ namespace spdnet {
                         accept_ex_.load();
                         reset();
                         DWORD bytes_read = 0;
-                        BOOL result = accept_ex(listen_fd_, newSocket(), buffer(),
+                        BOOL result = accept_ex(listen_fd_, new_socket(), buffer(),
                                                 0, addr_.socket_addr_len(), addr_.socket_addr_len(), &bytes_read, this);
                         DWORD last_error = current_errno();
                         if (!result && last_error != WSA_IO_PENDING) {
@@ -97,11 +97,11 @@ namespace spdnet {
                 sock_t fd_{invalid_socket};
                 std::atomic<void *> accept_ex_{nullptr};
                 sock_t listen_fd_{invalid_socket};
-                EndPoint addr_;
+                end_point addr_;
                 std::function<void(sock_t fd)> success_cb_;
             };
 
-            using AcceptChannelImpl = IocpAcceptChannel;
+            using accept_channel_impl = iocp_accept_channel;
 
         }
     }

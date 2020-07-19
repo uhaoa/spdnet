@@ -9,12 +9,12 @@ namespace spdnet {
     namespace net {
         namespace socket_ops {
 
-            inline int socketNoDelay(sock_t fd) {
+            inline int socket_no_delay(sock_t fd) {
                 int on = 1;
                 return ::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (const char *) &on, sizeof(on));
             }
 
-            inline bool socketBlock(sock_t fd) {
+            inline bool socket_block(sock_t fd) {
                 int err;
                 unsigned long ul = true;
 #ifdef SPDNET_PLATFORM_WINDOWS
@@ -25,7 +25,7 @@ namespace spdnet {
                 return err != SPDNET_SOCKET_ERROR;
             }
 
-            inline bool socketNonBlock(sock_t fd) {
+            inline bool socket_non_block(sock_t fd) {
                 int err;
                 unsigned long ul = true;
 #ifdef SPDNET_PLATFORM_WINDOWS
@@ -37,15 +37,15 @@ namespace spdnet {
                 return err != SPDNET_SOCKET_ERROR;
             }
 
-            inline int socketSendBufSize(sock_t fd, int size) {
+            inline int socket_send_buf_size(sock_t fd, int size) {
                 return ::setsockopt(fd, SOL_SOCKET, SO_SNDBUF, (const char *) &size, sizeof(size));
             }
 
-            inline int socketRecvBufSize(sock_t fd, int size) {
+            inline int socket_recv_buf_size(sock_t fd, int size) {
                 return ::setsockopt(fd, SOL_SOCKET, SO_RCVBUF, (const char *) &size, sizeof(size));
             }
 
-            inline void closeSocket(sock_t fd) {
+            inline void close_socket(sock_t fd) {
 #ifdef SPDNET_PLATFORM_WINDOWS
                 ::closesocket(fd);
 #else
@@ -53,7 +53,7 @@ namespace spdnet {
 #endif
             }
 
-            inline std::string getIPFromSockaddr(const struct sockaddr *from) {
+            inline std::string get_ip_from_sockaddr(const struct sockaddr *from) {
 #ifdef SPDNET_PLATFORM_WINDOWS
                 using AddrType = PVOID;
 #else
@@ -74,19 +74,19 @@ namespace spdnet {
                 return tmp;
             }
 
-            inline std::string getIPFromSockFd(sock_t fd) {
+            inline std::string get_ip_from_sockfd(sock_t fd) {
 #ifdef SPDNET_PLATFORM_WINDOWS
                 struct sockaddr name = sockaddr();
                 int namelen = sizeof(name);
                 if (::getpeername(fd, (struct sockaddr*)&name, &namelen) == 0)
                 {
-                    return getIPFromSockaddr(&name);
+                    return get_ip_from_sockaddr(&name);
                 }
 #else
                 struct sockaddr_in name = sockaddr_in();
                 socklen_t namelen = sizeof(name);
                 if (::getpeername(fd, (struct sockaddr *) &name, &namelen) == 0) {
-                    return getIPFromSockaddr((const struct sockaddr *) &name);
+                    return get_ip_from_sockaddr((const struct sockaddr *) &name);
                 }
 #endif
 
@@ -94,7 +94,7 @@ namespace spdnet {
             }
 
 
-            inline static struct sockaddr_in6 getPeerAddr(sock_t sockfd) {
+            inline static struct sockaddr_in6 get_peer_addr(sock_t sockfd) {
                 struct sockaddr_in6 peer_addr = sockaddr_in6();
                 auto addrlen = static_cast<socklen_t>(sizeof peer_addr);
                 if (::getpeername(sockfd, (struct sockaddr *) (&peer_addr), &addrlen) < 0) {
@@ -103,7 +103,7 @@ namespace spdnet {
                 return peer_addr;
             }
 
-            inline static struct sockaddr_in6 getLocalAddr(sock_t sockfd) {
+            inline static struct sockaddr_in6 get_local_addr(sock_t sockfd) {
                 struct sockaddr_in6 local_addr = sockaddr_in6();
                 auto addrlen = static_cast<socklen_t>(sizeof local_addr);
                 if (::getsockname(sockfd, (struct sockaddr *) (&local_addr), &addrlen) < 0) {
@@ -112,9 +112,9 @@ namespace spdnet {
                 return local_addr;
             }
 
-            inline bool checkSelfConnect(sock_t fd) {
-                struct sockaddr_in6 localaddr = getLocalAddr(fd);
-                struct sockaddr_in6 peeraddr = getPeerAddr(fd);
+            inline bool check_self_connect(sock_t fd) {
+                struct sockaddr_in6 localaddr = get_local_addr(fd);
+                struct sockaddr_in6 peeraddr = get_peer_addr(fd);
 
                 if (localaddr.sin6_family == AF_INET) {
                     const struct sockaddr_in *laddr4 = reinterpret_cast<struct sockaddr_in *>(&localaddr);
@@ -138,7 +138,7 @@ namespace spdnet {
                 }
             }
 
-            inline void clearErrno() {
+            inline void clear_errno() {
 #if defined(SPDNET_PLATFORM_WINDOWS)
                 WSASetLastError(0);
 #else
@@ -146,7 +146,7 @@ namespace spdnet {
 #endif
             }
 
-            inline sock_t createSocket(int family, int type, int protocol) {
+            inline sock_t create_socket(int family, int type, int protocol) {
 #if defined(SPDNET_PLATFORM_WINDOWS)
                 sock_t s = ::WSASocketW(family, type, protocol, 0, 0,
                     WSA_FLAG_OVERLAPPED);

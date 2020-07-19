@@ -17,68 +17,68 @@
 
 namespace spdnet {
     namespace net {
-        class TaskExecutor;
+        class task_executor;
 
-        class AsyncConnector;
+        class async_connector;
         namespace detail {
-            class Channel;
+            class channel;
 
-            class EpollImpl : public spdnet::base::NonCopyable, public std::enable_shared_from_this<EpollImpl> {
+            class epoll_impl : public spdnet::base::noncopyable, public std::enable_shared_from_this<epoll_impl> {
             public:
-                friend class EPollSocketChannel;
+                friend class epoll_socket_channel;
 
-                explicit EpollImpl(std::shared_ptr<TaskExecutor> task_executor,
-                                   std::shared_ptr<ChannelCollector> channel_collector,
+                explicit epoll_impl(std::shared_ptr<task_executor> task_executor,
+                                   std::shared_ptr<channel_collector> channel_collector,
                                    std::function<void(sock_t)> &&socket_close_notify_cb);
 
-                virtual ~EpollImpl() noexcept;
+                virtual ~epoll_impl() noexcept;
 
-                bool onSocketEnter(SocketData::Ptr data);
+                bool on_socket_enter(socket_data::ptr data);
 
-                void runOnce(uint32_t timeout);
+                void run_once(uint32_t timeout);
 
-                void send(SocketData *socket_data, const char *data, size_t len);
+                void send(socket_data *socket_data, const char *data, size_t len);
 
-                void shutdownSocket(SocketData::Ptr data);
+                void shutdown_socket(socket_data::ptr data);
 
                 int epoll_fd() const { return epoll_fd_; }
 
-                bool linkChannel(int fd, const Channel *channel, uint32_t events);
+                bool link_channel(int fd, const channel *channel, uint32_t events);
 
-                bool startAccept(sock_t listen_fd, const Channel *channel);
+                bool start_accept(sock_t listen_fd, const channel *channel);
 
-                bool asyncConnect(sock_t client_fd, const EndPoint &addr, Channel *channel);
+                bool async_connect(sock_t client_fd, const end_point &addr, channel *channel);
 
                 void wakeup();
 
-                spdnet::base::Buffer *allocBufferBySize(size_t size) {
-                    return buffer_pool_.allocBufferBySize(size);
+                spdnet::base::buffer *alloc_buffer(size_t size) {
+                    return buffer_pool_.alloc_buffer(size);
                 }
 
-                void recycleBuffer(spdnet::base::Buffer *buffer) {
-                    buffer_pool_.recycleBuffer(buffer);
+                void recycle_buffer(spdnet::base::buffer *buffer) {
+                    buffer_pool_.recycle_buffer(buffer);
                 }
 
             private:
-                void closeSocket(SocketData::Ptr data);
+                void close_socket(socket_data::ptr data);
 
-                void addWriteEvent(SocketData::Ptr data);
+                void add_write_event(socket_data::ptr data);
 
-                void cancelWriteEvent(SocketData::Ptr data);
+                void cancel_write_event(socket_data::ptr data);
 
-                void doRecv(SocketData::Ptr data);
+                void do_recv(socket_data::ptr data);
 
             private:
                 int epoll_fd_;
-                EpollWakeupChannel wakeup_;
-                spdnet::base::BufferPool buffer_pool_;
+                epoll_wakeup_channel wakeup_;
+                spdnet::base::buffer_pool buffer_pool_;
                 std::vector<epoll_event> event_entries_;
-                std::shared_ptr<TaskExecutor> task_executor_;
-                std::shared_ptr<ChannelCollector> channel_collector_;
+                std::shared_ptr<task_executor> task_executor_;
+                std::shared_ptr<channel_collector> channel_collector_;
                 std::function<void(sock_t)> socket_close_notify_cb_;
             };
 
-            using IoObjectImplType = EpollImpl;
+            using io_object_impl_type = epoll_impl;
         }
     }
 }

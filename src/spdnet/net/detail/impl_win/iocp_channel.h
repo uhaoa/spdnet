@@ -10,17 +10,17 @@ namespace spdnet {
     namespace net {
         namespace detail {
             // class IocpSocketData;
-            class IocpImpl;
+            class iocp_impl;
 
-            class Channel : public OVERLAPPED {
+            class channel : public OVERLAPPED {
             public:
-                Channel() {
+                channel() {
                     reset();
                 }
 
-                virtual ~Channel() {}
+                virtual ~channel() {}
 
-                virtual void doComplete(size_t bytes_transferred, std::error_code ec) = 0;
+                virtual void do_complete(size_t bytes_transferred, std::error_code ec) = 0;
 
                 void reset() {
                     Internal = 0;
@@ -31,18 +31,18 @@ namespace spdnet {
                 }
             };
 
-            class SocketChannel : public Channel {
+            class socket_channel : public channel {
             public:
-                SocketChannel(SocketData::Ptr data, std::shared_ptr<IocpImpl> io_impl)
+                socket_channel(socket_data::ptr data, std::shared_ptr<iocp_impl> io_impl)
                         : data_(data), io_impl_(io_impl) {
 
                 }
 
-                virtual ~SocketChannel() noexcept {}
+                virtual ~socket_channel() noexcept {}
 
             protected:
-                SocketData::Ptr data_;
-                std::shared_ptr<IocpImpl> io_impl_;
+                socket_data::ptr data_;
+                std::shared_ptr<iocp_impl> io_impl_;
             };
 
         }

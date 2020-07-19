@@ -7,9 +7,9 @@
 namespace spdnet {
     namespace net {
         namespace detail {
-            class IocpWakeupChannel : public Channel {
+            class iocp_wakeup_channel : public channel {
             public:
-                IocpWakeupChannel(HANDLE handle)
+                iocp_wakeup_channel(HANDLE handle)
                         : handle_(handle) {
 
                 }
@@ -20,7 +20,7 @@ namespace spdnet {
                 }
 
             private:
-                void doComplete(size_t bytes_transferred, std::error_code ec) override {
+                void do_complete(size_t bytes_transferred, std::error_code ec) override {
                     // ...
                 }
 

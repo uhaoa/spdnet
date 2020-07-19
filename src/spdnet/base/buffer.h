@@ -6,18 +6,18 @@
 
 namespace spdnet {
     namespace base {
-        class Buffer {
+        class buffer {
         public:
             static constexpr size_t min_buffer_size = 1024;
 
-            ~Buffer() {
+            ~buffer() {
                 if (data_ != nullptr) {
                     free(data_);
                     data_ = nullptr;
                 }
             }
 
-            explicit Buffer(size_t buffer_size = min_buffer_size) {
+            explicit buffer(size_t buffer_size = min_buffer_size) {
                 if (buffer_size < min_buffer_size)
                     buffer_size = min_buffer_size;
                 if ((data_ = (char *) malloc(sizeof(char) * buffer_size)) != nullptr)
@@ -25,13 +25,13 @@ namespace spdnet {
             }
 
             void write(const char *data, size_t len) {
-                if (getWriteValidCount() >= len) {
-                    memcpy(getWritePtr(), data, len);
-                    addWritePos(len);
+                if (get_write_valid_count() >= len) {
+                    memcpy(get_write_ptr(), data, len);
+                    add_write_pos(len);
                 } else {
-                    size_t left_len = data_size_ - getLength();
+                    size_t left_len = data_size_ - get_length();
                     if (left_len >= len) {
-                        adjustToHead();
+                        adjust_to_head();
                         write(data, len);
                     } else {
                         size_t need_len = len - left_len;
@@ -43,23 +43,23 @@ namespace spdnet {
                 }
             }
 
-            size_t getLength() const {
+            size_t get_length() const {
                 return write_pos_ - read_pos_;
             }
 
-            char *getDataPtr() {
+            char *get_data_ptr() {
                 if (read_pos_ < data_size_)
                     return data_ + read_pos_;
 
                 return nullptr;
             }
 
-            void removeLength(size_t len) {
+            void remove_length(size_t len) {
                 if (read_pos_ + len <= data_size_)
                     read_pos_ = read_pos_ + len;
             }
 
-            void swap(Buffer &other) {
+            void swap(buffer &other) {
                 std::swap(data_, other.data_);
                 std::swap(data_size_, other.data_size_);
                 std::swap(write_pos_, other.write_pos_);
@@ -79,44 +79,44 @@ namespace spdnet {
                 data_ = new_data;
             }
 
-            void adjustToHead() {
+            void adjust_to_head() {
                 size_t len;
                 if (read_pos_ <= 0)
                     return;
-                len = getLength();
+                len = get_length();
                 if (len > 0)
                     memmove(data_, data_ + read_pos_, len);
                 read_pos_ = 0;
                 write_pos_ = len;
             }
 
-            void addWritePos(size_t value) {
+            void add_write_pos(size_t value) {
                 size_t temp = write_pos_ + value;
                 if (temp <= data_size_)
                     write_pos_ = temp;
             }
 
-            size_t getWriteValidCount() const {
+            size_t get_write_valid_count() const {
                 return data_size_ - write_pos_;
             }
 
-            size_t getCapacity() const {
+            size_t get_capacity() const {
                 return data_size_;
             }
 
 
-            char *getWritePtr() {
+            char *get_write_ptr() {
                 if (write_pos_ < data_size_)
                     return data_ + write_pos_;
                 else
                     return nullptr;
             }
 
-            void setNext(Buffer *next) {
+            void set_next(buffer *next) {
                 next_ = next;
             }
 
-            Buffer *getNext() const {
+            buffer* get_next() const {
                 return next_;
             }
 
@@ -133,7 +133,7 @@ namespace spdnet {
             size_t write_pos_{0};
             size_t read_pos_{0};
 
-            Buffer *next_{nullptr};
+            buffer* next_{nullptr};
         };
 
     }

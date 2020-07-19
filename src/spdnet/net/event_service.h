@@ -14,29 +14,29 @@
 
 namespace spdnet {
     namespace net {
-        class EventService : public base::NonCopyable {
+        class event_service : public base::noncopyable {
         public:
 
-            EventService() noexcept;
+            event_service() noexcept;
 
-            ~EventService() noexcept;
+            ~event_service() noexcept;
 
             void
-            addTcpSession(sock_t fd, bool is_server_side, const TcpEnterCallback &enter_callback,
-                          std::shared_ptr<ServiceThread> service_thread = nullptr);
+            add_tcp_session(sock_t fd, bool is_server_side, const tcp_enter_callback &enter_callback,
+                          std::shared_ptr<service_thread> thread = nullptr);
 
-            void runThread(size_t thread_num);
+            void run_thread(size_t thread_num);
 
-            std::shared_ptr<ServiceThread> getServiceThread();
+            std::shared_ptr<service_thread> get_service_thread();
 
         private:
             void stop();
 
         private:
             std::shared_ptr<bool> run_thread_;
-            std::vector<std::shared_ptr<ServiceThread>> threads_;
+            std::vector<std::shared_ptr<service_thread>> threads_;
             std::mt19937 random_;
-            EnvInit env_;
+            env_init env_;
         };
     }
 }

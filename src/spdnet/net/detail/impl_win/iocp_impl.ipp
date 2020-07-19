@@ -15,57 +15,57 @@
 namespace spdnet {
     namespace net {
         namespace detail {
-            IocpImpl::IocpImpl(std::shared_ptr<TaskExecutor> task_executor,
-                               std::shared_ptr<ChannelCollector> channel_collector,
+            iocp_impl::iocp_impl(std::shared_ptr<task_executor> task_executor,
+                               std::shared_ptr<channel_collector> channel_collector,
                                std::function<void(sock_t)> &&socket_close_notify_cb) noexcept
                     : handle_(CreateIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 1)), wakeup_op_(handle_),
                       task_executor_(task_executor), channel_collector_(channel_collector),
                       socket_close_notify_cb_(socket_close_notify_cb) {
             }
 
-            IocpImpl::~IocpImpl() noexcept {
+            iocp_impl::~iocp_impl() noexcept {
                 CloseHandle(handle_);
                 handle_ = INVALID_HANDLE_VALUE;
             }
 
-            bool IocpImpl::onSocketEnter(SocketData::Ptr data) {
-                if (data->isServerSide()) {
+            bool iocp_impl::on_socket_enter(socket_data::ptr data) {
+                if (data->is_server_side()) {
                     if (CreateIoCompletionPort((HANDLE) data->sock_fd(), handle_, 0, 0) == 0) {
                         return false;
                     }
                 }
                 auto impl = shared_from_this();
-                data->recv_channel_ = std::make_shared<IocpRecvChannel>(data, impl);
-                data->send_channel_ = std::make_shared<IocpSendChannel>(data, impl);
-                data->recv_channel_->startRecv();
+                data->recv_channel_ = std::make_shared<iocp_recv_channel>(data, impl);
+                data->send_channel_ = std::make_shared<iocp_send_channel>(data, impl);
+                data->recv_channel_->start_recv();
                 return true;
             }
 
-            bool IocpImpl::startAccept(sock_t listen_fd, IocpAcceptChannel *channel) {
+            bool iocp_impl::start_accept(sock_t listen_fd, iocp_accept_channel *channel) {
                 if (::CreateIoCompletionPort((HANDLE) listen_fd, handle_, 0, 0) == 0) {
                     return false;
                 }
-                channel->asyncAccept();
+                channel->async_accept();
                 return true;
             }
 
-            void IocpImpl::wakeup() {
+            void iocp_impl::wakeup() {
                 wakeup_op_.wakeup();
             }
 
-            void IocpImpl::closeSocket(SocketData::Ptr data) {
+            void iocp_impl::close_socket(socket_data::ptr data) {
                 if (data->has_closed_)
                     return;
 
-                channel_collector_->putChannel(data->recv_channel_);
-                channel_collector_->putChannel(data->send_channel_);
+                channel_collector_->put_channel(data->recv_channel_);
+                channel_collector_->put_channel(data->send_channel_);
 
                 socket_close_notify_cb_(data->sock_fd());
 
                 data->close();
             }
 
-            bool IocpImpl::asyncConnect(sock_t fd, const EndPoint &addr, Channel *op) {
+            bool iocp_impl::async_connect(sock_t fd, const end_point &addr, channel *op) {
                 if (::CreateIoCompletionPort((HANDLE) fd, handle_, 0, 0) == 0) {
                     return false;
                 }
@@ -112,26 +112,26 @@ namespace spdnet {
                 return true;
             }
 
-            void IocpImpl::send(SocketData *socket_data, const char *data, size_t len) {
-                auto buffer = allocBufferBySize(len);
+            void iocp_impl::send(socket_data *data, const char *buf, size_t len) {
+                auto buffer = alloc_buffer(len);
                 assert(buffer);
-                buffer->write(data, len);
+                buffer->write(buf, len);
                 {
-                    std::lock_guard<spdnet::base::SpinLock> lck(socket_data->send_guard_);
-                    socket_data->send_buffer_list_.push_back(buffer);
+                    std::lock_guard<spdnet::base::spin_lock> lck(data->send_guard_);
+                    data->send_buffer_list_.push_back(buffer);
                 }
-                if (socket_data->is_post_flush_) {
+                if (data->is_post_flush_) {
                     return;
                 }
-                socket_data->is_post_flush_ = true;
-                task_executor_->post([socket_data, this]() {
-                    if (socket_data->is_can_write_) {
-                        socket_data->send_channel_->flushBuffer();
+                data->is_post_flush_ = true;
+                task_executor_->post([data, this]() {
+                    if (data->is_can_write_) {
+                        data->send_channel_->flush_buffer();
                     }
                 }, false);
             }
 
-            void IocpImpl::shutdownSocket(SocketData::Ptr data) {
+            void iocp_impl::shutdown_socket(socket_data::ptr data) {
                 if (data->has_closed_)
                     return;
                 ::shutdown(data->sock_fd(), SD_SEND);
@@ -139,12 +139,12 @@ namespace spdnet {
             }
 
             /*
-            void IocpImpl::wakeup()
+            void iocp_impl::wakeup()
             {
                 ::PostQueuedCompletionStatus(handle_,0,0, (LPOVERLAPPED)wakeup_op_.get());
             }
             */
-            void IocpImpl::runOnce(uint32_t timeout) {
+            void iocp_impl::run_once(uint32_t timeout) {
                 for (;;) {
                     DWORD bytes_transferred = 0;
                     ULONG_PTR completion_key = 0;
@@ -155,8 +155,8 @@ namespace spdnet {
                     DWORD last_error = ::GetLastError();
 
                     if (overlapped) {
-                        Channel *op = static_cast<Channel *>(overlapped);
-                        op->doComplete((size_t) bytes_transferred, std::error_code(last_error, std::system_category()));
+                        channel *op = static_cast<channel *>(overlapped);
+                        op->do_complete((size_t) bytes_transferred, std::error_code(last_error, std::system_category()));
 
                     } else if (!ok) {
                         break;
