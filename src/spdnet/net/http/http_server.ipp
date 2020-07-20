@@ -34,6 +34,8 @@ namespace spdnet {
                         this->remove_http_session(session->sock_fd());
                     });
 
+					new_http_session->set_http_request_callback(enter_cb); 
+
                     new_tcp_session->set_no_delay();
                 })
             }
