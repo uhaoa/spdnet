@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <spdnet/base/noncopyable.h>
 #include <spdnet/net/end_point.h>
+#include <spdnet/net/http/http_session.h>
 
 namespace spdnet {
     namespace net {
@@ -18,16 +19,16 @@ namespace spdnet {
 
                 ~http_server();
 
-                void start(const end_point &addr, http_enter_callback &&enter_cb);
+                void start(const end_point &addr, http_request_callback&& enter_callback);
 
                 //void stop();
             private:
                 void remove_http_session(sock_t fd);
-                void add_http_session(sock_t fd, std::shared_ptr<HttpSession>);
+                void add_http_session(sock_t fd, std::shared_ptr<http_session>);
             private:
                 spdnet::net::tcp_acceptor acceptor_;
-                std::mutex mux_;
-                std::unordered_map<sock_t , std::shared_ptr<HttpSession>> http_sessions_;
+                std::mutex mutex_;
+                std::unordered_map<sock_t , std::shared_ptr<http_session>> http_sessions_;
             };
         }
 

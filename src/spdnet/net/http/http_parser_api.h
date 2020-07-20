@@ -384,9 +384,14 @@ namespace spdnet {
 
             class http_request_parser : public http_parser_base, http_header_parser, spdnet::base::noncopyable {
             public:
+				using request_complete_callback = std::function<void(http_request&)>;
+			public:
                 http_request_parser()
                         : http_parser_base(HTTP_REQUEST, parser_settings_<http_request_parser>::instance()), http_header_parser(request_) {}
 
+				void set_parse_complete_callback(request_complete_callback&& cb) {
+					complete_callback_ = std::move(cb);
+				}
                 int on_message_begin() {
                     request_.reset();
                     http_header_parser::reset();
@@ -412,13 +417,16 @@ namespace spdnet {
                     request_.method_ = static_cast<http_method>(parser_.method);
                     request_.set_version(http_version(parser_.http_major , parser_.http_minor));
                     request_.set_keep_alive(http_should_keep_alive(&parser_) != 0);
-
+					if (complete_callback_){
+						complete_callback_(request_);
+					}
                     request_.reset();
                     return 0;
                 }
 
             private:
                 http_request request_;
+				request_complete_callback complete_callback_;
             };
             /*
             class http_response_parser : public http_parser_base, http_header_parser, spdnet::base::noncopyable {

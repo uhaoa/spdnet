@@ -10,7 +10,9 @@ namespace spdnet {
         {
             http_session::http_session(std::shared_ptr<tcp_session> session)
                 :session_(session)
-            {}
+            {
+				session
+			}
 
 
             http_session::~http_session()
