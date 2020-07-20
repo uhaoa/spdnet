@@ -6,20 +6,20 @@
 #include <spdnet/base/noncopyable.h>
 #include <spdnet/net/end_point.h>
 #include <spdnet/net/http/http_session.h>
+#include <spdnet/net/acceptor.h>
 
 namespace spdnet {
     namespace net {
         namespace http {
-            class event_service;
             class http_server : public spdnet::base::noncopyable {
             public:
                 using http_enter_callback = std::function<void(std::shared_ptr<http_session>)>;
             public:
-                http_server(event_service &service);
+                http_server(spdnet::net::event_service &service);
 
                 ~http_server();
 
-                void start(const end_point &addr, http_request_callback&& enter_callback);
+                void start(const end_point &addr, http_session::http_request_callback&& enter_callback);
 
                 //void stop();
             private:

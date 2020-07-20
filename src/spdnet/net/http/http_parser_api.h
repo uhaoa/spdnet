@@ -2,15 +2,16 @@
 #define SPDNET_NET_HTTP_HTTP_PARSER_API_H_
 
 #include <memory>
+#include <map>
+#include <sstream>
 #include <spdnet/base/singleton.h>
-#include <spdnet/base/noncopyable.h.h>
+#include <spdnet/base/noncopyable.h>
 #include <spdnet/net/http/http_parser.h>
-#include <spdnet/net/http/http_error.h>
 
 namespace spdnet {
     namespace net {
         namespace http {
-            template<Parser>
+            template<typename Parser>
             class parser_setting : public spdnet::base::singleton<parser_setting<Parser>> {
             public:
                 parser_setting() {
@@ -31,12 +32,11 @@ namespace spdnet {
                 http_parser_settings &get_setting() { return setting_; }
 
             public:
-                template<typename Func, template ... Args
-                >
+                template<typename Func, typename ... Args>
 
                 static int call(http_parser *parser, Func func, Args ... args) {
-                    Parser *parser = (Parser *) p->data;
-                    return (parser->*func)(args...);
+                    Parser *p = (Parser *) parser->data;
+                    return (p->*func)(args...);
                 }
 
                 static int on_message_begin(http_parser *p) noexcept { return call(p, &Parser::on_message_begin); }
@@ -61,7 +61,7 @@ namespace spdnet {
                     return call(p, &Parser::on_headers_complete);
                 }
 
-                static int onMessageComplete(http_parser *p) noexcept { return call(p, &Parser::onMessageComplete); }
+                static int on_message_complete(http_parser *p) noexcept { return call(p, &Parser::on_message_complete); }
 
                 static int on_body(http_parser *p, const char *data, size_t length) noexcept {
                     return call(p, &Parser::on_body, data, length);
@@ -141,10 +141,12 @@ namespace spdnet {
                 http_version(uint16_t major , uint16_t minor)
                     :major_(major) , minor_(minor)
                 {}
-                http_version(http_version&) = default;
+                http_version() = default;
+                http_version(const http_version&) = default;
                 http_version(http_version&&) = default;
-                http_version& operator=(http_version& = default);
-                verhttp_versionsion& operator=(http_version&& = default);
+                http_version& operator=(const http_version&) = default;
+                http_version& operator=(http_version&& ) = default;
+
                 uint16_t get_major() const { return major_; }
                 uint16_t get_minor() const { return minor_; }
 
@@ -166,65 +168,62 @@ namespace spdnet {
                 uint16_t minor_{0};
             };
 
-            class url_info {
+            class http_url_info {
             public:
-                std::string to_string() {
-                    std::string ret;
-                    ret << "URL\n"
+                friend class http_request;
+
+                std::string to_string() const  {
+                    std::ostringstream oss;
+                    oss << "URL\n"
                         << "schema: '" << schema_ << "'\n"
                         << "host: '" << host_ << "'\n"
                         << "port: " << port_ << "\n"
-                        << "path: '" << url.path << "'\n"
-                        << "query: '" << url.query << "'\n"
-                        << "fragment: '" << url.fragment << "'\n"
-                        << "userinfo: '" << url.userinfo << "'\n";
+                        << "path: '" << path_ << "'\n"
+                        << "query: '" << query_ << "'\n"
+                        << "fragment: '" << fragment_ << "'\n"
+                        << "userinfo: '" << userinfo_ << "'\n";
 
-                    return ret;
+                    return oss.str();
                 }
 
-                static url_info parse(const char *data, size_t len, bool is_connect = false) {
+                void parse(const std::string& input, bool is_connect = false) {
                     http_parser_url u;
                     http_parser_url_init(&u);
                     int err = http_parser_parse_url(
-                            data, len, int(is_connect), &u);
+                            input.c_str(), input.length(), int(is_connect), &u);
                     if (err) {
-                        throw url_parse_error("Failed to parse this url: '" + input + "'");
+                        return ;
+                       // throw url_parse_error("Failed to parse this url: '" + input + "'");
                     }
-
-                    url_info info;
-
-                    using field_t = std::pair<http_parser_url_fields, std::string UrlInfo::*>;
+                    using field_t = std::pair<http_parser_url_fields, std::string http_url_info::*>;
                     static const field_t string_fields[] = {
-                            {UF_SCHEMA,   &url_info::schema},
-                            {UF_HOST,     &url_info::host},
-                            {UF_PATH,     &url_info::path},
-                            {UF_QUERY,    &url_info::query},
-                            {UF_FRAGMENT, &url_info::fragment},
-                            {UF_USERINFO, &url_info::userinfo}
+                            {UF_SCHEMA,   &http_url_info::schema_},
+                            {UF_HOST,     &http_url_info::host_},
+                            {UF_PATH,     &http_url_info::path_},
+                            {UF_QUERY,    &http_url_info::query_},
+                            {UF_FRAGMENT, &http_url_info::fragment_},
+                            {UF_USERINFO, &http_url_info::userinfo_}
                     };
                     for (const field_t &field : string_fields) {
                         if (u.field_set & (1 << field.first)) {
-                            info.*field.second = input.substr(
+                            this->*field.second = input.substr(
                                     u.field_data[field.first].off, u.field_data[field.first].len);
                         }
                     }
 
                     if (u.field_set & (1 << UF_PORT)) {
-                        info.port = std::stoul(input.substr(
+                        port_ = std::stoul(input.substr(
                                 u.field_data[UF_PORT].off, u.field_data[UF_PORT].len
                         ));
                     }
-
-                    return info;
                 }
 
                 const std::string& get_schema() const {return schema_ ; }
                 const std::string& get_host() const {return host_ ; }
                 const std::string& get_path() const {return path_ ; }
                 const std::string& get_query() const {return query_ ; }
-                const std::string& get_fragment() const {return fragment_ ; }
+                const std::string& get_fragment() const { return fragment_ ; }
                 const std::string& get_userinfo() const {return userinfo_ ; }
-                const std::string& get_fragment() const {return fragment_ ; }
                 uint16_t get_port() const {return port_; }
 
                 void set_schema(const std::string& str) { schema_ = str ; }
@@ -234,6 +233,17 @@ namespace spdnet {
                 void set_fragment(const std::string& str) { fragment_ = str ; }
                 void set_userinfo(const std::string& str) { userinfo_ = str ; }
                 void set_port(uint16_t port) { port_ = port; }
+
+                void reset()
+                {
+                    schema_.clear();
+                    host_.clear();
+                    path_.clear();
+                    query_.clear();
+                    fragment_.clear();
+                    userinfo_.clear();
+                    port_ = 0;
+                }
             private:
                 std::string schema_;
                 std::string host_;
@@ -245,22 +255,24 @@ namespace spdnet {
             };
 
 
-            class http_request : public http_header_set, http_body {
+            class http_request : public http_header_set, public http_body {
             public:
+                http_request() = default;
                 void reset() {
                     http_header_set::reset();
                     http_body::reset();
                     version_.reset();
                     method_ = HTTP_HEAD;
                     keep_alive_ = false;
-                    url_.reset();
+                    url_.clear();
+                    url_info_.reset();
                 }
 
-                http_method get_http_method() const {
+                http_method get_method() const {
                     return method_;
                 }
 
-                void set_http_method(http_method method) {
+                void set_method(http_method method) {
                     method_ = method;
                 }
 
@@ -272,22 +284,29 @@ namespace spdnet {
                     keep_alive_ = keep_alive;
                 }
 
-                const std::string &get_url() const { return url_; }
+                const std::string &get_url_str() const { return url_; }
 
-                void set_url(const std::string &url) {
+                const http_url_info& get_url_info() const { return url_info_; }
+
+                http_url_info& get_url_info() { return url_info_; }
+
+                void set_url_str(const std::string &url) {
                     url_ = url;
                 }
 
-                void append_url(const char *data, size_t len) {
+                void append_url_str(const char *data, size_t len) {
                     url_.append(data, len);
                 }
 
                 const http_version& get_version() const {return version_;}
                 void set_version(const http_version& version) {version_ = version;}
 
-                std::string to_string() const
+                std::string to_string()
                 {
                     std::ostringstream  oss;
+                    if (url_.empty()) {
+                        url_ =url_info_.to_string();
+                    }
                     oss << "HTTP/" << version_.to_string() << " " << http_method_str(method_) << " request.\n"
                            << "\tUrl: '" << url_ << "'\n"
                            << "\tHeaders:\n";
@@ -299,10 +318,21 @@ namespace spdnet {
 
                     return std::string(oss.str());
                 }
+
+                void add_query_param(const std::string& key , const std::string& val)
+                {
+                    if (!url_info_.query_.empty()) {
+                        url_info_.query_ += "&";
+                    }
+                    url_info_.query_ += key;
+                    url_info_.query_ += "=";
+                    url_info_.query_ += val;
+                }
             private:
                 http_method method_ = HTTP_HEAD;
                 bool keep_alive_ = false;
                 std::string url_;
+                http_url_info url_info_;
                 http_version version_;
             };
 
@@ -371,7 +401,7 @@ namespace spdnet {
                 void try_add_current_header() {
                     if (current_header_field_.empty())
                         return;
-                    header_.addHeader(current_header_field_, current_header_value_);
+                    header_.add_header(current_header_field_, current_header_value_);
                     reset();
                 }
 
@@ -382,12 +412,12 @@ namespace spdnet {
                 http_header_set &header_;
             };
 
-            class http_request_parser : public http_parser_base, http_header_parser, spdnet::base::noncopyable {
+            class http_request_parser : public http_parser_base, public http_header_parser, public spdnet::base::noncopyable {
             public:
-				using request_complete_callback = std::function<void(http_request&)>;
+				using request_complete_callback = std::function<void(const http_request&)>;
 			public:
                 http_request_parser()
-                        : http_parser_base(HTTP_REQUEST, parser_settings_<http_request_parser>::instance()), http_header_parser(request_) {}
+                        : http_parser_base(HTTP_REQUEST, parser_setting<http_request_parser>::instance().get_setting()), http_header_parser(request_) {}
 
 				void set_parse_complete_callback(request_complete_callback&& cb) {
 					complete_callback_ = std::move(cb);
@@ -399,7 +429,7 @@ namespace spdnet {
                 }
 
                 int on_url(const char *data, size_t len) {
-                    request_.append_url(data, len);
+                    request_.append_url_str(data, len);
                     return 0;
                 }
 
@@ -414,7 +444,7 @@ namespace spdnet {
                 }
 
                 int on_message_complete() {
-                    request_.method_ = static_cast<http_method>(parser_.method);
+                    request_.set_method(static_cast<http_method>(parser_.method));
                     request_.set_version(http_version(parser_.http_major , parser_.http_minor));
                     request_.set_keep_alive(http_should_keep_alive(&parser_) != 0);
 					if (complete_callback_){

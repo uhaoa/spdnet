@@ -10,7 +10,7 @@ namespace spdnet {
         namespace http {
             class http_session : public spdnet::base::noncopyable, public std::enable_shared_from_this<http_session> {
             public:
-				using http_request_callback = std::function<void(http_request& , std::shared_ptr<http_session>)>;
+				using http_request_callback = std::function<void(const http_request& , std::shared_ptr<http_session>)>;
 				friend class http_server; 
 				http_session(std::shared_ptr<tcp_session> session)
 					:session_(session)
@@ -19,16 +19,15 @@ namespace spdnet {
 
 				~http_session() = default;
 
-				void set_http_request_callback(http_request_callback&& cb)
+				void set_http_request_callback(const http_request_callback& callback)
 				{
-					auto&& callback = std::move(cb);
 					auto this_ptr = shared_from_this();
-					parser_.set_parse_complete_callback([callback](http_request& request) {
+					parser_.set_parse_complete_callback([callback , this_ptr](const http_request& request) {
 						callback(request , this_ptr);
 					});
 				}
             private:
-				size_t http_session::try_parse(const char* data, size_t len)
+				size_t try_parse(const char* data, size_t len)
 				{
 					return parser_.try_parse(data, len);
 				}
@@ -39,7 +38,5 @@ namespace spdnet {
         }
     }
 }
-
-#include <spdnet/net/http/http_session.ipp>
 
 #endif // SPDNET_NET_HTTP_HTTP_SESSION_H_
