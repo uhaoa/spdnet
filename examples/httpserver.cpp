@@ -4,10 +4,6 @@
 #include <spdnet/net/event_service.h>
 #include <spdnet/net/http/http_server.h>
 
-std::atomic_llong total_recv_size = ATOMIC_VAR_INIT(0);
-std::atomic_llong total_client_num = ATOMIC_VAR_INIT(0);
-std::atomic_llong total_packet_num = ATOMIC_VAR_INIT(0);
-
 int main(int argc, char *argv[]) {
     if (argc != 3) {
         fprintf(stderr, "usage : <port> <thread num>\n");
