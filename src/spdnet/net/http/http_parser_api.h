@@ -4,6 +4,7 @@
 #include <memory>
 #include <map>
 #include <sstream>
+#include <iostream>
 #include <spdnet/base/singleton.h>
 #include <spdnet/base/noncopyable.h>
 #include <spdnet/net/http/http_parser.h>
@@ -11,20 +12,6 @@
 namespace spdnet {
     namespace net {
         namespace http {
-			struct  http_status_text_helper
-			{
-				static std::string get_text(uint32_t status_code) {
-					switch (status_code) {
-#define XX(num, name, text)  case num: { return #text ;}
-HTTP_STATUS_MAP(XX)
-					}; 
-					
-#undef XX
-						return "UNKNOW"; 
-				}; 
-			};
-
-
             template<typename Parser>
             class parser_setting : public spdnet::base::singleton<parser_setting<Parser>> {
             public:
@@ -164,11 +151,9 @@ HTTP_STATUS_MAP(XX)
                 uint16_t get_minor() const { return minor_; }
 
                 std::string to_string() const {
-                    std::string ret;
-                    ret += major_;
-                    ret += ".";
-                    ret += minor_;
-                    return ret;
+                    std::ostringstream oss; 
+                    oss << major_ << "." << minor_; 
+                    return oss.str();
                 }
 
                 void reset() {
@@ -184,21 +169,6 @@ HTTP_STATUS_MAP(XX)
             class http_url_info {
             public:
                 friend class http_request;
-
-                std::string to_string() const  {
-                    std::ostringstream oss;
-                    oss << "URL\n"
-                        << "schema: '" << schema_ << "'\n"
-                        << "host: '" << host_ << "'\n"
-                        << "port: " << port_ << "\n"
-                        << "path: '" << path_ << "'\n"
-                        << "query: '" << query_ << "'\n"
-                        << "fragment: '" << fragment_ << "'\n"
-                        << "userinfo: '" << userinfo_ << "'\n";
-
-                    return oss.str();
-                }
-
                 void parse(const std::string& input, bool is_connect = false) {
                     http_parser_url u;
                     http_parser_url_init(&u);
@@ -283,7 +253,7 @@ HTTP_STATUS_MAP(XX)
                     method_ = HTTP_HEAD;
                     keep_alive_ = false;
                     url_.clear();
-                    url_info_.reset();
+                    parsed_url_info_.reset();
                 }
 
                 http_method get_method() const {
@@ -302,13 +272,11 @@ HTTP_STATUS_MAP(XX)
                     keep_alive_ = keep_alive;
                 }
 
-                const std::string &get_url_str() const { return url_; }
+                const std::string &get_url() const { return url_; }
 
-                const http_url_info& get_url_info() const { return url_info_; }
+                const http_url_info& get_parsed_url_info() const { return parsed_url_info_; }
 
-                http_url_info& get_url_info() { return url_info_; }
-
-                void set_url_str(const std::string &url) {
+                void set_url(const std::string &url) {
                     url_ = url;
                 }
 
@@ -316,42 +284,88 @@ HTTP_STATUS_MAP(XX)
                     url_.append(data, len);
                 }
 
-                const http_version& get_version() const {return version_;}
+                const http_version& get_version() const { return version_;}
                 void set_version(const http_version& version) {version_ = version;}
 
                 std::string to_string()
                 {
                     std::ostringstream  oss;
+                    /*
                     if (url_.empty()) {
                         url_ =url_info_.to_string();
                     }
-                    oss << "HTTP/" << version_.to_string() << " " << http_method_str(method_) << " request.\n"
-                           << "\tUrl: '" << url_ << "'\n"
-                           << "\tHeaders:\n";
-                    for (const auto& pair : headers_) {
-                        oss << "\t\t'" << pair.first << "': '" << pair.second << "'\n";
+                    */
+                    oss << http_method_str(method_) << " " << url_; 
+                    if (!parsed_url_info_.query_.empty()) {
+                        oss << "?";
+                        oss << parsed_url_info_.query_;
                     }
-                    oss << "\tBody is " << body_.size() << " bytes long.\n\tKeepAlive: "
-                           << (keep_alive_ ? "yes" : "no") << ".";
+                    oss <<  " HTTP/" << version_.to_string();
+                    oss << "\r\n"; 
+					if (!body_.empty()) {
+						add_header("Content-Length", std::to_string(body_.size()));
+					}
+                    for (const auto& pair : headers_) {
+                        oss <<  pair.first << ": " << pair.second << "\r\n";
+                    }
+                    oss << "\r\n";
+                    oss << body_; 
 
-                    return std::string(oss.str());
+                    return oss.str();
                 }
 
                 void add_query_param(const std::string& key , const std::string& val)
                 {
-                    if (!url_info_.query_.empty()) {
-                        url_info_.query_ += "&";
+                    if (!parsed_url_info_.query_.empty()) {
+                        parsed_url_info_.query_ += "&";
                     }
-                    url_info_.query_ += key;
-                    url_info_.query_ += "=";
-                    url_info_.query_ += val;
+                    parsed_url_info_.query_ += key;
+                    parsed_url_info_.query_ += "=";
+                    parsed_url_info_.query_ += val;
+                }
+
+                void parse_url_info()
+                {
+                    parsed_url_info_.parse(url_);
+					std::vector<std::string> res;
+                    std::stringstream input1(parsed_url_info_.get_query());
+                    std::string tmp;
+					while (getline(input1, tmp, '&'))
+					{
+                        std::string key; 
+                        std::string val;
+                        std::stringstream input2(tmp);
+                        getline(input2, key, '=');
+                        getline(input2, val, '=');
+                        if (key.empty()) {
+                            // throw ? 
+                        }
+                        else {
+                            parsed_query_params_[key] = val; 
+                        }
+					}
+                }
+                bool has_query_param(const std::string& key)
+                {
+                    return parsed_query_params_.count(key) > 0; 
+                }
+                const std::string& get_query_param(const std::string& key)
+                {
+                    auto iter = parsed_query_params_.find(key);
+                    if (iter != parsed_query_params_.end())
+                        return iter->second; 
+                    else {
+                        // throw ??
+                        return ""; 
+                    }
                 }
             private:
                 http_method method_ = HTTP_HEAD;
                 bool keep_alive_ = false;
                 std::string url_;
-                http_url_info url_info_;
+                http_url_info parsed_url_info_;
                 http_version version_;
+                std::map<std::string, std::string> parsed_query_params_; 
             };
 
 			class http_response : public http_header_set, public http_body {
@@ -396,7 +410,7 @@ HTTP_STATUS_MAP(XX)
 				{
 					std::ostringstream  oss;
 					if (status_text_.empty()){
-						status_text_ = http_status_text_helper::get_text(status_code_);
+						status_text_ = http_status_str((http_status)status_code_);
 					}
 					if (!body_.empty()) {
 						add_header("Content-Length", std::to_string(body_.size()));
@@ -529,6 +543,7 @@ HTTP_STATUS_MAP(XX)
                     request_.set_method(static_cast<http_method>(parser_.method));
                     request_.set_version(http_version(parser_.http_major , parser_.http_minor));
                     request_.set_keep_alive(http_should_keep_alive(&parser_) != 0);
+                    request_.parse_url_info();
 					if (complete_callback_){
 						complete_callback_(request_);
 					}
