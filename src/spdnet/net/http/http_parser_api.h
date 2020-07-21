@@ -11,10 +11,25 @@
 namespace spdnet {
     namespace net {
         namespace http {
+			struct  http_status_text_helper
+			{
+				static std::string get_text(uint32_t status_code) {
+					switch (status_code) {
+#define XX(num, name, text)  case num: { return #text ;}
+HTTP_STATUS_MAP(XX)
+					}; 
+					
+#undef XX
+						return "UNKNOW"; 
+				}; 
+			};
+
+
             template<typename Parser>
             class parser_setting : public spdnet::base::singleton<parser_setting<Parser>> {
             public:
                 parser_setting() {
+					http_parser_settings_init(&setting_);
                     setting_.on_message_begin = on_message_begin;
                     setting_.on_status = on_status;
                     setting_.on_body = on_body;
@@ -25,8 +40,6 @@ namespace spdnet {
                     setting_.on_message_complete = on_message_complete;
                     setting_.on_chunk_header = on_chunk_header;
                     setting_.on_chunk_complete = on_chunk_complete;
-
-                    http_parser_settings_init(&setting_);
                 }
 
                 http_parser_settings &get_setting() { return setting_; }
@@ -258,6 +271,11 @@ namespace spdnet {
             class http_request : public http_header_set, public http_body {
             public:
                 http_request() = default;
+				http_request(const http_request&) = default;
+				http_request& operator=(const http_request&) = default;
+				http_request(http_request&&) = default;
+				http_request& operator=(http_request&&) = default;
+
                 void reset() {
                     http_header_set::reset();
                     http_body::reset();
@@ -335,6 +353,70 @@ namespace spdnet {
                 http_url_info url_info_;
                 http_version version_;
             };
+
+			class http_response : public http_header_set, public http_body {
+			public:
+				http_response()
+					:status_code_(HTTP_STATUS_OK)
+				{}
+				http_response(const http_response&) = default;
+				http_response& operator=(const http_response&) = default;
+				http_response(http_response&&) = default;
+				http_response& operator=(http_response&&) = default;
+
+				void reset() {
+					http_header_set::reset();
+					http_body::reset();
+					version_.reset();
+					keep_alive_ = false;
+					status_code_ = 0; 
+					status_text_.clear();
+				}
+
+				bool is_keep_alive() const { return keep_alive_; }
+
+				void set_keep_alive(bool keep_alive) { keep_alive_ = keep_alive; }
+
+				const http_version& get_version() const { return version_; }
+
+				void set_version(const http_version& version) { version_ = version; }
+
+				void append_status(const char* data, size_t len) { status_text_.append(data, len); }
+
+				void set_status_text(const std::string& text) { status_text_ = text; }
+
+				const std::string& get_status_text() const { return status_text_;  }
+
+
+				void set_status_code(uint32_t code) { status_code_ = code; }
+
+				uint32_t get_status_code() const { return status_code_; }
+
+				std::string to_string()
+				{
+					std::ostringstream  oss;
+					if (status_text_.empty()){
+						status_text_ = http_status_text_helper::get_text(status_code_);
+					}
+					if (!body_.empty()) {
+						add_header("Content-Length", std::to_string(body_.size()));
+					}
+					oss << "HTTP/" << version_.to_string() << " " << status_code_ << " "
+						<< status_text_ << "\r\n";
+					for (const auto& pair : headers_) {
+						oss << pair.first << ":" << pair.second << "\r\n";
+					}
+					oss << "\r\n"; 
+					oss << body_; 
+
+					return oss.str();
+				}
+			private:
+				uint32_t       status_code_ = 0;
+				std::string    status_text_;
+				http_version   version_;
+				bool           keep_alive_ = false;
+			};
 
             class http_parser_base {
             protected:
@@ -458,6 +540,55 @@ namespace spdnet {
                 http_request request_;
 				request_complete_callback complete_callback_;
             };
+
+
+			class http_response_parser : public http_parser_base, public http_header_parser, public spdnet::base::noncopyable {
+			public:
+				using response_complete_callback = std::function<void(const http_response&)>;
+			public:
+				http_response_parser()
+					: http_parser_base(HTTP_RESPONSE, parser_setting<http_response_parser>::instance().get_setting()), http_header_parser(response_) {}
+
+				void set_parse_complete_callback(response_complete_callback&& cb) {
+					complete_callback_ = std::move(cb);
+				}
+				int on_message_begin() {
+					response_.reset();
+					http_header_parser::reset();
+					return 0;
+				}
+
+				int on_url(const char* data, size_t len) {
+					(void)data; 
+					(void)len;
+					assert(false);
+					return 0;
+				}
+
+				int on_status(const char* data, size_t len) {
+					response_.append_status(data, len); 
+					return 0;
+				}
+
+				int on_body(const char* data, size_t len) {
+					response_.append_body(data, len);
+					return 0;
+				}
+
+				int on_message_complete() {
+					response_.set_version(http_version(parser_.http_major, parser_.http_minor));
+					response_.set_keep_alive(http_should_keep_alive(&parser_) != 0);
+					if (complete_callback_) {
+						complete_callback_(response_);
+					}
+					response_.reset();
+					return 0;
+				}
+
+			private:
+				http_response response_;
+				response_complete_callback complete_callback_;
+			};
             /*
             class http_response_parser : public http_parser_base, http_header_parser, spdnet::base::noncopyable {
             public:
