@@ -287,7 +287,7 @@ namespace spdnet {
                 const http_version& get_version() const { return version_;}
                 void set_version(const http_version& version) {version_ = version;}
 
-                std::string to_string()
+                std::string to_string() const 
                 {
                     std::ostringstream  oss;
                     /*
@@ -303,7 +303,7 @@ namespace spdnet {
                     oss <<  " HTTP/" << version_.to_string();
                     oss << "\r\n"; 
 					if (!body_.empty()) {
-						add_header("Content-Length", std::to_string(body_.size()));
+						const_cast<http_request&>(*this).add_header("Content-Length", std::to_string(body_.size()));
 					}
                     for (const auto& pair : headers_) {
                         oss <<  pair.first << ": " << pair.second << "\r\n";
@@ -402,18 +402,20 @@ namespace spdnet {
 				const std::string& get_status_text() const { return status_text_;  }
 
 
-				void set_status_code(uint32_t code) { status_code_ = code; }
+				void set_status_code(uint32_t code) {
+					status_code_ = code; 
+					if (status_text_.empty()) {
+						status_text_ = http_status_str((http_status)status_code_);
+					}
+				}
 
 				uint32_t get_status_code() const { return status_code_; }
 
-				std::string to_string()
+				std::string to_string() const
 				{
 					std::ostringstream  oss;
-					if (status_text_.empty()){
-						status_text_ = http_status_str((http_status)status_code_);
-					}
 					if (!body_.empty()) {
-						add_header("Content-Length", std::to_string(body_.size()));
+						const_cast<http_response&>(*this).add_header("Content-Length", std::to_string(body_.size()));
 					}
 					oss << "HTTP/" << version_.to_string() << " " << status_code_ << " "
 						<< status_text_ << "\r\n";
@@ -547,10 +549,9 @@ namespace spdnet {
 					if (complete_callback_){
 						complete_callback_(request_);
 					}
-                    request_.reset();
                     return 0;
                 }
-
+				const http_request& get_request()const { return request_;  }
             private:
                 http_request request_;
 				request_complete_callback complete_callback_;

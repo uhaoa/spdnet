@@ -16,10 +16,10 @@ int main(int argc, char *argv[]) {
     service.run_thread(atoi(argv[2]));
 
     http_server server(service) ;
-    server.start(spdnet::net::end_point::ipv4("0.0.0.0", atoi(argv[1])), [](std::shared_ptr<http_session> session){
+    server.start(spdnet::net::end_point::ipv4("127.0.0.1", atoi(argv[1])), [](std::shared_ptr<http_session> session){
 		session->set_http_request_callback([](const http_request& request, std::shared_ptr<http_session> session) {
 			http_response response;
-			response.set_body("<html>hello http</html>");
+			response.set_body("<html>hello http ..</html>");
 			session->send_response(response);
 		}); 
     });

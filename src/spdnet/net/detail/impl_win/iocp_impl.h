@@ -39,7 +39,7 @@ namespace spdnet {
 
                 inline bool on_socket_enter(socket_data::ptr data);
 
-                inline void send(socket_data *data, const char *buf, size_t len);
+                inline void post_flush(socket_data *data);
 
                 inline void run_once(uint32_t timeout);
 

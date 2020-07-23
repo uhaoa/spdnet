@@ -15,9 +15,9 @@ namespace spdnet {
             public:
 				http_connector(spdnet::net::event_service &service);
 
-                ~http_connector();
+				~http_connector() = default; 
 
-                void async_connect(const end_point &addr, http_session::http_enter_callback&& enter_callback);
+                void async_connect(const end_point &addr, http_session::http_enter_callback&& enter_callback , async_connector::connect_failed_callback&& failed_callback);
 
                 //void stop();
             private:

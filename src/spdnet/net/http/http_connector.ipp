@@ -16,12 +16,7 @@ namespace spdnet {
 
 			}
 
-			http_connector::~http_connector()
-			{
-
-			}
-
-			void http_connector::async_connect(const end_point& addr, http_session::http_enter_callback&& enter_callback)
+			void http_connector::async_connect(const end_point& addr, http_session::http_enter_callback&& enter_callback , async_connector::connect_failed_callback&& failed_callback)
 			{
 				auto&& callback = std::move(enter_callback);
 				connector_.async_connect(addr, [callback](std::shared_ptr<spdnet::net::tcp_session> new_tcp_session) {
@@ -38,7 +33,7 @@ namespace spdnet {
 
 					if (callback)
 						callback(new_http_session);
-					}, nullptr);
+					}, std::move(failed_callback));
 			}
 
 		}

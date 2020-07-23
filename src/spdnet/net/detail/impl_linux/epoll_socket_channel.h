@@ -25,24 +25,24 @@ namespace spdnet {
                     bool force_close = false;
                     {
                         std::lock_guard<spdnet::base::spin_lock> lck(data_->send_guard_);
-                        if (SPDNET_PREDICT_TRUE(data_->pending_buffer_list_.empty())) {
-                            data_->pending_buffer_list_.swap(data_->send_buffer_list_);
+                        if (SPDNET_PREDICT_TRUE(data_->pending_packet_list_.empty())) {
+                            data_->pending_packet_list_.swap(data_->send_packet_list_);
                         } else {
-                            for (const auto buffer : data_->send_buffer_list_)
-                                data_->pending_buffer_list_.push_back(buffer);
-                            data_->send_buffer_list_.clear();
+                            for (const auto& packet : data_->send_packet_list_)
+                                data_->pending_packet_list_.push_back(packet);
+                            data_->send_packet_list_.clear();
                         }
                     }
 
                     constexpr size_t MAX_IOVEC = 1024;
                     struct iovec iov[MAX_IOVEC];
-                    while (!data_->pending_buffer_list_.empty()) {
+                    while (!data_->pending_packet_list_.empty()) {
                         size_t cnt = 0;
                         size_t prepare_send_len = 0;
-                        for (const auto buffer : data_->pending_buffer_list_) {
-                            iov[cnt].iov_base = buffer->get_data_ptr();
-                            iov[cnt].iov_len = buffer->get_length();
-                            prepare_send_len += buffer->get_length();
+                        for (const auto& packet : data_->pending_packet_list_) {
+                            iov[cnt].iov_base = packet.buffer_->get_data_ptr();
+                            iov[cnt].iov_len = packet.buffer_->get_length();
+                            prepare_send_len += packet.buffer_->get_length();
                             cnt++;
                             if (cnt >= MAX_IOVEC)
                                 break;
@@ -59,14 +59,16 @@ namespace spdnet {
                             break;
                         } else {
                             size_t tmp_len = send_len;
-                            for (auto iter = data_->pending_buffer_list_.begin();
-                                 iter != data_->pending_buffer_list_.end();) {
-                                auto buffer = *iter;
-                                if (SPDNET_PREDICT_TRUE(buffer->get_length() <= tmp_len)) {
-                                    tmp_len -= buffer->get_length();
-                                    buffer->clear();
-                                    impl_->recycle_buffer(buffer);
-                                    iter = data_->pending_buffer_list_.erase(iter);
+                            for (auto iter = data_->pending_packet_list_.begin();
+                                 iter != data_->pending_packet_list_.end();) {
+                                auto& packet = *iter;
+                                if (SPDNET_PREDICT_TRUE(packet.buffer_->get_length() <= tmp_len)) {
+                                    tmp_len -= packet.buffer_->get_length();
+									packet.buffer_->clear();
+                                    impl_->recycle_buffer(packet.buffer_);
+									if (packet.callback_)
+										packet.callback_();
+                                    iter = data_->pending_packet_list_.erase(iter);
                                 } else {
                                     buffer->remove_length(tmp_len);
                                     break;

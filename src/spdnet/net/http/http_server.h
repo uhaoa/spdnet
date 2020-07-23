@@ -15,7 +15,7 @@ namespace spdnet {
             public:
                 http_server(spdnet::net::event_service &service);
 
-                ~http_server();
+				~http_server() = default; 
 
                 void start(const end_point &addr, http_session::http_enter_callback&& enter_callback);
             private:

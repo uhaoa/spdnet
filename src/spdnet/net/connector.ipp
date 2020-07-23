@@ -39,7 +39,7 @@ namespace spdnet {
         }
 
         void async_connector::async_connect(const end_point &addr, tcp_enter_callback &&enter_cb,
-                                          std::function<void()> &&failed_cb) {
+			connect_failed_callback&&failed_cb) {
             sock_t client_fd = socket_ops::create_socket(addr.family(), SOCK_STREAM, 0);
             if (client_fd == invalid_socket)
                 return;

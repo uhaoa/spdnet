@@ -21,12 +21,12 @@ namespace spdnet {
                 void flush_buffer() {
                     {
                         std::lock_guard<spdnet::base::spin_lock> lck(data_->send_guard_);
-                        if (SPDNET_PREDICT_TRUE(data_->pending_buffer_list_.empty())) {
-                            data_->pending_buffer_list_.swap(data_->send_buffer_list_);
+                        if (SPDNET_PREDICT_TRUE(data_->pending_packet_list_.empty())) {
+                            data_->pending_packet_list_.swap(data_->send_packet_list_);
                         } else {
-                            for (const auto buffer : data_->send_buffer_list_)
-                                data_->pending_buffer_list_.push_back(buffer);
-                            data_->send_buffer_list_.clear();
+                            for (const auto& packet : data_->send_packet_list_)
+                                data_->pending_packet_list_.push_back(packet);
+                            data_->send_packet_list_.clear();
                         }
                     }
 
@@ -35,9 +35,9 @@ namespace spdnet {
 
                     size_t cnt = 0;
                     size_t prepare_send_len = 0;
-                    for (const auto buffer : data_->pending_buffer_list_) {
-                        send_buf[cnt].buf = buffer->get_data_ptr();
-                        send_buf[cnt].len = buffer->get_length();
+                    for (const auto& packet : data_->pending_packet_list_) {
+                        send_buf[cnt].buf = packet.buffer_->get_data_ptr();
+                        send_buf[cnt].len = packet.buffer_->get_length();
                         cnt++;
                         if (cnt >= MAX_BUF_CNT)
                             break;
@@ -64,23 +64,25 @@ namespace spdnet {
                         io_impl_->close_socket(data_);
                     } else {
                         auto send_len = bytes_transferred;
-                        for (auto iter = data_->pending_buffer_list_.begin();
-                             iter != data_->pending_buffer_list_.end();) {
-                            auto buffer = *iter;
-                            if (SPDNET_PREDICT_TRUE(buffer->get_length() <= send_len)) {
-                                send_len -= buffer->get_length();
-                                buffer->clear();
-                                io_impl_->recycle_buffer(buffer);
-                                iter = data_->pending_buffer_list_.erase(iter);
+                        for (auto iter = data_->pending_packet_list_.begin();
+                             iter != data_->pending_packet_list_.end();) {
+                            auto& packet = *iter;
+                            if (SPDNET_PREDICT_TRUE(packet.buffer_->get_length() <= send_len)) {
+                                send_len -= packet.buffer_->get_length();
+								packet.buffer_->clear();
+                                io_impl_->recycle_buffer(packet.buffer_);
+								if (packet.callback_)
+									packet.callback_(); 
+                                iter = data_->pending_packet_list_.erase(iter);
                             } else {
-                                buffer->remove_length(send_len);
+								packet.buffer_->remove_length(send_len);
                                 break;
                             }
 
                         }
                         {
                             std::unique_lock<spdnet::base::spin_lock> lck(data_->send_guard_);
-                            if (data_->send_buffer_list_.empty() && data_->pending_buffer_list_.empty()) {
+                            if (data_->send_packet_list_.empty() && data_->pending_packet_list_.empty()) {
                                 data_->is_post_flush_ = false;
                             } else {
                                 lck.unlock();

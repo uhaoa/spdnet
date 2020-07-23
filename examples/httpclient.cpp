@@ -18,11 +18,11 @@ int main(int argc, char *argv[]) {
     http_connector connector(service) ;
 	connector.async_connect(spdnet::net::end_point::ipv4("127.0.0.1", atoi(argv[1])), [](std::shared_ptr<http_session> session){
 		session->set_http_response_callback([](const http_response& response, std::shared_ptr<http_session> session) {
-			//session->close();
+			session->shutdown();
 		}); 
 
 		http_request req; 
-        req.set_url("/path/path/"); 
+        req.set_url("/xu/hao/"); 
         //req.add_header("Host", "www.xuhao.com");
         req.add_query_param("key1", "val1");
         req.add_query_param("key2", "val2");
@@ -32,7 +32,9 @@ int main(int argc, char *argv[]) {
         //req.set_version(http_version(1, 1)); 
         req.set_method(HTTP_GET); 
 		session->send_request(req);
-    });
+		}, []() {
+			std::cout << "connect failed" << std::endl; 
+		});
 
 
     getchar();

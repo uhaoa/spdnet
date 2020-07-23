@@ -52,6 +52,11 @@ namespace spdnet {
                 return io_impl_;
             }
 
+			detail::io_object_impl_type& get_impl_ref() {
+				return *io_impl_;
+			}
+
+
             std::shared_ptr<task_executor> get_executor() {
                 return task_executor_;
             }

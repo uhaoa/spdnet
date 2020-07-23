@@ -37,7 +37,7 @@ namespace spdnet {
 
                 void run_once(uint32_t timeout);
 
-                void send(socket_data *socket_data, const char *data, size_t len);
+                void post_flush(socket_data *socket_data);
 
                 void shutdown_socket(socket_data::ptr data);
 

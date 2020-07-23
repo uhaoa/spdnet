@@ -51,19 +51,7 @@ namespace spdnet {
                 return ::epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, fd, &event) == 0;
             }
 
-            void epoll_impl::send(socket_data *socket_data, const char *data, size_t len) {
-                auto buffer = alloc_buffer(len);
-                assert(buffer);
-                buffer->write(data, len);
-                {
-                    std::lock_guard<spdnet::base::spin_lock> lck(socket_data->send_guard_);
-                    socket_data->send_buffer_list_.push_back(buffer);
-                }
-                if (socket_data->is_post_flush_) {
-                    return;
-                }
-                socket_data->is_post_flush_ = true;
-
+            void epoll_impl::post_flush(socket_data *socket_data) {
                 task_executor_->post([socket_data]() {
                     if (socket_data->is_can_write_) {
                         socket_data->channel_->flush_buffer();

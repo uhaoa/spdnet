@@ -112,19 +112,8 @@ namespace spdnet {
                 return true;
             }
 
-            void iocp_impl::send(socket_data *data, const char *buf, size_t len) {
-                auto buffer = alloc_buffer(len);
-                assert(buffer);
-                buffer->write(buf, len);
-                {
-                    std::lock_guard<spdnet::base::spin_lock> lck(data->send_guard_);
-                    data->send_buffer_list_.push_back(buffer);
-                }
-                if (data->is_post_flush_) {
-                    return;
-                }
-                data->is_post_flush_ = true;
-                task_executor_->post([data, this]() {
+            void iocp_impl::post_flush(socket_data *data) {
+				task_executor_->post([data, this]() {
                     if (data->is_can_write_) {
                         data->send_channel_->flush_buffer();
                     }

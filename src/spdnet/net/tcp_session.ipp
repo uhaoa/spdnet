@@ -15,10 +15,6 @@ namespace spdnet {
             socket_data_ = std::make_shared<socket_data>(fd, is_server_side);
         }
 
-        tcp_session::~tcp_session() {
-
-        }
-
         std::shared_ptr<tcp_session>
         tcp_session::create(sock_t fd, bool is_server_side, std::shared_ptr<service_thread> service_thread) {
             return std::make_shared<tcp_session>(fd, is_server_side, service_thread);
@@ -36,9 +32,21 @@ namespace spdnet {
             });
         }
 
-        void tcp_session::send(const char *data, size_t len) {
+        void tcp_session::send(const char *data, size_t len , socket_data::tcp_send_complete_callback&& callback) {
             if (len <= 0)
                 return;
+			auto& impl_ref = service_thread_->get_impl_ref(); 
+			auto buffer = impl_ref.alloc_buffer(len);
+			assert(buffer);
+			buffer->write(data, len);
+			{
+				std::lock_guard<spdnet::base::spin_lock> lck(socket_data_->send_guard_);
+				socket_data_->send_packet_list_.emplace_back(socket_data::send_packet(buffer  ,std::move(callback)));
+			}
+			if (socket_data_->is_post_flush_) {
+				return;
+			}
+			socket_data_->is_post_flush_ = true;
             /*
              *   这里采用裸指针进行传递 ，主要是避免shared_ptr频繁的原子操作引起的性能上的损失 。
              *   裸指针生命周期的安全性由socket_data和channel的相互引用保证 。
@@ -47,7 +55,7 @@ namespace spdnet {
              *   send函数投递的lamba肯定已经执行完了 , 因此lamba捕获的裸指针就不存在悬指针安全问题了。
              *   这种写法看起来很不舒服 ，但为了性能只能忍一忍了 ，哈哈
             **/
-            service_thread_->get_impl()->send(socket_data_.get(), data, len);
+			impl_ref.post_flush(socket_data_.get());
         }
 
         void tcp_session::post_shutdown() {

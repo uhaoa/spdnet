@@ -16,11 +16,6 @@ namespace spdnet {
 
             }
 
-            http_server::~http_server()
-            {
-
-            }
-
 			void http_server::start(const end_point& addr, http_session::http_enter_callback&& enter_callback)
             {
                 auto&& callback = std::move(enter_callback);

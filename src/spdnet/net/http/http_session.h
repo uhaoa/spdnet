@@ -26,7 +26,7 @@ namespace spdnet {
 				void set_http_request_callback(const http_request_callback& callback)
 				{
 					if (!is_server_side_) {
-						// throw;
+						// throw ? 
 						return;
 					}
 					auto this_ptr = shared_from_this();
@@ -38,7 +38,7 @@ namespace spdnet {
 				void set_http_response_callback(const http_response_callback& callback)
 				{
 					if (is_server_side_) {
-						// throw;
+						// throw ?;
 						return;
 					}
 					auto this_ptr = shared_from_this();
@@ -47,31 +47,43 @@ namespace spdnet {
 					});
 				}
 
-				void send_response(http_response& resp)
+				void send_response(const http_response& resp)
 				{
+					assert(is_server_side_);
 					auto stream = resp.to_string();
+					auto this_ptr = shared_from_this();
 					if (session_)
-						session_->send(stream.c_str() , stream.length());
+						session_->send(stream.c_str(), stream.length() , [this_ptr]() {
+						if (!this_ptr->request_parser_.get_request().is_keep_alive()) {
+							this_ptr->shutdown(); 
+						}
+						});
 					else
 					{
-						// throw error; 
+						// throw error ?; 
 					}
 				}
 
-				void send_request(http_request& req)
+				void send_request(const http_request& req)
 				{
+					assert(!is_server_side_);
 					auto stream = req.to_string();
 					if (session_)
 						session_->send(stream.c_str(), stream.length());
 					else
 					{
-						// throw error; 
+						// throw error ?; 
 					}
 				}
 
 				void reset()
 				{
 					session_ = nullptr; 
+				}
+
+				void shutdown()
+				{
+					session_->post_shutdown(); 
 				}
             private:
 				size_t try_parse(const char* data, size_t len)
