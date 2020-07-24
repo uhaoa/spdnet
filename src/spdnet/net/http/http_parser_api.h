@@ -445,6 +445,15 @@ namespace spdnet {
             public:
                 size_t try_parse(const char *data, size_t len) {
                     const size_t nparsed = http_parser_execute(&parser_, &parser_settings_, data, len);
+					if (HTTP_PARSER_ERRNO(&parser_) != HPE_OK || nparsed > len
+						|| (nparsed < len && !p_.upgrade)) {
+						/*
+						std::ostringstream err_msg;
+						err_msg << "HTTP Parse error on character " << total_consumed_length_
+							<< ": " << http_errno_name(HTTP_PARSER_ERRNO(&p_));
+						throw_parse_error(err_msg.str());
+						*/
+					}
                     return nparsed;
                 }
 
