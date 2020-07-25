@@ -5,10 +5,11 @@
 #include <map>
 #include <sstream>
 #include <iostream>
+#include <functional>
 #include <spdnet/base/singleton.h>
 #include <spdnet/base/noncopyable.h>
+#include <spdnet/base/endian.h>
 #include <spdnet/net/http/http_parser.h>
-
 namespace spdnet {
     namespace net {
         namespace http {
@@ -16,7 +17,7 @@ namespace spdnet {
             class parser_setting : public spdnet::base::singleton<parser_setting<Parser>> {
             public:
                 parser_setting() {
-					http_parser_settings_init(&setting_);
+                    http_parser_settings_init(&setting_);
                     setting_.on_message_begin = on_message_begin;
                     setting_.on_status = on_status;
                     setting_.on_body = on_body;
@@ -61,7 +62,9 @@ namespace spdnet {
                     return call(p, &Parser::on_headers_complete);
                 }
 
-                static int on_message_complete(http_parser *p) noexcept { return call(p, &Parser::on_message_complete); }
+                static int on_message_complete(http_parser *p) noexcept {
+                    return call(p, &Parser::on_message_complete);
+                }
 
                 static int on_body(http_parser *p, const char *data, size_t length) noexcept {
                     return call(p, &Parser::on_body, data, length);
@@ -87,11 +90,11 @@ namespace spdnet {
                     }
                 }
 
-                bool has_header(const std::string &name) {
+                bool has_header(const std::string &name) const {
                     return headers_.count(name) > 0;
                 }
 
-                const std::string &get_header(const std::string &name) {
+                const std::string &get_header(const std::string &name) const {
                     const static std::string null_str;
                     const auto iter = headers_.find(name);
                     if (iter == headers_.end()) {
@@ -138,21 +141,26 @@ namespace spdnet {
 
             class http_version {
             public:
-                http_version(uint16_t major , uint16_t minor)
-                    :major_(major) , minor_(minor)
-                {}
+                http_version(uint16_t major, uint16_t minor)
+                        : major_(major), minor_(minor) {}
+
                 http_version() = default;
-                http_version(const http_version&) = default;
-                http_version(http_version&&) = default;
-                http_version& operator=(const http_version&) = default;
-                http_version& operator=(http_version&& ) = default;
+
+                http_version(const http_version &) = default;
+
+                http_version(http_version &&) = default;
+
+                http_version &operator=(const http_version &) = default;
+
+                http_version &operator=(http_version &&) = default;
 
                 uint16_t get_major() const { return major_; }
+
                 uint16_t get_minor() const { return minor_; }
 
                 std::string to_string() const {
-                    std::ostringstream oss; 
-                    oss << major_ << "." << minor_; 
+                    std::ostringstream oss;
+                    oss << major_ << "." << minor_;
                     return oss.str();
                 }
 
@@ -169,21 +177,22 @@ namespace spdnet {
             class http_url_info {
             public:
                 friend class http_request;
-                void parse(const std::string& input, bool is_connect = false) {
+
+                void parse(const std::string &input, bool is_connect = false) {
                     http_parser_url u;
                     http_parser_url_init(&u);
                     int err = http_parser_parse_url(
                             input.c_str(), input.length(), int(is_connect), &u);
                     if (err) {
-                        return ;
-                       // throw url_parse_error("Failed to parse this url: '" + input + "'");
+                        return;
+                        // throw url_parse_error("Failed to parse this url: '" + input + "'");
                     }
                     using field_t = std::pair<http_parser_url_fields, std::string http_url_info::*>;
                     static const field_t string_fields[] = {
-                            {UF_SCHEMA,   &http_url_info::schema_},
-                            {UF_HOST,     &http_url_info::host_},
-                            {UF_PATH,     &http_url_info::path_},
-                            {UF_QUERY,    &http_url_info::query_},
+                            {UF_SCHEMA, &http_url_info::schema_},
+                            {UF_HOST, &http_url_info::host_},
+                            {UF_PATH, &http_url_info::path_},
+                            {UF_QUERY, &http_url_info::query_},
                             {UF_FRAGMENT, &http_url_info::fragment_},
                             {UF_USERINFO, &http_url_info::userinfo_}
                     };
@@ -201,24 +210,35 @@ namespace spdnet {
                     }
                 }
 
-                const std::string& get_schema() const {return schema_ ; }
-                const std::string& get_host() const {return host_ ; }
-                const std::string& get_path() const {return path_ ; }
-                const std::string& get_query() const {return query_ ; }
-                const std::string& get_fragment() const { return fragment_ ; }
-                const std::string& get_userinfo() const {return userinfo_ ; }
-                uint16_t get_port() const {return port_; }
+                const std::string &get_schema() const { return schema_; }
 
-                void set_schema(const std::string& str) { schema_ = str ; }
-                void set_host(const std::string& str) { host_ = str ; }
-                void set_path(const std::string& str) { path_ = str ; }
-                void set_query(const std::string& str) { query_ = str ; }
-                void set_fragment(const std::string& str) { fragment_ = str ; }
-                void set_userinfo(const std::string& str) { userinfo_ = str ; }
+                const std::string &get_host() const { return host_; }
+
+                const std::string &get_path() const { return path_; }
+
+                const std::string &get_query() const { return query_; }
+
+                const std::string &get_fragment() const { return fragment_; }
+
+                const std::string &get_userinfo() const { return userinfo_; }
+
+                uint16_t get_port() const { return port_; }
+
+                void set_schema(const std::string &str) { schema_ = str; }
+
+                void set_host(const std::string &str) { host_ = str; }
+
+                void set_path(const std::string &str) { path_ = str; }
+
+                void set_query(const std::string &str) { query_ = str; }
+
+                void set_fragment(const std::string &str) { fragment_ = str; }
+
+                void set_userinfo(const std::string &str) { userinfo_ = str; }
+
                 void set_port(uint16_t port) { port_ = port; }
 
-                void reset()
-                {
+                void reset() {
                     schema_.clear();
                     host_.clear();
                     path_.clear();
@@ -227,6 +247,7 @@ namespace spdnet {
                     userinfo_.clear();
                     port_ = 0;
                 }
+
             private:
                 std::string schema_;
                 std::string host_;
@@ -241,10 +262,14 @@ namespace spdnet {
             class http_request : public http_header_set, public http_body {
             public:
                 http_request() = default;
-				http_request(const http_request&) = default;
-				http_request& operator=(const http_request&) = default;
-				http_request(http_request&&) = default;
-				http_request& operator=(http_request&&) = default;
+
+                http_request(const http_request &) = default;
+
+                http_request &operator=(const http_request &) = default;
+
+                http_request(http_request &&) = default;
+
+                http_request &operator=(http_request &&) = default;
 
                 void reset() {
                     http_header_set::reset();
@@ -274,7 +299,7 @@ namespace spdnet {
 
                 const std::string &get_url() const { return url_; }
 
-                const http_url_info& get_parsed_url_info() const { return parsed_url_info_; }
+                const http_url_info &get_parsed_url_info() const { return parsed_url_info_; }
 
                 void set_url(const std::string &url) {
                     url_ = url;
@@ -284,38 +309,37 @@ namespace spdnet {
                     url_.append(data, len);
                 }
 
-                const http_version& get_version() const { return version_;}
-                void set_version(const http_version& version) {version_ = version;}
+                const http_version &get_version() const { return version_; }
 
-                std::string to_string() const 
-                {
-                    std::ostringstream  oss;
+                void set_version(const http_version &version) { version_ = version; }
+
+                std::string to_string() const {
+                    std::ostringstream oss;
                     /*
                     if (url_.empty()) {
                         url_ =url_info_.to_string();
                     }
                     */
-                    oss << http_method_str(method_) << " " << url_; 
+                    oss << http_method_str(method_) << " " << url_;
                     if (!parsed_url_info_.query_.empty()) {
                         oss << "?";
                         oss << parsed_url_info_.query_;
                     }
-                    oss <<  " HTTP/" << version_.to_string();
-                    oss << "\r\n"; 
-					if (!body_.empty()) {
-						const_cast<http_request&>(*this).add_header("Content-Length", std::to_string(body_.size()));
-					}
-                    for (const auto& pair : headers_) {
-                        oss <<  pair.first << ": " << pair.second << "\r\n";
+                    oss << " HTTP/" << version_.to_string();
+                    oss << "\r\n";
+                    if (!body_.empty()) {
+                        const_cast<http_request &>(*this).add_header("Content-Length", std::to_string(body_.size()));
+                    }
+                    for (const auto &pair : headers_) {
+                        oss << pair.first << ": " << pair.second << "\r\n";
                     }
                     oss << "\r\n";
-                    oss << body_; 
+                    oss << body_;
 
                     return oss.str();
                 }
 
-                void add_query_param(const std::string& key , const std::string& val)
-                {
+                void add_query_param(const std::string &key, const std::string &val) {
                     if (!parsed_url_info_.query_.empty()) {
                         parsed_url_info_.query_ += "&";
                     }
@@ -324,118 +348,288 @@ namespace spdnet {
                     parsed_url_info_.query_ += val;
                 }
 
-                void parse_url_info()
-                {
+                void parse_url_info() {
                     parsed_url_info_.parse(url_);
-					std::vector<std::string> res;
+                    std::vector<std::string> res;
                     std::stringstream input1(parsed_url_info_.get_query());
                     std::string tmp;
-					while (getline(input1, tmp, '&'))
-					{
-                        std::string key; 
+                    while (getline(input1, tmp, '&')) {
+                        std::string key;
                         std::string val;
                         std::stringstream input2(tmp);
                         getline(input2, key, '=');
                         getline(input2, val, '=');
                         if (key.empty()) {
                             // throw ? 
+                        } else {
+                            parsed_query_params_[key] = val;
                         }
-                        else {
-                            parsed_query_params_[key] = val; 
-                        }
-					}
-                }
-                bool has_query_param(const std::string& key)
-                {
-                    return parsed_query_params_.count(key) > 0; 
-                }
-                const std::string& get_query_param(const std::string& key)
-                {
-                    auto iter = parsed_query_params_.find(key);
-                    if (iter != parsed_query_params_.end())
-                        return iter->second; 
-                    else {
-                        // throw ??
-                        return ""; 
                     }
                 }
+
+                bool has_query_param(const std::string &key) {
+                    return parsed_query_params_.count(key) > 0;
+                }
+
+                const std::string &get_query_param(const std::string &key) {
+                    auto iter = parsed_query_params_.find(key);
+                    if (iter != parsed_query_params_.end())
+                        return iter->second;
+                    else {
+                        // throw ??
+                        return "";
+                    }
+                }
+
             private:
                 http_method method_ = HTTP_HEAD;
                 bool keep_alive_ = false;
                 std::string url_;
                 http_url_info parsed_url_info_;
                 http_version version_;
-                std::map<std::string, std::string> parsed_query_params_; 
+                std::map<std::string, std::string> parsed_query_params_;
             };
 
-			class http_response : public http_header_set, public http_body {
-			public:
-				http_response()
-					:status_code_(HTTP_STATUS_OK)
-				{}
-				http_response(const http_response&) = default;
-				http_response& operator=(const http_response&) = default;
-				http_response(http_response&&) = default;
-				http_response& operator=(http_response&&) = default;
+            class http_response : public http_header_set, public http_body {
+            public:
+                http_response()
+                        : status_code_(HTTP_STATUS_OK) {}
 
-				void reset() {
-					http_header_set::reset();
-					http_body::reset();
-					version_.reset();
-					keep_alive_ = false;
-					status_code_ = 0; 
-					status_text_.clear();
-				}
+                http_response(const http_response &) = default;
 
-				bool is_keep_alive() const { return keep_alive_; }
+                http_response &operator=(const http_response &) = default;
 
-				void set_keep_alive(bool keep_alive) { keep_alive_ = keep_alive; }
+                http_response(http_response &&) = default;
 
-				const http_version& get_version() const { return version_; }
+                http_response &operator=(http_response &&) = default;
 
-				void set_version(const http_version& version) { version_ = version; }
+                void reset() {
+                    http_header_set::reset();
+                    http_body::reset();
+                    version_.reset();
+                    keep_alive_ = false;
+                    status_code_ = 0;
+                    status_text_.clear();
+                }
 
-				void append_status(const char* data, size_t len) { status_text_.append(data, len); }
+                bool is_keep_alive() const { return keep_alive_; }
 
-				void set_status_text(const std::string& text) { status_text_ = text; }
+                void set_keep_alive(bool keep_alive) { keep_alive_ = keep_alive; }
 
-				const std::string& get_status_text() const { return status_text_;  }
+                const http_version &get_version() const { return version_; }
+
+                void set_version(const http_version &version) { version_ = version; }
+
+                void append_status(const char *data, size_t len) { status_text_.append(data, len); }
+
+                void set_status_text(const std::string &text) { status_text_ = text; }
+
+                const std::string &get_status_text() const { return status_text_; }
 
 
-				void set_status_code(uint32_t code) {
-					status_code_ = code; 
-					if (status_text_.empty()) {
-						status_text_ = http_status_str((http_status)status_code_);
-					}
-				}
+                void set_status_code(uint32_t code) {
+                    status_code_ = code;
+                    if (status_text_.empty()) {
+                        status_text_ = http_status_str((http_status) status_code_);
+                    }
+                }
 
-				uint32_t get_status_code() const { return status_code_; }
+                uint32_t get_status_code() const { return status_code_; }
 
-				std::string to_string() const
-				{
-					std::ostringstream  oss;
-					if (!body_.empty()) {
-						const_cast<http_response&>(*this).add_header("Content-Length", std::to_string(body_.size()));
-					}
-					oss << "HTTP/" << version_.to_string() << " " << status_code_ << " "
-						<< status_text_ << "\r\n";
-					for (const auto& pair : headers_) {
-						oss << pair.first << ":" << pair.second << "\r\n";
-					}
-					oss << "\r\n"; 
-					oss << body_; 
+                std::string to_string() const {
+                    std::ostringstream oss;
+                    if (!body_.empty()) {
+                        const_cast<http_response &>(*this).add_header("Content-Length", std::to_string(body_.size()));
+                    }
+                    oss << "HTTP/" << version_.to_string() << " " << status_code_ << " "
+                        << status_text_ << "\r\n";
+                    for (const auto &pair : headers_) {
+                        oss << pair.first << ":" << pair.second << "\r\n";
+                    }
+                    oss << "\r\n";
+                    oss << body_;
 
-					return oss.str();
-				}
-			private:
-				uint32_t       status_code_ = 0;
-				std::string    status_text_;
-				http_version   version_;
-				bool           keep_alive_ = false;
-			};
+                    return oss.str();
+                }
+
+            private:
+                uint32_t status_code_ = 0;
+                std::string status_text_;
+                http_version version_;
+                bool keep_alive_ = false;
+            };
+
+
+            enum class ws_opcode {
+                op_continuation_frame = 0x00,
+                op_text_frame = 0x01,
+                op_binary_frame = 0x02,
+                op_close_frame = 0x08,
+                op_ping_frame = 0x09,
+                op_pong_frame = 0x0A,
+                /////////////////////////
+                op_handshake_req ,
+                op_handshake_ack ,
+                op_unknow
+            };
+
+            class websocket_frame
+            {
+            public:
+                friend class http_session;
+                friend class websocket_parser;
+
+                ws_opcode get_opcode() const {return opcode_;}
+                const std::string& get_payload() const {return payload_;}
+
+                void reset()
+                {
+                    opcode_ = ws_opcode::op_unknow;
+                    payload_.clear();
+                    ws_key_.clear();
+                }
+            private:
+                ws_opcode opcode_ = ws_opcode::op_unknow;
+                std::string payload_;
+                std::string ws_key_;
+            };
+
+/******************************************************************************************
+            0                   1                   2                   3
+            0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+            +-+-+-+-+-------+-+-------------+-------------------------------+
+            |F|R|R|R| opcode|M| Payload len |    Extended payload length    |
+            |I|S|S|S|  (4)  |A|     (7)     |            (16/64)            |
+            |N|V|V|V|       |S|             |   (if payload len==126/127)   |
+            | |1|2|3|       |K|             |                               |
+            +-+-+-+-+-------+-+-------------+ - - - - - - - - - - - - - - - +
+            |    Extended payload length continued, if payload len == 127   |
+            + - - - - - - - - - - - - - - - +-------------------------------+
+            |                               | Masking-key, if MASK set to 1 |
+            +-------------------------------+-------------------------------+
+            |    Masking-key (continued)    |          Payload Data         |
+            +-------------------------------- - - - - - - - - - - - - - - - +
+            :                   Payload Data continued ...                  :
+            + - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +
+            |                   Payload Data continued ...                  |
+            +---------------------------------------------------------------+
+******************************************************************************************/
+            class websocket_parser {
+            public:
+                using ws_frame_complete_callback = std::function<void(const websocket_frame &)>;
+                websocket_parser(const http_header_set &headers)
+                        : headers_(headers) {
+
+                }
+
+                size_t try_parse(const char *data, size_t len) {
+                    size_t left_len = len ;
+                    while(left_len > 0) {
+                        if (headers_.has_header("Sec-WebSocket-Key")) {
+                            // handshake frame
+                            frame_.opcode_ = ws_opcode::op_handshake_req;
+                            frame_.ws_key_ = headers_.get_header("Sec-WebSocket-Key");
+                            if (callback_ != nullptr)
+                                callback_(frame_);
+                            frame_.reset();
+                        } else if (headers_.has_header("Sec-WebSocket-Accept")) {
+                            // handshake frame
+                            frame_.opcode_ = ws_opcode::op_handshake_ack;
+                            if (callback_ != nullptr)
+                                callback_(frame_);
+                            frame_.reset();
+                        } else {
+                            // data frame
+                            bool fin_flag;
+                            std::string payload;
+                            ws_opcode opcode;
+                            size_t frame_size = 0;
+                            if (!try_parse_frame(data, left_len, fin_flag, payload, opcode, frame_size))
+                                break;
+                            assert(frame_size > 0);
+                            frame_.payload_ += payload;
+                            if (opcode != ws_opcode::op_continuation_frame)
+                                frame_.opcode_ = opcode;
+                            assert(left_len >= frame_size);
+                            data += frame_size;
+                            left_len -= frame_size;
+
+                            if (!fin_flag)
+                                continue;
+
+                            if (callback_ != nullptr)
+                                callback_(frame_);
+
+                            frame_.reset();
+                        }
+                    }
+                    assert(len >= left_len);
+                    return len - left_len;
+                }
+                void set_ws_frame_complete_callback(ws_frame_complete_callback&& callback)
+                {
+                    callback_ = std::move(callback);
+                }
+            private:
+                bool try_parse_frame(const char* data , size_t len ,bool& fin_flag , std::string& payload , ws_opcode& opcode , size_t frame_size)
+                {
+                    int pos = 0 ;
+                    auto buf = (const uint8_t*)data;
+                    if (len < 2)
+                        return false;
+
+                    fin_flag = buf[pos] & 0x80 ? true : false;
+                    opcode = static_cast<ws_opcode>(buf[pos++] & 0x0F);
+                    bool mask_flag = buf[pos] & 0x80 ? true : false;
+                    uint64_t payload_len = buf[pos++] & 0x7F;
+                    if (payload_len == 126){
+                        if (len < 4)
+                            return false ;
+
+                        payload_len = spdnet::base::util::net_to_host_16((uint16_t)(buf[pos] << 8 + buf[pos + 1]));
+                        pos += 2;
+                    }
+                    else if (payload_len == 127) {
+                        if (len < 10)
+                            return len;
+
+                        payload_len = spdnet::base::util::net_to_host_64(*(uint64_t*)&buf[pos]);
+                        pos += 8;
+                    }
+                    uint8_t mask_buf[4];
+                    if (mask_flag){
+                        if (len < len + 4){
+                            return false;
+                        }
+                        std::copy(buf + pos , buf + pos + 4 , mask_buf);
+                        pos += 4;
+                    }
+                    if (len < pos + payload_len)
+                        return false;
+
+                    if (mask_flag)
+                    {
+                        payload.reserve(payload_len);
+                        for (size_t i = 0; i < payload_len; i++)
+                            payload.push_back(buf[pos+i] ^ mask_buf[i % 4]);
+                    }
+                    else {
+                        payload.append((const char*)(buf + pos), payload_len);
+                    }
+
+                    frame_size = payload_len + pos;
+                    return true;
+                }
+            private:
+                websocket_frame frame_;
+                const http_header_set &headers_;
+                ws_frame_complete_callback callback_;
+            };
 
             class http_parser_base {
             protected:
+                using websocket_data_handler = std::function<size_t(const char *, size_t)>;
+
                 http_parser_base(http_parser_type type, http_parser_settings &parser_settings)
                         : parser_settings_(parser_settings) {
                     http_parser_init(&parser_, type);
@@ -444,22 +638,34 @@ namespace spdnet {
 
             public:
                 size_t try_parse(const char *data, size_t len) {
-                    const size_t nparsed = http_parser_execute(&parser_, &parser_settings_, data, len);
-					if (HTTP_PARSER_ERRNO(&parser_) != HPE_OK || nparsed > len
-						|| (nparsed < len && !p_.upgrade)) {
-						/*
-						std::ostringstream err_msg;
-						err_msg << "HTTP Parse error on character " << total_consumed_length_
-							<< ": " << http_errno_name(HTTP_PARSER_ERRNO(&p_));
-						throw_parse_error(err_msg.str());
-						*/
-					}
-                    return nparsed;
+                    if (parser_.upgrade) {
+                        const size_t nparsed = websocket_data_handler_(data, len);
+                        if (nparsed > len) {
+                            // throw ???
+                        }
+                        else {
+                            return nparsed + try_parse(data + nparsed, len - nparsed);
+                        }
+                    } else {
+                        const size_t nparsed = http_parser_execute(&parser_, &parser_settings_, data, len);
+                        if (HTTP_PARSER_ERRNO(&parser_) != HPE_OK || nparsed > len
+                            /*|| (nparsed < len && !parser_.upgrade)*/) {
+                            /*
+                            std::ostringstream err_msg;
+                            err_msg << "HTTP Parse error on character " << total_consumed_length_
+                                << ": " << http_errno_name(HTTP_PARSER_ERRNO(&p_));
+                            throw_parse_error(err_msg.str());
+                            */
+                        } else {
+                            return nparsed + try_parse(data + nparsed, len - nparsed);
+                        }
+                    }
                 }
 
             protected:
                 http_parser parser_;
                 http_parser_settings &parser_settings_;
+                websocket_data_handler websocket_data_handler_;
             };
 
             class http_header_parser {
@@ -519,16 +725,24 @@ namespace spdnet {
                 http_header_set &header_;
             };
 
-            class http_request_parser : public http_parser_base, public http_header_parser, public spdnet::base::noncopyable {
+            class http_request_parser
+                    : public http_parser_base,
+                      public http_header_parser,
+                      public websocket_parser,
+                      public spdnet::base::noncopyable {
             public:
-				using request_complete_callback = std::function<void(const http_request&)>;
-			public:
+                using request_complete_callback = std::function<void(const http_request &)>;
+            public:
                 http_request_parser()
-                        : http_parser_base(HTTP_REQUEST, parser_setting<http_request_parser>::instance().get_setting()), http_header_parser(request_) {}
+                        : http_parser_base(HTTP_REQUEST, parser_setting<http_request_parser>::instance().get_setting()),
+                          http_header_parser(request_), websocket_parser(request_) {
+                    websocket_data_handler_ = std::bind(&websocket_parser::try_parse , this , std::placeholders::_1, std::placeholders::_2);
+                }
 
-				void set_parse_complete_callback(request_complete_callback&& cb) {
-					complete_callback_ = std::move(cb);
-				}
+                void set_parse_complete_callback(request_complete_callback &&cb) {
+                    complete_callback_ = std::move(cb);
+                }
+
                 int on_message_begin() {
                     request_.reset();
                     http_header_parser::reset();
@@ -552,75 +766,75 @@ namespace spdnet {
 
                 int on_message_complete() {
                     request_.set_method(static_cast<http_method>(parser_.method));
-                    request_.set_version(http_version(parser_.http_major , parser_.http_minor));
+                    request_.set_version(http_version(parser_.http_major, parser_.http_minor));
                     request_.set_keep_alive(http_should_keep_alive(&parser_) != 0);
                     request_.parse_url_info();
-					if (complete_callback_){
-						complete_callback_(request_);
-					}
+                    if (!parser_.upgrade && complete_callback_ != nullptr) {
+                        complete_callback_(request_);
+                    }
                     return 0;
                 }
-				const http_request& get_request()const { return request_;  }
+
+                const http_request &get_request() const { return request_; }
+
             private:
                 http_request request_;
-				request_complete_callback complete_callback_;
+                request_complete_callback complete_callback_;
             };
 
 
-			class http_response_parser : public http_parser_base, public http_header_parser, public spdnet::base::noncopyable {
-			public:
-				using response_complete_callback = std::function<void(const http_response&)>;
-			public:
-				http_response_parser()
-					: http_parser_base(HTTP_RESPONSE, parser_setting<http_response_parser>::instance().get_setting()), http_header_parser(response_) {}
-
-				void set_parse_complete_callback(response_complete_callback&& cb) {
-					complete_callback_ = std::move(cb);
-				}
-				int on_message_begin() {
-					response_.reset();
-					http_header_parser::reset();
-					return 0;
-				}
-
-				int on_url(const char* data, size_t len) {
-					(void)data; 
-					(void)len;
-					assert(false);
-					return 0;
-				}
-
-				int on_status(const char* data, size_t len) {
-					response_.append_status(data, len); 
-					return 0;
-				}
-
-				int on_body(const char* data, size_t len) {
-					response_.append_body(data, len);
-					return 0;
-				}
-
-				int on_message_complete() {
-					response_.set_version(http_version(parser_.http_major, parser_.http_minor));
-					response_.set_keep_alive(http_should_keep_alive(&parser_) != 0);
-					if (complete_callback_) {
-						complete_callback_(response_);
-					}
-					response_.reset();
-					return 0;
-				}
-
-			private:
-				http_response response_;
-				response_complete_callback complete_callback_;
-			};
-            /*
-            class http_response_parser : public http_parser_base, http_header_parser, spdnet::base::noncopyable {
+            class http_response_parser
+                    : public http_parser_base, public http_header_parser, public spdnet::base::noncopyable {
+            public:
+                using response_complete_callback = std::function<void(const http_response &)>;
             public:
                 http_response_parser()
-                        : http_parser_base(HTTP_RESPONSE, parser_settings_<http_response_parser>::instance()) {}
+                        : http_parser_base(HTTP_RESPONSE,
+                                           parser_setting<http_response_parser>::instance().get_setting()),
+                          http_header_parser(response_) {}
+
+                void set_parse_complete_callback(response_complete_callback &&cb) {
+                    complete_callback_ = std::move(cb);
+                }
+
+                int on_message_begin() {
+                    response_.reset();
+                    http_header_parser::reset();
+                    return 0;
+                }
+
+                int on_url(const char *data, size_t len) {
+                    (void) data;
+                    (void) len;
+                    assert(false);
+                    return 0;
+                }
+
+                int on_status(const char *data, size_t len) {
+                    response_.append_status(data, len);
+                    return 0;
+                }
+
+                int on_body(const char *data, size_t len) {
+                    response_.append_body(data, len);
+                    return 0;
+                }
+
+                int on_message_complete() {
+                    response_.set_version(http_version(parser_.http_major, parser_.http_minor));
+                    response_.set_keep_alive(http_should_keep_alive(&parser_) != 0);
+                    if (complete_callback_) {
+                        complete_callback_(response_);
+                    }
+                    response_.reset();
+                    return 0;
+                }
+
+            private:
+                http_response response_;
+                response_complete_callback complete_callback_;
             };
-            */
+
         }
     }
 }

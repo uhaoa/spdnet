@@ -5,6 +5,9 @@
 #include <spdnet/base/noncopyable.h>
 #include <spdnet/net/http/http_parser.h>
 #include <spdnet/net/http/http_parser_api.h>
+#include <spdnet/base/SHA1.hpp>
+#include <spdnet/base/base64.h>
+
 namespace spdnet {
     namespace net {
         namespace http {
@@ -13,6 +16,7 @@ namespace spdnet {
 				using http_enter_callback = std::function<void(std::shared_ptr<http_session>)>;
 				using http_request_callback = std::function<void(const http_request& , std::shared_ptr<http_session>)>;
 				using http_response_callback = std::function<void(const http_response&, std::shared_ptr<http_session>)>;
+                using ws_frame_enter_callback = std::function<void(const websocket_frame&, std::shared_ptr<http_session>)>;
 				friend class http_server; 
 				friend class http_connector;
 
@@ -47,6 +51,46 @@ namespace spdnet {
 					});
 				}
 
+				void set_ws_frame_enter_callback(const ws_frame_enter_callback& callback)
+                {
+                    auto this_ptr = shared_from_this();
+                    request_parser_.set_ws_frame_complete_callback([callback, this_ptr](const websocket_frame& packet) {
+                        if (packet.get_opcode() == ws_opcode::op_handshake_req){
+                            std::string sec_key = packet.ws_key_;
+                            sec_key += "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+
+                            CSHA1 s1;
+                            s1.Update((uint8_t *)sec_key.c_str(), static_cast<uint32_t>(sec_key.size()));
+                            s1.Final();
+                            uint8_t hash_buf[20] = {0};
+                            s1.GetHash(hash_buf);
+
+                            std::string base64_str = spdnet::base::util::base64_encode((const unsigned char*)hash_buf, sizeof(hash_buf));
+
+                            std::string handshake_ack = "HTTP/1.1 101 Switching Protocols\r\n"
+                                                   "Upgrade: websocket\r\n"
+                                                   "Connection: Upgrade\r\n"
+                                                   "Sec-WebSocket-Accept: ";
+
+                            handshake_ack += base64_str;
+                            handshake_ack += "\r\n\r\n";
+
+                            this_ptr->session_->send(handshake_ack.c_str() ,handshake_ack.length() , [this_ptr](){
+                                // call ws enter callback
+                            });
+
+
+                        }
+                        else if (packet.get_opcode() == ws_opcode::op_handshake_ack)
+                        {
+                            //  // call ws enter callback
+                        }
+                        else {
+                            // user callback
+                            callback(packet, this_ptr);
+                        }
+                    });
+                }
 				void send_response(const http_response& resp)
 				{
 					assert(is_server_side_);
@@ -98,6 +142,7 @@ namespace spdnet {
                 std::shared_ptr<tcp_session> session_;
 				http_request_parser request_parser_; 
 				http_response_parser response_parser_;
+                websocket_parser ws_parser_;
             };
         }
     }

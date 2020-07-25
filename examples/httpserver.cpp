@@ -21,7 +21,11 @@ int main(int argc, char *argv[]) {
 			http_response response;
 			response.set_body("<html>hello http ..</html>");
 			session->send_response(response);
-		}); 
+		});
+
+        session->set_ws_packet_enter_callback([](const websocket_packet& packet_data, std::shared_ptr<http_session> session){
+
+        });
     });
 
 
