@@ -23,9 +23,16 @@ int main(int argc, char *argv[]) {
 			session->send_response(response);
 		});
 
-        session->set_ws_packet_enter_callback([](const websocket_packet& packet_data, std::shared_ptr<http_session> session){
-
+        session->set_ws_frame_enter_callback([](const websocket_frame& frame_data, std::shared_ptr<http_session> session){
+            std::cout << "recv ws frame . opcode:" << (uint32_t)frame_data.get_opcode()  << " payload content:" << frame_data.get_payload()<< std::endl;
         });
+
+        session->set_ws_handshake_success_callback([session](){
+            // ...
+            std::cout << "websocket handshake success ! tcp sockfd:" << session->under_tcp_session()->sock_fd() << std::endl;
+        });
+
+        session->under_tcp_session()->set_no_delay();
     });
 
 

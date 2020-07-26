@@ -10,6 +10,8 @@
 #include <spdnet/base/noncopyable.h>
 #include <spdnet/base/endian.h>
 #include <spdnet/net/http/http_parser.h>
+#include <spdnet/net/http/websocket_parser.h>
+
 namespace spdnet {
     namespace net {
         namespace http {
@@ -189,10 +191,10 @@ namespace spdnet {
                     }
                     using field_t = std::pair<http_parser_url_fields, std::string http_url_info::*>;
                     static const field_t string_fields[] = {
-                            {UF_SCHEMA, &http_url_info::schema_},
-                            {UF_HOST, &http_url_info::host_},
-                            {UF_PATH, &http_url_info::path_},
-                            {UF_QUERY, &http_url_info::query_},
+                            {UF_SCHEMA,   &http_url_info::schema_},
+                            {UF_HOST,     &http_url_info::host_},
+                            {UF_PATH,     &http_url_info::path_},
+                            {UF_QUERY,    &http_url_info::query_},
                             {UF_FRAGMENT, &http_url_info::fragment_},
                             {UF_USERINFO, &http_url_info::userinfo_}
                     };
@@ -372,12 +374,13 @@ namespace spdnet {
                 }
 
                 const std::string &get_query_param(const std::string &key) {
+                    const static std::string empty_str = "";
                     auto iter = parsed_query_params_.find(key);
                     if (iter != parsed_query_params_.end())
                         return iter->second;
                     else {
                         // throw ??
-                        return "";
+                        return empty_str;
                     }
                 }
 
@@ -459,173 +462,6 @@ namespace spdnet {
                 bool keep_alive_ = false;
             };
 
-
-            enum class ws_opcode {
-                op_continuation_frame = 0x00,
-                op_text_frame = 0x01,
-                op_binary_frame = 0x02,
-                op_close_frame = 0x08,
-                op_ping_frame = 0x09,
-                op_pong_frame = 0x0A,
-                /////////////////////////
-                op_handshake_req ,
-                op_handshake_ack ,
-                op_unknow
-            };
-
-            class websocket_frame
-            {
-            public:
-                friend class http_session;
-                friend class websocket_parser;
-
-                ws_opcode get_opcode() const {return opcode_;}
-                const std::string& get_payload() const {return payload_;}
-
-                void reset()
-                {
-                    opcode_ = ws_opcode::op_unknow;
-                    payload_.clear();
-                    ws_key_.clear();
-                }
-            private:
-                ws_opcode opcode_ = ws_opcode::op_unknow;
-                std::string payload_;
-                std::string ws_key_;
-            };
-
-/******************************************************************************************
-            0                   1                   2                   3
-            0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-            +-+-+-+-+-------+-+-------------+-------------------------------+
-            |F|R|R|R| opcode|M| Payload len |    Extended payload length    |
-            |I|S|S|S|  (4)  |A|     (7)     |            (16/64)            |
-            |N|V|V|V|       |S|             |   (if payload len==126/127)   |
-            | |1|2|3|       |K|             |                               |
-            +-+-+-+-+-------+-+-------------+ - - - - - - - - - - - - - - - +
-            |    Extended payload length continued, if payload len == 127   |
-            + - - - - - - - - - - - - - - - +-------------------------------+
-            |                               | Masking-key, if MASK set to 1 |
-            +-------------------------------+-------------------------------+
-            |    Masking-key (continued)    |          Payload Data         |
-            +-------------------------------- - - - - - - - - - - - - - - - +
-            :                   Payload Data continued ...                  :
-            + - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +
-            |                   Payload Data continued ...                  |
-            +---------------------------------------------------------------+
-******************************************************************************************/
-            class websocket_parser {
-            public:
-                using ws_frame_complete_callback = std::function<void(const websocket_frame &)>;
-                websocket_parser(const http_header_set &headers)
-                        : headers_(headers) {
-
-                }
-
-                size_t try_parse(const char *data, size_t len) {
-                    size_t left_len = len ;
-                    while(left_len > 0) {
-                        if (headers_.has_header("Sec-WebSocket-Key")) {
-                            // handshake frame
-                            frame_.opcode_ = ws_opcode::op_handshake_req;
-                            frame_.ws_key_ = headers_.get_header("Sec-WebSocket-Key");
-                            if (callback_ != nullptr)
-                                callback_(frame_);
-                            frame_.reset();
-                        } else if (headers_.has_header("Sec-WebSocket-Accept")) {
-                            // handshake frame
-                            frame_.opcode_ = ws_opcode::op_handshake_ack;
-                            if (callback_ != nullptr)
-                                callback_(frame_);
-                            frame_.reset();
-                        } else {
-                            // data frame
-                            bool fin_flag;
-                            std::string payload;
-                            ws_opcode opcode;
-                            size_t frame_size = 0;
-                            if (!try_parse_frame(data, left_len, fin_flag, payload, opcode, frame_size))
-                                break;
-                            assert(frame_size > 0);
-                            frame_.payload_ += payload;
-                            if (opcode != ws_opcode::op_continuation_frame)
-                                frame_.opcode_ = opcode;
-                            assert(left_len >= frame_size);
-                            data += frame_size;
-                            left_len -= frame_size;
-
-                            if (!fin_flag)
-                                continue;
-
-                            if (callback_ != nullptr)
-                                callback_(frame_);
-
-                            frame_.reset();
-                        }
-                    }
-                    assert(len >= left_len);
-                    return len - left_len;
-                }
-                void set_ws_frame_complete_callback(ws_frame_complete_callback&& callback)
-                {
-                    callback_ = std::move(callback);
-                }
-            private:
-                bool try_parse_frame(const char* data , size_t len ,bool& fin_flag , std::string& payload , ws_opcode& opcode , size_t frame_size)
-                {
-                    int pos = 0 ;
-                    auto buf = (const uint8_t*)data;
-                    if (len < 2)
-                        return false;
-
-                    fin_flag = buf[pos] & 0x80 ? true : false;
-                    opcode = static_cast<ws_opcode>(buf[pos++] & 0x0F);
-                    bool mask_flag = buf[pos] & 0x80 ? true : false;
-                    uint64_t payload_len = buf[pos++] & 0x7F;
-                    if (payload_len == 126){
-                        if (len < 4)
-                            return false ;
-
-                        payload_len = spdnet::base::util::net_to_host_16((uint16_t)(buf[pos] << 8 + buf[pos + 1]));
-                        pos += 2;
-                    }
-                    else if (payload_len == 127) {
-                        if (len < 10)
-                            return len;
-
-                        payload_len = spdnet::base::util::net_to_host_64(*(uint64_t*)&buf[pos]);
-                        pos += 8;
-                    }
-                    uint8_t mask_buf[4];
-                    if (mask_flag){
-                        if (len < len + 4){
-                            return false;
-                        }
-                        std::copy(buf + pos , buf + pos + 4 , mask_buf);
-                        pos += 4;
-                    }
-                    if (len < pos + payload_len)
-                        return false;
-
-                    if (mask_flag)
-                    {
-                        payload.reserve(payload_len);
-                        for (size_t i = 0; i < payload_len; i++)
-                            payload.push_back(buf[pos+i] ^ mask_buf[i % 4]);
-                    }
-                    else {
-                        payload.append((const char*)(buf + pos), payload_len);
-                    }
-
-                    frame_size = payload_len + pos;
-                    return true;
-                }
-            private:
-                websocket_frame frame_;
-                const http_header_set &headers_;
-                ws_frame_complete_callback callback_;
-            };
-
             class http_parser_base {
             protected:
                 using websocket_data_handler = std::function<size_t(const char *, size_t)>;
@@ -642,11 +478,11 @@ namespace spdnet {
                         const size_t nparsed = websocket_data_handler_(data, len);
                         if (nparsed > len) {
                             // throw ???
+                            return len;
+                        } else {
+                            return nparsed;
                         }
-                        else {
-                            return nparsed + try_parse(data + nparsed, len - nparsed);
-                        }
-                    } else {
+                    } else if (len > 0) {
                         const size_t nparsed = http_parser_execute(&parser_, &parser_settings_, data, len);
                         if (HTTP_PARSER_ERRNO(&parser_) != HPE_OK || nparsed > len
                             /*|| (nparsed < len && !parser_.upgrade)*/) {
@@ -660,6 +496,7 @@ namespace spdnet {
                             return nparsed + try_parse(data + nparsed, len - nparsed);
                         }
                     }
+                    return len;
                 }
 
             protected:
@@ -728,15 +565,16 @@ namespace spdnet {
             class http_request_parser
                     : public http_parser_base,
                       public http_header_parser,
-                      public websocket_parser,
                       public spdnet::base::noncopyable {
             public:
                 using request_complete_callback = std::function<void(const http_request &)>;
             public:
-                http_request_parser()
+                http_request_parser(websocket_parser &ws_parser)
                         : http_parser_base(HTTP_REQUEST, parser_setting<http_request_parser>::instance().get_setting()),
-                          http_header_parser(request_), websocket_parser(request_) {
-                    websocket_data_handler_ = std::bind(&websocket_parser::try_parse , this , std::placeholders::_1, std::placeholders::_2);
+                          http_header_parser(request_), ws_parser_(ws_parser) {
+                    websocket_data_handler_ = std::bind(&websocket_parser::try_ws_parse, &ws_parser_,
+                                                        std::placeholders::_1,
+                                                        std::placeholders::_2);
                 }
 
                 void set_parse_complete_callback(request_complete_callback &&cb) {
@@ -771,6 +609,8 @@ namespace spdnet {
                     request_.parse_url_info();
                     if (!parser_.upgrade && complete_callback_ != nullptr) {
                         complete_callback_(request_);
+                    } else if (parser_.upgrade) {
+                        ws_parser_.set_sec_websocket_key(request_.get_header("Sec-WebSocket-Key"));
                     }
                     return 0;
                 }
@@ -780,6 +620,7 @@ namespace spdnet {
             private:
                 http_request request_;
                 request_complete_callback complete_callback_;
+                websocket_parser &ws_parser_;
             };
 
 
@@ -788,10 +629,14 @@ namespace spdnet {
             public:
                 using response_complete_callback = std::function<void(const http_response &)>;
             public:
-                http_response_parser()
+                http_response_parser(websocket_parser &ws_parser)
                         : http_parser_base(HTTP_RESPONSE,
                                            parser_setting<http_response_parser>::instance().get_setting()),
-                          http_header_parser(response_) {}
+                          http_header_parser(response_), ws_parser_(ws_parser) {
+                    websocket_data_handler_ = std::bind(&websocket_parser::try_ws_parse, &ws_parser_,
+                                                        std::placeholders::_1,
+                                                        std::placeholders::_2);
+                }
 
                 void set_parse_complete_callback(response_complete_callback &&cb) {
                     complete_callback_ = std::move(cb);
@@ -823,6 +668,13 @@ namespace spdnet {
                 int on_message_complete() {
                     response_.set_version(http_version(parser_.http_major, parser_.http_minor));
                     response_.set_keep_alive(http_should_keep_alive(&parser_) != 0);
+
+                    if (!parser_.upgrade && complete_callback_ != nullptr) {
+                        complete_callback_(response_);
+                    } else if (parser_.upgrade) {
+                        ws_parser_.set_sec_websocket_accept(response_.get_header("Sec-WebSocket-Accept"));
+                    }
+
                     if (complete_callback_) {
                         complete_callback_(response_);
                     }
@@ -833,6 +685,7 @@ namespace spdnet {
             private:
                 http_response response_;
                 response_complete_callback complete_callback_;
+                websocket_parser &ws_parser_;
             };
 
         }

@@ -70,7 +70,7 @@ namespace spdnet {
 										packet.callback_();
                                     iter = data_->pending_packet_list_.erase(iter);
                                 } else {
-                                    buffer->remove_length(tmp_len);
+                                    packet.buffer_->remove_length(tmp_len);
                                     break;
                                 }
 
