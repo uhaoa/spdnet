@@ -11,16 +11,16 @@
 namespace spdnet {
     namespace net {
         namespace detail {
-            class IocpRecvChannel : public SocketChannel {
+            class iocp_recv_channel : public socket_channel {
             public:
-                IocpRecvChannel(SocketData::Ptr data, std::shared_ptr<IocpImpl> impl)
-                        : SocketChannel(data, impl) {
+                iocp_recv_channel(socket_data::ptr data, std::shared_ptr<iocp_impl> impl)
+                        : socket_channel(data, impl) {
 
                 }
 
-                void startRecv() {
-                    buf_.len = data_->recv_buffer_.getWriteValidCount();
-                    buf_.buf = data_->recv_buffer_.getWritePtr();
+                void start_recv() {
+                    buf_.len = data_->recv_buffer_.get_write_valid_count();
+                    buf_.buf = data_->recv_buffer_.get_write_ptr();
 
                     DWORD bytes_transferred = 0;
                     DWORD recv_flags = 0;
@@ -29,25 +29,25 @@ namespace spdnet {
                     this, 0);
                     DWORD last_error = ::WSAGetLastError();
                     if (result != 0 && last_error != WSA_IO_PENDING) {
-                        io_impl_->closeSocket(data_);
+                        io_impl_->close_socket(data_);
                     }
                 }
 
             private:
-                void doComplete(size_t bytes_transferred, std::error_code ec) override {
+                void do_complete(size_t bytes_transferred, std::error_code ec) override {
                     bool force_close = false;
                     if (bytes_transferred == 0 || ec) {
                         // eof 
                         force_close = true;
                     } else {
                         auto &recv_buffer = data_->recv_buffer_;
-                        auto post_len = recv_buffer.getWriteValidCount();
-                        recv_buffer.addWritePos(bytes_transferred);
+                        auto post_len = recv_buffer.get_write_valid_count();
+                        recv_buffer.add_write_pos(bytes_transferred);
                         if (nullptr != data_->data_callback_) {
-                            size_t len = data_->data_callback_(recv_buffer.getDataPtr(), recv_buffer.getLength());
-                            assert(len <= recv_buffer.getLength());
-                            if (len <= recv_buffer.getLength()) {
-                                recv_buffer.removeLength(len);
+                            size_t len = data_->data_callback_(recv_buffer.get_data_ptr(), recv_buffer.get_length());
+                            assert(len <= recv_buffer.get_length());
+                            if (len <= recv_buffer.get_length()) {
+                                recv_buffer.remove_length(len);
                             } else {
                                 force_close = true;
                             }
@@ -55,24 +55,24 @@ namespace spdnet {
 
                         if (post_len == bytes_transferred) {
                             size_t grow_len = 0;
-                            if (recv_buffer.getCapacity() * 2 <= data_->max_recv_buffer_size_)
-                                grow_len = recv_buffer.getCapacity();
+                            if (recv_buffer.get_capacity() * 2 <= data_->max_recv_buffer_size_)
+                                grow_len = recv_buffer.get_capacity();
                             else
-                                grow_len = data_->max_recv_buffer_size_ - recv_buffer.getCapacity();
+                                grow_len = data_->max_recv_buffer_size_ - recv_buffer.get_capacity();
 
                             if (grow_len > 0)
                                 recv_buffer.grow(grow_len);
                         }
 
-                        if (SPDNET_PREDICT_FALSE(recv_buffer.getWriteValidCount() == 0 || recv_buffer.getLength() == 0))
-                            recv_buffer.adjustToHead();
+                        if (SPDNET_PREDICT_FALSE(recv_buffer.get_write_valid_count() == 0 || recv_buffer.get_length() == 0))
+                            recv_buffer.adjust_to_head();
                     }
 
 
                     if (force_close)
-                        io_impl_->closeSocket(data_);
+                        io_impl_->close_socket(data_);
                     else
-                        this->startRecv();
+                        this->start_recv();
                 }
 
             private:

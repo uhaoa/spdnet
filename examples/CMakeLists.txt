@@ -34,4 +34,17 @@ elseif (UNIX)
     target_link_libraries(ttcp_server pthread)
 endif ()
 
+add_executable(httpclient httpclient.cpp)
+if (WIN32)
+    target_link_libraries(httpclient ws2_32)
+elseif (UNIX)
+    target_link_libraries(httpclient pthread)
+endif ()
+
+add_executable(httpserver httpserver.cpp)
+if (WIN32)
+    target_link_libraries(httpserver ws2_32)
+elseif (UNIX)
+    target_link_libraries(httpserver pthread)
+endif ()
 

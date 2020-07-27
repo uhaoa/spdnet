@@ -3,16 +3,16 @@
 
 namespace spdnet {
     namespace base {
-        class NonCopyable {
+        class noncopyable {
         public:
-            NonCopyable(const NonCopyable &) = delete;
+            noncopyable(const noncopyable &) = delete;
 
-            void operator=(const NonCopyable &) = delete;
+            void operator=(const noncopyable &) = delete;
 
         protected:
-            NonCopyable() = default;
+            noncopyable() = default;
 
-            ~NonCopyable() = default;
+            ~noncopyable() = default;
         };
     }
 }

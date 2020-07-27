@@ -15,57 +15,58 @@ namespace spdnet {
     namespace net {
         namespace detail {
 #if defined(SPDNET_PLATFORM_WINDOWS)
-            class IocpRecvChannel;
-            class IocpSendChannel;
+            class iocp_recv_channel;
+            class iocp_send_channel;
 #else
 
-            class EPollSocketChannel;
+            class epoll_socket_channel;
 
 #endif
         }
-        class SocketData : public spdnet::base::NonCopyable {
-        public:
-            using Ptr = std::shared_ptr<SocketData>;
-            using TcpDataCallback = std::function<size_t(const char *, size_t len)>;
-            using TcpDisconnectCallback = std::function<void()>;
-
-            SocketData(sock_t fd, bool is_server_side)
+        struct socket_data : public spdnet::base::noncopyable {
+		public:
+            using ptr = std::shared_ptr<socket_data>;
+            using tcp_data_callback = std::function<size_t(const char *, size_t len)>;
+            using tcp_disconnect_callback = std::function<void()>;
+			using tcp_send_complete_callback = std::function<void()>;
+		public:
+            socket_data(sock_t fd, bool is_server_side)
                     : fd_(fd), is_server_side_(is_server_side) {
 
             }
 
-            virtual ~SocketData() {
-                for (auto buffer : send_buffer_list_) {
-                    delete buffer;
+            virtual ~socket_data() {
+                for (auto& packet : send_packet_list_) {
+                    delete packet.buffer_;
                 }
-                for (auto buffer : pending_buffer_list_) {
-                    delete buffer;
+                for (auto packet : pending_packet_list_) {
+                    delete packet.buffer_;
                 }
-                send_buffer_list_.clear();
-                pending_buffer_list_.clear();
+                send_packet_list_.clear();
+                pending_packet_list_.clear();
             }
 
-            void setDisconnectCallback(TcpDisconnectCallback &&callback) {
-                disconnect_callback_ = callback;
+            void set_disconnect_callback(tcp_disconnect_callback &&callback) {
+                disconnect_callback_ = std::move(callback);
             }
 
-            void setDataCallback(TcpDataCallback &&callback) {
-                data_callback_ = callback;
+            void set_data_callback(tcp_data_callback &&callback) {
+                data_callback_ = std::move(callback);
             }
 
-            void setNodelay() {
-                socket_ops::socketNoDelay(fd_);
+            void set_no_delay() {
+                socket_ops::socket_no_delay(fd_);
             }
 
             sock_t sock_fd() const {
                 return fd_;
             }
 
-            void setMaxRecvBufferSize(size_t max_size) {
+            void set_max_recv_buffer_size(size_t max_size) {
                 max_recv_buffer_size_ = max_size;
             }
 
-            bool isServerSide() { return is_server_side_; }
+            bool is_server_side() { return is_server_side_; }
 
             void close() {
 #if defined(SPDNET_PLATFORM_WINDOWS)
@@ -83,28 +84,41 @@ namespace spdnet {
                 has_closed_ = true;
                 is_can_write_ = false;
 
-                socket_ops::closeSocket(fd_);
+                socket_ops::close_socket(fd_);
             }
+		public:
+			struct send_packet
+			{
+				send_packet(spdnet::base::buffer* buf , tcp_send_complete_callback&& callback)
+					:buffer_(buf) , callback_(std::move(callback))
+				{}
+				send_packet(const send_packet&) = default; 
+				send_packet(send_packet&&) = default;
+				send_packet& operator=(const send_packet&) = default; 
+				send_packet& operator=(send_packet&&) = default;
 
-        public:
+				spdnet::base::buffer* buffer_; 
+				tcp_send_complete_callback callback_; 
+			};
+		public:
             sock_t fd_;
             bool is_server_side_{false};
-            TcpDisconnectCallback disconnect_callback_;
-            TcpDataCallback data_callback_;
-            spdnet::base::Buffer recv_buffer_;
+            tcp_disconnect_callback disconnect_callback_;
+            tcp_data_callback data_callback_;
+            spdnet::base::buffer recv_buffer_;
             size_t max_recv_buffer_size_ = 64 * 1024;
-            std::deque<spdnet::base::Buffer *> send_buffer_list_;
-            std::deque<spdnet::base::Buffer *> pending_buffer_list_;
-            spdnet::base::SpinLock send_guard_;
+            std::deque<send_packet> send_packet_list_;
+            std::deque<send_packet> pending_packet_list_;
+            spdnet::base::spin_lock send_guard_;
             volatile bool has_closed_{false};
             volatile bool is_post_flush_{false};
             volatile bool is_can_write_{true};
 
 #if defined(SPDNET_PLATFORM_WINDOWS)
-            std::shared_ptr<detail::IocpRecvChannel> recv_channel_;
-            std::shared_ptr<detail::IocpSendChannel> send_channel_;
+            std::shared_ptr<detail::iocp_recv_channel> recv_channel_;
+            std::shared_ptr<detail::iocp_send_channel> send_channel_;
 #else
-            std::shared_ptr<detail::EPollSocketChannel> channel_;
+            std::shared_ptr<detail::epoll_socket_channel> channel_;
 #endif
         };
     }

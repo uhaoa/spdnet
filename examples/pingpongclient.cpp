@@ -9,20 +9,20 @@ int main(int argc, char *argv[]) {
         exit(-1);
     }
     auto send_data = std::make_shared<std::string>(atoi(argv[4]), 'a');
-    spdnet::net::EventService service;
-    service.runThread(atoi(argv[3]));
+    spdnet::net::event_service service;
+    service.run_thread(atoi(argv[3]));
 
-    spdnet::net::AsyncConnector connector(service);
+    spdnet::net::async_connector connector(service);
 
     for (int i = 0; i < atoi(argv[5]); i++) {
-        connector.asyncConnect(spdnet::net::EndPoint::ipv4(argv[1], atoi(argv[2])),
-                               [send_data](std::shared_ptr<spdnet::net::TcpSession> session) {
+        connector.async_connect(spdnet::net::end_point::ipv4(argv[1], atoi(argv[2])),
+                               [send_data](std::shared_ptr<spdnet::net::tcp_session> session) {
                                    //std::cout << "connect success " << std::endl;
-                                   session->setDataCallback([session](const char *data, size_t len) -> size_t {
+                                   session->set_data_callback([session](const char *data, size_t len) -> size_t {
                                        session->send(data, len);
                                        return len;
                                    });
-                                   session->setDisconnectCallback([](std::shared_ptr<spdnet::net::TcpSession> session) {
+                                   session->set_disconnect_callback([](std::shared_ptr<spdnet::net::tcp_session> session) {
                                        std::cout << "tcp connection disconnect " << std::endl;
                                    });
 

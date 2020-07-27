@@ -16,18 +16,18 @@
 
 namespace spdnet {
     namespace net {
-        class ChannelCollector : public spdnet::base::NonCopyable {
+        class channel_collector : public spdnet::base::noncopyable {
         public:
-            void putChannel(std::shared_ptr<detail::Channel> channel) {
+            void put_channel(std::shared_ptr<detail::channel> channel) {
                 del_channel_list_.push_back(channel);
             }
 
-            void releaseChannel() {
+            void release_channel() {
                 del_channel_list_.clear();
             }
 
         private:
-            std::vector<std::shared_ptr<detail::Channel>> del_channel_list_;
+            std::vector<std::shared_ptr<detail::channel>> del_channel_list_;
         };
     }
 

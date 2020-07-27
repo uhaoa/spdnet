@@ -7,9 +7,9 @@
 namespace spdnet {
     namespace net {
 
-        class EnvInit {
+        class env_init {
         public:
-            EnvInit() {
+            env_init() {
 #ifdef SPDNET_PLATFORM_WINDOWS
                 static WSADATA gWsaData;
                 static bool winSockIsInit = false;
@@ -25,7 +25,7 @@ namespace spdnet {
 #endif
             }
 
-            ~EnvInit() {
+            ~env_init() {
 #ifdef SPDNET_PLATFORM_WINDOWS
                 WSACleanup();
 #endif

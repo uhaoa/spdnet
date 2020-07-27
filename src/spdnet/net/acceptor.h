@@ -20,33 +20,33 @@
 
 namespace spdnet {
     namespace net {
-        class EventService;
+        class event_service;
 
-        class TcpAcceptor : public spdnet::base::NonCopyable {
+        class tcp_acceptor : public spdnet::base::noncopyable {
         private:
-            class AcceptContext;
+            class accept_context;
 
-            friend class AcceptContext;
+            friend class accept_context;
 
         public:
-            TcpAcceptor(EventService &service);
+            tcp_acceptor(event_service &service);
 
-            ~TcpAcceptor();
+            ~tcp_acceptor();
 
-            void start(const EndPoint &addr, TcpEnterCallback &&enter_cb);
+            void start(const end_point &addr, tcp_enter_callback &&enter_cb);
 
             void stop();
 
         private:
-            sock_t createListenSocket(const EndPoint &addr);
+            sock_t create_listen_socket(const end_point &addr);
 
         private:
-            EventService &service_;
+            event_service &service_;
             sock_t listen_fd_;
-            EndPoint addr_;
-            std::shared_ptr<ServiceThread> listen_thread_;
+            end_point addr_;
+            std::shared_ptr<service_thread> listen_thread_;
             std::shared_ptr<bool> run_listen_;
-            std::shared_ptr<detail::AcceptChannelImpl> accept_channel_;
+            std::shared_ptr<detail::accept_channel_impl> accept_channel_;
         };
 
 

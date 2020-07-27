@@ -47,18 +47,18 @@ int main(int argc, char *argv[]) {
     }
     //signal(SIGUSR1, gprofStartAndStop);
 
-    spdnet::net::EventService service;
-    service.runThread(atoi(argv[2]));
-    spdnet::net::TcpAcceptor acceptor(service);
+    spdnet::net::event_service service;
+    service.run_thread(atoi(argv[2]));
+    spdnet::net::tcp_acceptor acceptor(service);
 
-    acceptor.start(spdnet::net::EndPoint::ipv4("0.0.0.0", atoi(argv[1])),
-                   [](std::shared_ptr<spdnet::net::TcpSession> new_conn) {
+    acceptor.start(spdnet::net::end_point::ipv4("0.0.0.0", atoi(argv[1])),
+                   [](std::shared_ptr<spdnet::net::tcp_session> new_conn) {
                        total_client_num++;
                        bool session_recv = false;
                        auto session_ptr = std::make_shared<SessionMessage>();
                        int payload_len = 0;
                        char *payload_data = nullptr;
-                       new_conn->setDataCallback(
+                       new_conn->set_data_callback(
                                [new_conn, session_recv, session_ptr, payload_len, payload_data](const char *data,
                                                                                                 size_t len) mutable -> size_t {
                                    if (session_recv == false) {
@@ -103,7 +103,7 @@ int main(int argc, char *argv[]) {
                                    }
                                    return 0;
                                });
-                       new_conn->setDisconnectCallback([](std::shared_ptr<spdnet::net::TcpSession> connection) {
+                       new_conn->set_disconnect_callback([](std::shared_ptr<spdnet::net::tcp_session> connection) {
                            total_client_num--;
                        });
                    });

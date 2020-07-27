@@ -19,24 +19,26 @@
 
 namespace spdnet {
     namespace net {
-        class EventService;
+        class event_service;
 
-        class AsyncConnector : public base::NonCopyable {
+        class async_connector : public base::noncopyable {
+		public:
+			using connect_failed_callback = std::function<void()>; 
         public:
-            AsyncConnector(EventService &service);
+            async_connector(event_service &service);
 
-            ~AsyncConnector();
+            ~async_connector();
 
-            void asyncConnect(const EndPoint &addr, TcpEnterCallback &&success_cb, std::function<void()> &&failed_cb);
-
-        private:
-            bool recycleContext(sock_t fd, std::shared_ptr<ServiceThread> service_thread);
+            void async_connect(const end_point &addr, tcp_enter_callback &&success_cb, connect_failed_callback&& failed_cb);
 
         private:
-            EventService &service_;
+            bool recycle_context(sock_t fd, std::shared_ptr<service_thread> service_thread);
+
+        private:
+            event_service &service_;
             std::mutex context_guard_;
             std::shared_ptr<std::atomic_bool> cancel_token_;
-            std::unordered_map<sock_t, std::shared_ptr<detail::ConnectContext>> connecting_context_;
+            std::unordered_map<sock_t, std::shared_ptr<detail::connect_context>> connecting_context_;
         };
 
 

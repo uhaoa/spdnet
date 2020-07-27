@@ -6,10 +6,10 @@
 namespace spdnet {
     namespace base {
         template<typename T>
-        class Singleton : public spdnet::base::NonCopyable {
+        class singleton : public spdnet::base::noncopyable {
         public:
             static T &instance() {
-                std::call_once(once_, &Singleton<T>::init);
+                std::call_once(once_, &singleton<T>::init);
                 return *instance_;
             }
 
@@ -24,10 +24,10 @@ namespace spdnet {
         };
 
         template<typename T>
-        T *Singleton<T>::instance_ = nullptr;
+        T *singleton<T>::instance_ = nullptr;
 
         template<typename T>
-        std::once_flag Singleton<T>::once_;
+        std::once_flag singleton<T>::once_;
     }
 }
 

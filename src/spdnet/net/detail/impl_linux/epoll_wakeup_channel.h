@@ -8,13 +8,13 @@
 namespace spdnet {
     namespace net {
         namespace detail {
-            class EpollWakeupChannel : public Channel {
+            class epoll_wakeup_channel : public channel {
             public:
-                explicit EpollWakeupChannel() noexcept
+                explicit epoll_wakeup_channel() noexcept
                         : fd_(::eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK)) {}
 
-                ~EpollWakeupChannel() {
-                    socket_ops::closeSocket(fd_);
+                ~epoll_wakeup_channel() {
+                    socket_ops::close_socket(fd_);
                 }
 
                 void wakeup() {
@@ -25,11 +25,11 @@ namespace spdnet {
                 sock_t eventfd() const { return fd_; }
 
             private:
-                void trySend() override {
+                void on_send() override {
 
                 }
 
-                void tryRecv() override {
+                void on_recv() override {
                     char buf[1024]{0};
                     while (true) {
                         auto ret = ::read(fd_, buf, sizeof(buf));
@@ -38,7 +38,7 @@ namespace spdnet {
                     }
                 }
 
-                void onClose() override {
+                void on_close() override {
 
                 }
 

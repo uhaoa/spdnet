@@ -9,41 +9,40 @@
 #include <spdnet/base/spin_lock.h>
 #include <spdnet/base/platform.h>
 #include <spdnet/net/socket_data.h>
-
 namespace spdnet {
     namespace net {
-        class ServiceThread;
+        class service_thread;
 
-        class TcpSession : public spdnet::base::NonCopyable, public std::enable_shared_from_this<TcpSession> {
+        class tcp_session : public spdnet::base::noncopyable, public std::enable_shared_from_this<tcp_session> {
         public:
-            friend class ServiceThread;
+            friend class service_thread;
 
-            friend class EventService;
+            friend class event_service;
 
-            using TcpDataCallback = std::function<size_t(const char *, size_t len)>;
-            using TcpDisconnectCallback = std::function<void(std::shared_ptr<TcpSession>)>;
+            using tcp_data_callback = std::function<size_t(const char *, size_t len)>;
+            using tcp_disconnect_callback = std::function<void(std::shared_ptr<tcp_session>)>;
         public:
-            inline TcpSession(sock_t fd, bool is_server_side, std::shared_ptr<ServiceThread> service_thread);
+            inline tcp_session(sock_t fd, bool is_server_side, std::shared_ptr<service_thread> service_thread);
 
-            inline ~TcpSession();
+			inline ~tcp_session() = default; 
 
-            inline void postShutDown();
+            inline void post_shutdown();
 
-            inline void setDisconnectCallback(TcpDisconnectCallback &&callback);
+            inline void set_disconnect_callback(tcp_disconnect_callback &&callback);
 
-            inline void setDataCallback(TcpDataCallback &&callback) {
-                socket_data_->setDataCallback(std::move(callback));
+            inline void set_data_callback(tcp_data_callback &&callback) {
+                socket_data_->set_data_callback(std::move(callback));
             }
 
-            inline void setMaxRecvBufferSize(size_t len) {
-                socket_data_->setMaxRecvBufferSize(len);
+            inline void set_max_recv_buffer_size(size_t len) {
+                socket_data_->set_max_recv_buffer_size(len);
             }
 
-            inline void setNodelay() {
-                socket_data_->setNodelay();
+            inline void set_no_delay() {
+                socket_data_->set_no_delay();
             }
 
-            inline void send(const char *data, size_t len);
+            inline void send(const char *data, size_t len  , socket_data::tcp_send_complete_callback&& callback = nullptr);
 
 
             inline sock_t sock_fd() const {
@@ -51,12 +50,12 @@ namespace spdnet {
             }
 
         public:
-            inline static std::shared_ptr<TcpSession>
-            create(sock_t fd, bool is_server_side, std::shared_ptr<ServiceThread> service_thread);
+            inline static std::shared_ptr<tcp_session>
+            create(sock_t fd, bool is_server_side, std::shared_ptr<service_thread> service_thread);
 
         private:
-            SocketData::Ptr socket_data_;
-            std::shared_ptr<ServiceThread> service_thread_;
+            socket_data::ptr socket_data_;
+            std::shared_ptr<service_thread> service_thread_;
         };
 
     }

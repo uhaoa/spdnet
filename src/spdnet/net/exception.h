@@ -7,14 +7,14 @@
 
 namespace spdnet {
     namespace net {
-        class SpdnetException : public std::runtime_error {
+        class spdnet_exception : public std::runtime_error {
         public:
-            explicit SpdnetException(const std::string &msg)
+            explicit spdnet_exception(const std::string &msg)
                     : std::runtime_error(msg) {
 
             }
 
-            explicit SpdnetException(const char *msg)
+            explicit spdnet_exception(const char *msg)
                     : std::runtime_error(msg) {
 
             }

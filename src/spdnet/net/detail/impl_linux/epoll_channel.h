@@ -4,15 +4,15 @@
 namespace spdnet {
     namespace net {
         namespace detail {
-            class Channel {
+            class channel {
             public:
-                virtual ~Channel() noexcept {}
+                virtual ~channel() noexcept {}
 
-                virtual void trySend() = 0;
+                virtual void on_send() = 0;
 
-                virtual void tryRecv() = 0;
+                virtual void on_recv() = 0;
 
-                virtual void onClose() = 0;
+                virtual void on_close() = 0;
 
             };
 
