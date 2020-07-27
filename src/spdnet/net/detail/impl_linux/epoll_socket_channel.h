@@ -71,6 +71,8 @@ namespace spdnet {
                                     iter = data_->pending_packet_list_.erase(iter);
                                 } else {
                                     packet.buffer_->remove_length(tmp_len);
+									impl_->addWriteEvent(data_);
+									data_->is_can_write_ = false;
                                     break;
                                 }
 
@@ -86,6 +88,7 @@ namespace spdnet {
             private:
                 void on_send() override {
                     impl_->cancel_write_event(data_);
+                    data_->is_can_write_ = true;
                     flush_buffer();
                 }
 
