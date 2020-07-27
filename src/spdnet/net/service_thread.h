@@ -36,7 +36,7 @@ namespace spdnet {
             void run(std::shared_ptr<bool>);
 
             void on_tcp_session_enter(sock_t fd, std::shared_ptr<tcp_session> tcp_session,
-                                   const tcp_enter_callback &enter_callback);
+                                      const tcp_enter_callback &enter_callback);
 
             std::shared_ptr<tcp_session> get_tcp_session(sock_t fd);
 
@@ -52,9 +52,9 @@ namespace spdnet {
                 return io_impl_;
             }
 
-			detail::io_object_impl_type& get_impl_ref() {
-				return *io_impl_;
-			}
+            detail::io_object_impl_type &get_impl_ref() {
+                return *io_impl_;
+            }
 
 
             std::shared_ptr<task_executor> get_executor() {

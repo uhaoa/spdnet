@@ -24,19 +24,19 @@ namespace spdnet {
 #endif
         }
         struct socket_data : public spdnet::base::noncopyable {
-		public:
+        public:
             using ptr = std::shared_ptr<socket_data>;
             using tcp_data_callback = std::function<size_t(const char *, size_t len)>;
             using tcp_disconnect_callback = std::function<void()>;
-			using tcp_send_complete_callback = std::function<void()>;
-		public:
+            using tcp_send_complete_callback = std::function<void()>;
+        public:
             socket_data(sock_t fd, bool is_server_side)
                     : fd_(fd), is_server_side_(is_server_side) {
 
             }
 
             virtual ~socket_data() {
-                for (auto& packet : send_packet_list_) {
+                for (auto &packet : send_packet_list_) {
                     delete packet.buffer_;
                 }
                 for (auto packet : pending_packet_list_) {
@@ -86,21 +86,25 @@ namespace spdnet {
 
                 socket_ops::close_socket(fd_);
             }
-		public:
-			struct send_packet
-			{
-				send_packet(spdnet::base::buffer* buf , tcp_send_complete_callback&& callback)
-					:buffer_(buf) , callback_(std::move(callback))
-				{}
-				send_packet(const send_packet&) = default; 
-				send_packet(send_packet&&) = default;
-				send_packet& operator=(const send_packet&) = default; 
-				send_packet& operator=(send_packet&&) = default;
 
-				spdnet::base::buffer* buffer_; 
-				tcp_send_complete_callback callback_; 
-			};
-		public:
+        public:
+            struct send_packet {
+                send_packet(spdnet::base::buffer *buf, tcp_send_complete_callback &&callback)
+                        : buffer_(buf), callback_(std::move(callback)) {}
+
+                send_packet(const send_packet &) = default;
+
+                send_packet(send_packet &&) = default;
+
+                send_packet &operator=(const send_packet &) = default;
+
+                send_packet &operator=(send_packet &&) = default;
+
+                spdnet::base::buffer *buffer_;
+                tcp_send_complete_callback callback_;
+            };
+
+        public:
             sock_t fd_;
             bool is_server_side_{false};
             tcp_disconnect_callback disconnect_callback_;

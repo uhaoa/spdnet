@@ -16,22 +16,23 @@ int main(int argc, char *argv[]) {
 
     for (int i = 0; i < atoi(argv[5]); i++) {
         connector.async_connect(spdnet::net::end_point::ipv4(argv[1], atoi(argv[2])),
-                               [send_data](std::shared_ptr<spdnet::net::tcp_session> session) {
-                                   //std::cout << "connect success " << std::endl;
-                                   session->set_data_callback([session](const char *data, size_t len) -> size_t {
-                                       session->send(data, len);
-                                       return len;
-                                   });
-                                   session->set_disconnect_callback([](std::shared_ptr<spdnet::net::tcp_session> session) {
-                                       std::cout << "tcp connection disconnect " << std::endl;
-                                   });
+                                [send_data](std::shared_ptr<spdnet::net::tcp_session> session) {
+                                    //std::cout << "connect success " << std::endl;
+                                    session->set_data_callback([session](const char *data, size_t len) -> size_t {
+                                        session->send(data, len);
+                                        return len;
+                                    });
+                                    session->set_disconnect_callback(
+                                            [](std::shared_ptr<spdnet::net::tcp_session> session) {
+                                                std::cout << "tcp connection disconnect " << std::endl;
+                                            });
 
-                                   session->send(send_data->c_str(), send_data->length());
-                               },
+                                    session->send(send_data->c_str(), send_data->length());
+                                },
 
-                               []() {
-                                   std::cout << "connect failed " << std::endl;
-                               });
+                                []() {
+                                    std::cout << "connect failed " << std::endl;
+                                });
     }
     getchar();
     return 0;

@@ -23,7 +23,7 @@ namespace spdnet {
 
             void
             add_tcp_session(sock_t fd, bool is_server_side, const tcp_enter_callback &enter_callback,
-                          std::shared_ptr<service_thread> thread = nullptr);
+                            std::shared_ptr<service_thread> thread = nullptr);
 
             void run_thread(size_t thread_num);
 

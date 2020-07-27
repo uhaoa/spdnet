@@ -116,7 +116,7 @@ namespace spdnet {
                 next_ = next;
             }
 
-            buffer* get_next() const {
+            buffer *get_next() const {
                 return next_;
             }
 
@@ -133,7 +133,7 @@ namespace spdnet {
             size_t write_pos_{0};
             size_t read_pos_{0};
 
-            buffer* next_{nullptr};
+            buffer *next_{nullptr};
         };
 
     }

@@ -24,7 +24,7 @@ namespace spdnet {
                         if (SPDNET_PREDICT_TRUE(data_->pending_packet_list_.empty())) {
                             data_->pending_packet_list_.swap(data_->send_packet_list_);
                         } else {
-                            for (const auto& packet : data_->send_packet_list_)
+                            for (const auto &packet : data_->send_packet_list_)
                                 data_->pending_packet_list_.push_back(packet);
                             data_->send_packet_list_.clear();
                         }
@@ -35,7 +35,7 @@ namespace spdnet {
 
                     size_t cnt = 0;
                     size_t prepare_send_len = 0;
-                    for (const auto& packet : data_->pending_packet_list_) {
+                    for (const auto &packet : data_->pending_packet_list_) {
                         send_buf[cnt].buf = packet.buffer_->get_data_ptr();
                         send_buf[cnt].len = packet.buffer_->get_length();
                         cnt++;
@@ -66,16 +66,16 @@ namespace spdnet {
                         auto send_len = bytes_transferred;
                         for (auto iter = data_->pending_packet_list_.begin();
                              iter != data_->pending_packet_list_.end();) {
-                            auto& packet = *iter;
+                            auto &packet = *iter;
                             if (SPDNET_PREDICT_TRUE(packet.buffer_->get_length() <= send_len)) {
                                 send_len -= packet.buffer_->get_length();
-								packet.buffer_->clear();
+                                packet.buffer_->clear();
                                 io_impl_->recycle_buffer(packet.buffer_);
-								if (packet.callback_)
-									packet.callback_(); 
+                                if (packet.callback_)
+                                    packet.callback_();
                                 iter = data_->pending_packet_list_.erase(iter);
                             } else {
-								packet.buffer_->remove_length(send_len);
+                                packet.buffer_->remove_length(send_len);
                                 break;
                             }
 

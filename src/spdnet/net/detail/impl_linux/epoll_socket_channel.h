@@ -28,7 +28,7 @@ namespace spdnet {
                         if (SPDNET_PREDICT_TRUE(data_->pending_packet_list_.empty())) {
                             data_->pending_packet_list_.swap(data_->send_packet_list_);
                         } else {
-                            for (const auto& packet : data_->send_packet_list_)
+                            for (const auto &packet : data_->send_packet_list_)
                                 data_->pending_packet_list_.push_back(packet);
                             data_->send_packet_list_.clear();
                         }
@@ -39,7 +39,7 @@ namespace spdnet {
                     while (!data_->pending_packet_list_.empty()) {
                         size_t cnt = 0;
                         size_t prepare_send_len = 0;
-                        for (const auto& packet : data_->pending_packet_list_) {
+                        for (const auto &packet : data_->pending_packet_list_) {
                             iov[cnt].iov_base = packet.buffer_->get_data_ptr();
                             iov[cnt].iov_len = packet.buffer_->get_length();
                             prepare_send_len += packet.buffer_->get_length();
@@ -61,18 +61,18 @@ namespace spdnet {
                             size_t tmp_len = send_len;
                             for (auto iter = data_->pending_packet_list_.begin();
                                  iter != data_->pending_packet_list_.end();) {
-                                auto& packet = *iter;
+                                auto &packet = *iter;
                                 if (SPDNET_PREDICT_TRUE(packet.buffer_->get_length() <= tmp_len)) {
                                     tmp_len -= packet.buffer_->get_length();
-									packet.buffer_->clear();
+                                    packet.buffer_->clear();
                                     impl_->recycle_buffer(packet.buffer_);
-									if (packet.callback_)
-										packet.callback_();
+                                    if (packet.callback_)
+                                        packet.callback_();
                                     iter = data_->pending_packet_list_.erase(iter);
                                 } else {
                                     packet.buffer_->remove_length(tmp_len);
-									impl_->addWriteEvent(data_);
-									data_->is_can_write_ = false;
+                                    impl_->add_write_event(data_);
+                                    data_->is_can_write_ = false;
                                     break;
                                 }
 
@@ -165,7 +165,8 @@ namespace spdnet {
                                 recv_buffer.grow(grow_len);
                         }
 
-                        if (SPDNET_PREDICT_FALSE(recv_buffer.get_write_valid_count() == 0 || recv_buffer.get_length() == 0))
+                        if (SPDNET_PREDICT_FALSE(
+                                recv_buffer.get_write_valid_count() == 0 || recv_buffer.get_length() == 0))
                             recv_buffer.adjust_to_head();
 
                         if (recv_len < static_cast<int>(try_recv_len))

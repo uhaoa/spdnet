@@ -28,8 +28,8 @@ namespace spdnet {
                 friend class epoll_socket_channel;
 
                 explicit epoll_impl(std::shared_ptr<task_executor> task_executor,
-                                   std::shared_ptr<channel_collector> channel_collector,
-                                   std::function<void(sock_t)> &&socket_close_notify_cb);
+                                    std::shared_ptr<channel_collector> channel_collector,
+                                    std::function<void(sock_t)> &&socket_close_notify_cb);
 
                 virtual ~epoll_impl() noexcept;
 

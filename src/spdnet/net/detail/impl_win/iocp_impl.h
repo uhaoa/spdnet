@@ -32,8 +32,8 @@ namespace spdnet {
                 friend class iocp_send_channel;
 
                 inline explicit iocp_impl(std::shared_ptr<task_executor> task_executor,
-                                         std::shared_ptr<channel_collector> channel_collector,
-                                         std::function<void(sock_t)> &&socket_close_notify_cb) noexcept;
+                                          std::shared_ptr<channel_collector> channel_collector,
+                                          std::function<void(sock_t)> &&socket_close_notify_cb) noexcept;
 
                 inline virtual ~iocp_impl() noexcept;
 

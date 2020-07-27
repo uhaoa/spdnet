@@ -16,8 +16,8 @@ namespace spdnet {
             class connect_context : public detail::channel {
             public:
                 connect_context(sock_t fd, std::shared_ptr<service_thread> thread,
-                               std::function<void()> &&success_cb,
-                               std::function<void()> &&failed_cb)
+                                std::function<void()> &&success_cb,
+                                std::function<void()> &&failed_cb)
                         : fd_(fd), service_thread_(thread),
                           success_cb_(std::move(success_cb)),
                           failed_cb_(std::move(failed_cb)) {

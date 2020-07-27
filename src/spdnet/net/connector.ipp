@@ -39,7 +39,7 @@ namespace spdnet {
         }
 
         void async_connector::async_connect(const end_point &addr, tcp_enter_callback &&enter_cb,
-			connect_failed_callback&&failed_cb) {
+                                            connect_failed_callback &&failed_cb) {
             sock_t client_fd = socket_ops::create_socket(addr.family(), SOCK_STREAM, 0);
             if (client_fd == invalid_socket)
                 return;
@@ -55,14 +55,14 @@ namespace spdnet {
              * 从而避免使用失效引用导至crash。
             **/
             auto cancel_token = cancel_token_;
-            auto&& success_notify = [client_fd, enter, thread, &this_ref, cancel_token]() {
+            auto &&success_notify = [client_fd, enter, thread, &this_ref, cancel_token]() {
                 // try lock
                 if (cancel_token->exchange(true)) { return; }
                 this_ref.service_.add_tcp_session(client_fd, false, enter, thread);
                 this_ref.recycle_context(client_fd, thread);
-                cancel_token->exchange(false); 
+                cancel_token->exchange(false);
             };
-            auto&& failed_notify = [client_fd, failed, thread, &this_ref, cancel_token]() mutable {
+            auto &&failed_notify = [client_fd, failed, thread, &this_ref, cancel_token]() mutable {
                 // try lock
                 if (cancel_token->exchange(true)) { return; }
                 this_ref.recycle_context(client_fd, thread);
@@ -71,7 +71,8 @@ namespace spdnet {
                 socket_ops::close_socket(client_fd);
                 cancel_token->exchange(false);
             };
-            auto context = std::make_shared<detail::connect_context>(client_fd, thread, std::move(success_notify),std::move(failed_notify));
+            auto context = std::make_shared<detail::connect_context>(client_fd, thread, std::move(success_notify),
+                                                                     std::move(failed_notify));
             {
                 std::lock_guard<std::mutex> lck(context_guard_);
                 connecting_context_[client_fd] = context;

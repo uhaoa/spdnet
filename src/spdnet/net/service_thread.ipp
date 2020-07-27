@@ -17,9 +17,9 @@ namespace spdnet {
             task_executor_ = std::make_shared<task_executor>(this);
             channel_collector_ = std::make_shared<channel_collector>();
             auto impl = std::make_shared<detail::io_object_impl_type>(task_executor_, channel_collector_,
-                                                                   [this](sock_t fd) {
-                                                                       remove_tcp_session(fd);
-                                                                   });
+                                                                      [this](sock_t fd) {
+                                                                          remove_tcp_session(fd);
+                                                                      });
             io_impl_ = impl;
         }
 
@@ -46,7 +46,7 @@ namespace spdnet {
 
         void
         service_thread::on_tcp_session_enter(sock_t fd, std::shared_ptr<tcp_session> tcp_session,
-                                         const tcp_enter_callback &enter_callback) {
+                                             const tcp_enter_callback &enter_callback) {
             if (!io_impl_->on_socket_enter(tcp_session->socket_data_)) {
                 return;
             }

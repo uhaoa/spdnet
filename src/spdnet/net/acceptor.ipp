@@ -41,10 +41,11 @@ namespace spdnet {
                 });
 #else
             accept_channel_ = std::make_shared<detail::accept_channel_impl>(listen_fd_,
-                                                                          [&service, enter_cb](sock_t new_socket) {
-                                                                              service.add_tcp_session(new_socket, true,
-                                                                                                    enter_cb);
-                                                                          });
+                                                                            [&service, enter_cb](sock_t new_socket) {
+                                                                                service.add_tcp_session(new_socket,
+                                                                                                        true,
+                                                                                                        enter_cb);
+                                                                            });
 #endif
             run_listen_ = std::make_shared<bool>(true);
             listen_thread_ = std::make_shared<service_thread>(default_loop_timeout);/*service_.service_thread();*/

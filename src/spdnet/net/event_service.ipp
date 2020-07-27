@@ -26,7 +26,7 @@ namespace spdnet {
         }
 
         void event_service::add_tcp_session(sock_t fd, bool is_server_side, const tcp_enter_callback &enter_callback,
-                                         std::shared_ptr<service_thread> thread) {
+                                            std::shared_ptr<service_thread> thread) {
             if (thread == nullptr)
                 thread = get_service_thread();
             std::shared_ptr<tcp_session> new_session = tcp_session::create(fd, is_server_side, thread);
@@ -57,7 +57,7 @@ namespace spdnet {
             try {
                 if (*run_thread_) {
                     *run_thread_ = false;
-                    for (auto & thread : threads_) {
+                    for (auto &thread : threads_) {
                         if (thread->get_thread()->joinable())
                             thread->get_thread()->join();
                     }

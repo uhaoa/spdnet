@@ -76,7 +76,7 @@ namespace spdnet {
                     }
                     if (accept_ex_) {
                         LPFN_ACCEPTEX
-                        accept_ex = (LPFN_ACCEPTEX)
+                                accept_ex = (LPFN_ACCEPTEX)
                         accept_ex_.load();
                         reset();
                         DWORD bytes_read = 0;

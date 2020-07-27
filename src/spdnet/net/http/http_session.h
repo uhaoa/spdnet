@@ -125,13 +125,11 @@ namespace spdnet {
                     }
                 }
 
-                void send_ws_frame(const websocket_frame& frame)
-                {
+                void send_ws_frame(const websocket_frame &frame) {
                     auto stream = frame.to_string();
                     if (session_)
                         session_->send(stream.c_str(), stream.length());
-                    else
-                    {
+                    else {
                         // throw ?
                     }
                 }

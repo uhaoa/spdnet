@@ -15,8 +15,8 @@ namespace spdnet {
     namespace net {
         namespace detail {
             epoll_impl::epoll_impl(std::shared_ptr<task_executor> task_executor,
-                                 std::shared_ptr<channel_collector> channel_collector,
-                                 std::function<void(sock_t)> &&socket_close_notify_cb)
+                                   std::shared_ptr<channel_collector> channel_collector,
+                                   std::function<void(sock_t)> &&socket_close_notify_cb)
                     : epoll_fd_(::epoll_create(1)),
                       task_executor_(task_executor),
                       channel_collector_(channel_collector),
@@ -57,7 +57,7 @@ namespace spdnet {
                         socket_data->channel_->flush_buffer();
                     }
                     socket_data->is_post_flush_ = false;
-                } , false);
+                }, false);
             }
 
             bool epoll_impl::start_accept(sock_t listen_fd, const channel *ch) {

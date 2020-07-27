@@ -22,14 +22,15 @@ namespace spdnet {
         class event_service;
 
         class async_connector : public base::noncopyable {
-		public:
-			using connect_failed_callback = std::function<void()>; 
+        public:
+            using connect_failed_callback = std::function<void()>;
         public:
             async_connector(event_service &service);
 
             ~async_connector();
 
-            void async_connect(const end_point &addr, tcp_enter_callback &&success_cb, connect_failed_callback&& failed_cb);
+            void
+            async_connect(const end_point &addr, tcp_enter_callback &&success_cb, connect_failed_callback &&failed_cb);
 
         private:
             bool recycle_context(sock_t fd, std::shared_ptr<service_thread> service_thread);

@@ -64,7 +64,8 @@ namespace spdnet {
                                 recv_buffer.grow(grow_len);
                         }
 
-                        if (SPDNET_PREDICT_FALSE(recv_buffer.get_write_valid_count() == 0 || recv_buffer.get_length() == 0))
+                        if (SPDNET_PREDICT_FALSE(
+                                recv_buffer.get_write_valid_count() == 0 || recv_buffer.get_length() == 0))
                             recv_buffer.adjust_to_head();
                     }
 

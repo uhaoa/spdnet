@@ -65,33 +65,33 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < cur_client_num; i++) {
         std::shared_ptr<int> number_ptr = std::make_shared<int>(number);
         connector.async_connect(spdnet::net::end_point::ipv4(argv[1], atoi(argv[2])),
-                               [&service, session_msg, msg, number_ptr, length, &cur_client_num](
-                                       std::shared_ptr<spdnet::net::tcp_session> new_conn) {
-                                   new_conn->set_data_callback(
-                                           [new_conn, msg, number_ptr, length, &cur_client_num](const char *data,
-                                                                                                size_t len) mutable -> size_t {
-                                               if (len >= static_cast<size_t>(sizeof(int))) {
-                                                   if (--*number_ptr > 0)
-                                                       new_conn->send((char *) msg, length + sizeof(int));
-                                                   else {
-                                                       new_conn->post_shutdown();
-                                                       --cur_client_num;
-                                                   }
-                                                   return sizeof(int);
-                                               }
-                                               return 0;
-                                           });
-                                   new_conn->set_disconnect_callback(
-                                           [](std::shared_ptr<spdnet::net::tcp_session> connection) {
-                                               std::cout << "tcp connection disconnect " << std::endl;
+                                [&service, session_msg, msg, number_ptr, length, &cur_client_num](
+                                        std::shared_ptr<spdnet::net::tcp_session> new_conn) {
+                                    new_conn->set_data_callback(
+                                            [new_conn, msg, number_ptr, length, &cur_client_num](const char *data,
+                                                                                                 size_t len) mutable -> size_t {
+                                                if (len >= static_cast<size_t>(sizeof(int))) {
+                                                    if (--*number_ptr > 0)
+                                                        new_conn->send((char *) msg, length + sizeof(int));
+                                                    else {
+                                                        new_conn->post_shutdown();
+                                                        --cur_client_num;
+                                                    }
+                                                    return sizeof(int);
+                                                }
+                                                return 0;
+                                            });
+                                    new_conn->set_disconnect_callback(
+                                            [](std::shared_ptr<spdnet::net::tcp_session> connection) {
+                                                std::cout << "tcp connection disconnect " << std::endl;
 
-                                           });
-                                   new_conn->send((char *) &*session_msg, sizeof(SessionMessage));
-                               },
+                                            });
+                                    new_conn->send((char *) &*session_msg, sizeof(SessionMessage));
+                                },
                 // failed cb
-                               []() {
-                                   std::cout << "connect failed " << std::endl;
-                               });
+                                []() {
+                                    std::cout << "connect failed " << std::endl;
+                                });
     }
 
 

@@ -16,8 +16,8 @@ namespace spdnet {
     namespace net {
         namespace detail {
             iocp_impl::iocp_impl(std::shared_ptr<task_executor> task_executor,
-                               std::shared_ptr<channel_collector> channel_collector,
-                               std::function<void(sock_t)> &&socket_close_notify_cb) noexcept
+                                 std::shared_ptr<channel_collector> channel_collector,
+                                 std::function<void(sock_t)> &&socket_close_notify_cb) noexcept
                     : handle_(CreateIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 1)), wakeup_op_(handle_),
                       task_executor_(task_executor), channel_collector_(channel_collector),
                       socket_close_notify_cb_(socket_close_notify_cb) {
@@ -113,7 +113,7 @@ namespace spdnet {
             }
 
             void iocp_impl::post_flush(socket_data *data) {
-				task_executor_->post([data, this]() {
+                task_executor_->post([data, this]() {
                     if (data->is_can_write_) {
                         data->send_channel_->flush_buffer();
                     }
@@ -145,7 +145,8 @@ namespace spdnet {
 
                     if (overlapped) {
                         channel *op = static_cast<channel *>(overlapped);
-                        op->do_complete((size_t) bytes_transferred, std::error_code(last_error, std::system_category()));
+                        op->do_complete((size_t) bytes_transferred,
+                                        std::error_code(last_error, std::system_category()));
 
                     } else if (!ok) {
                         break;

@@ -1,5 +1,6 @@
 #ifndef SPDNET_BASE_ENDIAN_H
 #define SPDNET_BASE_ENDIAN_H
+
 #include <cstdint>
 #include <cassert>
 #include <cstring>

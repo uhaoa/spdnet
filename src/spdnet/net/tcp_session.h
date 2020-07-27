@@ -9,6 +9,7 @@
 #include <spdnet/base/spin_lock.h>
 #include <spdnet/base/platform.h>
 #include <spdnet/net/socket_data.h>
+
 namespace spdnet {
     namespace net {
         class service_thread;
@@ -24,7 +25,7 @@ namespace spdnet {
         public:
             inline tcp_session(sock_t fd, bool is_server_side, std::shared_ptr<service_thread> service_thread);
 
-			inline ~tcp_session() = default; 
+            inline ~tcp_session() = default;
 
             inline void post_shutdown();
 
@@ -42,7 +43,8 @@ namespace spdnet {
                 socket_data_->set_no_delay();
             }
 
-            inline void send(const char *data, size_t len  , socket_data::tcp_send_complete_callback&& callback = nullptr);
+            inline void
+            send(const char *data, size_t len, socket_data::tcp_send_complete_callback &&callback = nullptr);
 
 
             inline sock_t sock_fd() const {
