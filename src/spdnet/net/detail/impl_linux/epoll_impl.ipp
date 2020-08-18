@@ -9,39 +9,39 @@
 #include <sys/epoll.h>
 #include <spdnet/base/platform.h>
 #include <spdnet/net/task_executor.h>
+#include <spdnet/net/tcp_session_mgr.h>
+#include <spdnet/net/tcp_session.h>
 #include <spdnet/net/detail/impl_linux/epoll_socket_channel.h>
 
 namespace spdnet {
     namespace net {
         namespace detail {
             epoll_impl::epoll_impl(std::shared_ptr<task_executor> task_executor,
-                                   std::shared_ptr<channel_collector> channel_collector,
-                                   std::function<void(sock_t)> &&socket_close_notify_cb)
+                                   std::shared_ptr<channel_collector> channel_collector)
                     : epoll_fd_(::epoll_create(1)),
                       task_executor_(task_executor),
-                      channel_collector_(channel_collector),
-                      socket_close_notify_cb_(socket_close_notify_cb) {
+                      channel_collector_(channel_collector) {
                 link_channel(wakeup_.eventfd(), &wakeup_, EPOLLET | EPOLLIN | EPOLLRDHUP);
                 event_entries_.resize(1024);
             }
 
-            epoll_impl::~epoll_impl() noexcept {
+            epoll_impl::~epoll_impl()  {
                 ::close(epoll_fd_);
                 epoll_fd_ = -1;
             }
 
-            void epoll_impl::add_write_event(socket_data::ptr data) {
+            void epoll_impl::add_write_event(std::shared_ptr<tcp_session> session) {
                 struct epoll_event event{0, {nullptr}};
                 event.events = EPOLLET | EPOLLIN | EPOLLOUT | EPOLLRDHUP;
-                event.data.ptr = data->channel_.get();
-                ::epoll_ctl(epoll_fd_, EPOLL_CTL_MOD, data->sock_fd(), &event);
+                event.data.ptr = session->channel_.get();
+                ::epoll_ctl(epoll_fd_, EPOLL_CTL_MOD, session->sock_fd(), &event);
             }
 
-            void epoll_impl::cancel_write_event(socket_data::ptr data) {
+            void epoll_impl::cancel_write_event(std::shared_ptr<tcp_session> session) {
                 struct epoll_event event{0, {nullptr}};
                 event.events = EPOLLET | EPOLLIN | EPOLLRDHUP;
-                event.data.ptr = data->channel_.get();
-                ::epoll_ctl(epoll_fd_, EPOLL_CTL_MOD, data->sock_fd(), &event);
+                event.data.ptr = session->channel_.get();
+                ::epoll_ctl(epoll_fd_, EPOLL_CTL_MOD, session->sock_fd(), &event);
             }
 
             bool epoll_impl::link_channel(int fd, const channel *ch, uint32_t events) {
@@ -51,12 +51,12 @@ namespace spdnet {
                 return ::epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, fd, &event) == 0;
             }
 
-            void epoll_impl::post_flush(socket_data *socket_data) {
-                task_executor_->post([socket_data]() {
-                    if (socket_data->is_can_write_) {
-                        socket_data->channel_->flush_buffer();
+            void epoll_impl::post_flush(tcp_session* session) {
+                task_executor_->post([session]() {
+                    if (session->is_can_write_) {
+						session->channel_->flush_buffer();
                     }
-                    socket_data->is_post_flush_ = false;
+					session->is_post_flush_ = false;
                 }, false);
             }
 
@@ -87,32 +87,32 @@ namespace spdnet {
                 wakeup_.wakeup();
             }
 
-            void epoll_impl::close_socket(socket_data::ptr data) {
-                if (data->has_closed_)
+            void epoll_impl::close_socket(std::shared_ptr<tcp_session> session) {
+                if (session->has_closed_)
                     return;
 
                 // close_socket函数可能正在被channel调用 ， 将channel加入到待删除列表 ，是防止channel被立即释放引起crash
-                channel_collector_->put_channel(data->channel_);
+                channel_collector_->put_channel(session->channel_);
                 // cancel event
                 struct epoll_event ev{0, {nullptr}};
-                ::epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, data->sock_fd(), &ev);
+                ::epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, session->sock_fd(), &ev);
 
-                socket_close_notify_cb_(data->sock_fd());
+				tcp_session_mgr::instance().remove(session->sock_fd()); 
 
-                data->close();
+                session->close();
             }
 
-            void epoll_impl::shutdown_socket(socket_data::ptr data) {
-                if (data->has_closed_)
+            void epoll_impl::shutdown_socket(std::shared_ptr<tcp_session> session) {
+                if (session->has_closed_)
                     return;
-                ::shutdown(data->sock_fd(), SHUT_WR);
-                data->is_can_write_ = false;
+                ::shutdown(session->sock_fd(), SHUT_WR);
+				session->is_can_write_ = false;
             }
 
-            bool epoll_impl::on_socket_enter(socket_data::ptr data) {
+            bool epoll_impl::on_socket_enter(std::shared_ptr<tcp_session> session) {
                 auto impl = shared_from_this();
-                data->channel_ = std::make_shared<epoll_socket_channel>(impl, data);
-                return link_channel(data->sock_fd(), data->channel_.get(), EPOLLET | EPOLLIN | EPOLLRDHUP);
+				session->channel_ = std::make_shared<epoll_socket_channel>(impl, session);
+                return link_channel(session->sock_fd(), session->channel_.get(), EPOLLET | EPOLLIN | EPOLLRDHUP);
             }
 
 

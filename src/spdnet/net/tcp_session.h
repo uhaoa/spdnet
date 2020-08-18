@@ -21,6 +21,7 @@ namespace spdnet {
 			class iocp_send_channel; 
 #else	
 			using io_impl_type = epoll_impl;
+			class epoll_socket_channel;
 #endif
 		}
 		class task_executor; 
@@ -28,11 +29,14 @@ namespace spdnet {
         public:
             friend class service_thread;
             friend class event_service;
+#ifdef SPDNET_PLATFORM_WINDOWS
 			friend class detail::iocp_impl;
-			friend class detail::epoll_impl;
 			friend class detail::iocp_recv_channel;
 			friend class detail::iocp_send_channel; 
-
+#else
+			friend class detail::epoll_impl;
+			friend class detail::epoll_socket_channel;
+#endif
             using tcp_data_callback = std::function<size_t(const char *, size_t len)>;
             using tcp_disconnect_callback = std::function<void(std::shared_ptr<tcp_session>)>;
 			using tcp_send_complete_callback = std::function<void()>;

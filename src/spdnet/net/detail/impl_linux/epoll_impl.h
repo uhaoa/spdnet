@@ -10,7 +10,6 @@
 #include <spdnet/base/noncopyable.h>
 #include <spdnet/base/platform.h>
 #include <spdnet/base/buffer.h>
-#include <spdnet/net/socket_data.h>
 #include <spdnet/net/end_point.h>
 #include <spdnet/net/channel_collector.h>
 #include <spdnet/net/detail/impl_linux/epoll_wakeup_channel.h>
@@ -18,8 +17,9 @@
 namespace spdnet {
     namespace net {
         class task_executor;
-
         class async_connector;
+		class tcp_session; 
+
         namespace detail {
             class channel;
 
@@ -28,18 +28,17 @@ namespace spdnet {
                 friend class epoll_socket_channel;
 
                 explicit epoll_impl(std::shared_ptr<task_executor> task_executor,
-                                    std::shared_ptr<channel_collector> channel_collector,
-                                    std::function<void(sock_t)> &&socket_close_notify_cb);
+                                    std::shared_ptr<channel_collector> channel_collector);
 
-                virtual ~epoll_impl() noexcept;
+                virtual ~epoll_impl();
 
-                bool on_socket_enter(socket_data::ptr data);
+                bool on_socket_enter(std::shared_ptr<tcp_session> session);
 
                 void run_once(uint32_t timeout);
 
-                void post_flush(socket_data *socket_data);
+                void post_flush(tcp_session *session);
 
-                void shutdown_socket(socket_data::ptr data);
+                void shutdown_socket(std::shared_ptr<tcp_session> session);
 
                 int epoll_fd() const { return epoll_fd_; }
 
@@ -60,13 +59,13 @@ namespace spdnet {
                 }
 
             private:
-                void close_socket(socket_data::ptr data);
+                void close_socket(std::shared_ptr<tcp_session> session);
 
-                void add_write_event(socket_data::ptr data);
+                void add_write_event(std::shared_ptr<tcp_session> session);
 
-                void cancel_write_event(socket_data::ptr data);
+                void cancel_write_event(std::shared_ptr<tcp_session> session);
 
-                void do_recv(socket_data::ptr data);
+                void do_recv(std::shared_ptr<tcp_session> session);
 
             private:
                 int epoll_fd_;
@@ -75,10 +74,9 @@ namespace spdnet {
                 std::vector<epoll_event> event_entries_;
                 std::shared_ptr<task_executor> task_executor_;
                 std::shared_ptr<channel_collector> channel_collector_;
-                std::function<void(sock_t)> socket_close_notify_cb_;
             };
 
-            using io_object_impl_type = epoll_impl;
+            using io_impl_type = epoll_impl;
         }
     }
 }

@@ -3,6 +3,7 @@
 
 #include <spdnet/base/noncopyable.h>
 #include <spdnet/base/platform.h>
+#include <spdnet/net/socket_ops.h>
 #include <spdnet/net/detail/impl_linux/epoll_channel.h>
 
 namespace spdnet {
