@@ -7,29 +7,30 @@
 #include <iostream>
 #include <spdnet/net/detail/impl_win/iocp_impl.h>
 #include <spdnet/net/detail/impl_win/iocp_channel.h>
+#include <spdnet/net/tcp_session.h>
 
 namespace spdnet {
     namespace net {
         namespace detail {
             class iocp_recv_channel : public socket_channel {
             public:
-                iocp_recv_channel(socket_data::ptr data, std::shared_ptr<iocp_impl> impl)
-                        : socket_channel(data, impl) {
+                iocp_recv_channel(std::shared_ptr<tcp_session> session, std::shared_ptr<iocp_impl> impl)
+                        : socket_channel(session, impl) {
 
                 }
 
                 void start_recv() {
-                    buf_.len = data_->recv_buffer_.get_write_valid_count();
-                    buf_.buf = data_->recv_buffer_.get_write_ptr();
+                    buf_.len = session_->recv_buffer_.get_write_valid_count();
+                    buf_.buf = session_->recv_buffer_.get_write_ptr();
 
                     DWORD bytes_transferred = 0;
                     DWORD recv_flags = 0;
                     reset();
-                    int result = ::WSARecv(data_->sock_fd(), &buf_, 1, &bytes_transferred, &recv_flags, (LPOVERLAPPED)
+                    int result = ::WSARecv(session_->sock_fd(), &buf_, 1, &bytes_transferred, &recv_flags, (LPOVERLAPPED)
                     this, 0);
                     DWORD last_error = ::WSAGetLastError();
                     if (result != 0 && last_error != WSA_IO_PENDING) {
-                        io_impl_->close_socket(data_);
+                        io_impl_->close_socket(session_);
                     }
                 }
 
@@ -40,11 +41,11 @@ namespace spdnet {
                         // eof 
                         force_close = true;
                     } else {
-                        auto &recv_buffer = data_->recv_buffer_;
+                        auto &recv_buffer = session_->recv_buffer_;
                         auto post_len = recv_buffer.get_write_valid_count();
                         recv_buffer.add_write_pos(bytes_transferred);
-                        if (nullptr != data_->data_callback_) {
-                            size_t len = data_->data_callback_(recv_buffer.get_data_ptr(), recv_buffer.get_length());
+                        if (nullptr != session_->data_callback_) {
+                            size_t len = session_->data_callback_(recv_buffer.get_data_ptr(), recv_buffer.get_length());
                             assert(len <= recv_buffer.get_length());
                             if (len <= recv_buffer.get_length()) {
                                 recv_buffer.remove_length(len);
@@ -55,10 +56,10 @@ namespace spdnet {
 
                         if (post_len == bytes_transferred) {
                             size_t grow_len = 0;
-                            if (recv_buffer.get_capacity() * 2 <= data_->max_recv_buffer_size_)
+                            if (recv_buffer.get_capacity() * 2 <= session_->max_recv_buffer_size_)
                                 grow_len = recv_buffer.get_capacity();
                             else
-                                grow_len = data_->max_recv_buffer_size_ - recv_buffer.get_capacity();
+                                grow_len = session_->max_recv_buffer_size_ - recv_buffer.get_capacity();
 
                             if (grow_len > 0)
                                 recv_buffer.grow(grow_len);
@@ -71,7 +72,7 @@ namespace spdnet {
 
 
                     if (force_close)
-                        io_impl_->close_socket(data_);
+                        io_impl_->close_socket(session_);
                     else
                         this->start_recv();
                 }

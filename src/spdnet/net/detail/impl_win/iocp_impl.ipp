@@ -11,16 +11,19 @@
 #include <spdnet/net/detail/impl_win/iocp_recv_channel.h>
 #include <spdnet/net/detail/impl_win/iocp_send_channel.h>
 #include <spdnet/net/task_executor.h>
+#include <spdnet/net/tcp_session.h>
+#include <spdnet/net/channel_collector.h>
+#include <spdnet/net/service_thread.h>
+#include <spdnet/net/tcp_session_mgr.h>
 
 namespace spdnet {
     namespace net {
         namespace detail {
             iocp_impl::iocp_impl(std::shared_ptr<task_executor> task_executor,
-                                 std::shared_ptr<channel_collector> channel_collector,
-                                 std::function<void(sock_t)> &&socket_close_notify_cb) noexcept
+                                 std::shared_ptr<channel_collector> channel_collector)
                     : handle_(CreateIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 1)), wakeup_op_(handle_),
-                      task_executor_(task_executor), channel_collector_(channel_collector),
-                      socket_close_notify_cb_(socket_close_notify_cb) {
+                      task_executor_(task_executor), channel_collector_(channel_collector)
+			{
             }
 
             iocp_impl::~iocp_impl() noexcept {
@@ -28,16 +31,16 @@ namespace spdnet {
                 handle_ = INVALID_HANDLE_VALUE;
             }
 
-            bool iocp_impl::on_socket_enter(socket_data::ptr data) {
-                if (data->is_server_side()) {
-                    if (CreateIoCompletionPort((HANDLE) data->sock_fd(), handle_, 0, 0) == 0) {
+            bool iocp_impl::on_socket_enter(std::shared_ptr<tcp_session> session) {
+                if (session->is_server_side()) {
+                    if (CreateIoCompletionPort((HANDLE)session->sock_fd(), handle_, 0, 0) == 0) {
                         return false;
                     }
                 }
                 auto impl = shared_from_this();
-                data->recv_channel_ = std::make_shared<iocp_recv_channel>(data, impl);
-                data->send_channel_ = std::make_shared<iocp_send_channel>(data, impl);
-                data->recv_channel_->start_recv();
+				session->recv_channel_ = std::make_shared<iocp_recv_channel>(session, impl);
+				session->send_channel_ = std::make_shared<iocp_send_channel>(session, impl);
+				session->recv_channel_->start_recv();
                 return true;
             }
 
@@ -53,16 +56,16 @@ namespace spdnet {
                 wakeup_op_.wakeup();
             }
 
-            void iocp_impl::close_socket(socket_data::ptr data) {
-                if (data->has_closed_)
+            void iocp_impl::close_socket(std::shared_ptr<tcp_session> session) {
+                if (session->has_closed_)
                     return;
 
-                channel_collector_->put_channel(data->recv_channel_);
-                channel_collector_->put_channel(data->send_channel_);
+                channel_collector_->put_channel(session->recv_channel_);
+                channel_collector_->put_channel(session->send_channel_);
 
-                socket_close_notify_cb_(data->sock_fd());
+				tcp_session_mgr::instance().remove(session->sock_fd());
 
-                data->close();
+				session->close();
             }
 
             bool iocp_impl::async_connect(sock_t fd, const end_point &addr, channel *op) {
@@ -112,19 +115,19 @@ namespace spdnet {
                 return true;
             }
 
-            void iocp_impl::post_flush(socket_data *data) {
-                task_executor_->post([data, this]() {
-                    if (data->is_can_write_) {
-                        data->send_channel_->flush_buffer();
+            void iocp_impl::post_flush(tcp_session * session) {
+                task_executor_->post([session, this]() {
+                    if (session->is_can_write_) {
+						session->send_channel_->flush_buffer();
                     }
                 }, false);
             }
 
-            void iocp_impl::shutdown_socket(socket_data::ptr data) {
-                if (data->has_closed_)
+            void iocp_impl::shutdown_session(std::shared_ptr<tcp_session> session) {
+                if (session->has_closed_)
                     return;
-                ::shutdown(data->sock_fd(), SD_SEND);
-                data->is_can_write_ = false;
+                ::shutdown(session->sock_fd(), SD_SEND);
+				session->is_can_write_ = false;
             }
 
             /*

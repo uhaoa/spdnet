@@ -4,12 +4,11 @@
 #include <system_error>
 #include <spdnet/base/noncopyable.h>
 #include <spdnet/base/platform.h>
-#include <spdnet/net/socket_data.h>
-
 namespace spdnet {
     namespace net {
+		class tcp_session; 
+
         namespace detail {
-            // class IocpSocketData;
             class iocp_impl;
 
             class channel : public OVERLAPPED {
@@ -33,15 +32,15 @@ namespace spdnet {
 
             class socket_channel : public channel {
             public:
-                socket_channel(socket_data::ptr data, std::shared_ptr<iocp_impl> io_impl)
-                        : data_(data), io_impl_(io_impl) {
+                socket_channel(std::shared_ptr<tcp_session> session, std::shared_ptr<iocp_impl> io_impl)
+                        : session_(session), io_impl_(io_impl) {
 
                 }
 
                 virtual ~socket_channel() noexcept {}
 
             protected:
-                socket_data::ptr data_;
+				std::shared_ptr<tcp_session> session_;
                 std::shared_ptr<iocp_impl> io_impl_;
             };
 

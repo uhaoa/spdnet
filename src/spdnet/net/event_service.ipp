@@ -29,7 +29,7 @@ namespace spdnet {
                                             std::shared_ptr<service_thread> thread) {
             if (thread == nullptr)
                 thread = get_service_thread();
-            std::shared_ptr<tcp_session> new_session = tcp_session::create(fd, is_server_side, thread);
+            std::shared_ptr<tcp_session> new_session = tcp_session::create(fd, is_server_side, thread->get_impl() , thread->get_executor());
             thread->get_executor()->post([thread, new_session, enter_callback]() {
                 /*
                 if (loop->get_impl().on_socket_enter(*new_session->socket_data_)){

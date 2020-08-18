@@ -48,14 +48,9 @@ namespace spdnet {
                 return thread_;
             }
 
-            std::shared_ptr<detail::io_object_impl_type> get_impl() {
+            std::shared_ptr<detail::io_impl_type> get_impl() {
                 return io_impl_;
             }
-
-            detail::io_object_impl_type &get_impl_ref() {
-                return *io_impl_;
-            }
-
 
             std::shared_ptr<task_executor> get_executor() {
                 return task_executor_;
@@ -80,13 +75,12 @@ namespace spdnet {
 
         private:
             thread_id_t thread_id_;
-            std::shared_ptr<detail::io_object_impl_type> io_impl_;
+            std::shared_ptr<detail::io_impl_type> io_impl_;
             std::shared_ptr<task_executor> task_executor_;
             std::atomic_bool wakeup_flag_{false};
             std::shared_ptr<channel_collector> channel_collector_;
             std::shared_ptr<std::thread> thread_;
             unsigned int wait_timeout_ms_;
-            std::unordered_map<sock_t, std::shared_ptr<tcp_session>> tcp_sessions_;
         };
     }
 }
