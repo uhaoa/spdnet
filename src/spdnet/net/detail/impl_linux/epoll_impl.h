@@ -9,7 +9,7 @@
 #include <unordered_map>
 #include <spdnet/base/noncopyable.h>
 #include <spdnet/base/platform.h>
-#include <spdnet/base/buffer.h>
+#include <spdnet/base/buffer_pool.h>
 #include <spdnet/net/end_point.h>
 #include <spdnet/net/channel_collector.h>
 #include <spdnet/net/detail/impl_linux/epoll_wakeup_channel.h>
@@ -38,7 +38,7 @@ namespace spdnet {
 
                 void post_flush(tcp_session *session);
 
-                void shutdown_socket(std::shared_ptr<tcp_session> session);
+                void shutdown_session(std::shared_ptr<tcp_session> session);
 
                 int epoll_fd() const { return epoll_fd_; }
 

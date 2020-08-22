@@ -33,10 +33,10 @@ namespace spdnet {
 			}
 
         private:
-			THREAD_LOCAL static std::unordered_map<sock_t, std::shared_ptr<tcp_session>> tcp_sessions_;
+            thread_local static std::unordered_map<sock_t, std::shared_ptr<tcp_session>> tcp_sessions_;
         };
 
-		THREAD_LOCAL std::unordered_map<sock_t, std::shared_ptr<tcp_session>> tcp_session_mgr::tcp_sessions_;
+        thread_local std::unordered_map<sock_t, std::shared_ptr<tcp_session>> tcp_session_mgr::tcp_sessions_;
     }
 
 }

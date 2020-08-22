@@ -102,7 +102,7 @@ namespace spdnet {
                 session->close();
             }
 
-            void epoll_impl::shutdown_socket(std::shared_ptr<tcp_session> session) {
+            void epoll_impl::shutdown_session(std::shared_ptr<tcp_session> session) {
                 if (session->has_closed_)
                     return;
                 ::shutdown(session->sock_fd(), SHUT_WR);
