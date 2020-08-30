@@ -41,24 +41,19 @@ namespace spdnet {
                     }
                 }
                 auto impl = shared_from_this();
-#if defined(SPDNET_USE_OPENSSL)
                 if (session->ssl_context_ == nullptr) {
 					session->recv_channel_ = std::make_shared<iocp_recv_channel>(session, impl);
 					session->send_channel_ = std::make_shared<iocp_send_channel>(session, impl);
 					session->recv_channel_->start_recv();
                 }
                 else {
+#if defined(SPDNET_USE_OPENSSL)
 					session->ssl_recv_channel_ = std::make_shared<iocp_ssl_recv_channel>(session, impl);
 					session->ssl_send_channel_ = std::make_shared<iocp_ssl_send_channel>(session, impl);
 					session->ssl_recv_channel_->start_recv();
-
                     session->ssl_context_->try_start_ssl_handshake(); 
-                }
-#else 
-				session->recv_channel_ = std::make_shared<iocp_recv_channel>(session, impl);
-				session->send_channel_ = std::make_shared<iocp_send_channel>(session, impl);
-				session->recv_channel_->start_recv();
 #endif
+                }
                 return true;
             }
 

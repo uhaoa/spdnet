@@ -26,6 +26,7 @@ namespace spdnet {
 #else	
 			using io_impl_type = epoll_impl;
 			class epoll_socket_channel;
+			class epoll_ssl_channel;
 #endif
 		}
 		class task_executor; 
@@ -42,6 +43,7 @@ namespace spdnet {
 #else
 			friend class detail::epoll_impl;
 			friend class detail::epoll_socket_channel;
+			friend class detail::epoll_ssl_channel;
 #endif
             using tcp_data_callback = std::function<size_t(const char *, size_t len)>;
             using tcp_disconnect_callback = std::function<void(std::shared_ptr<tcp_session>)>;
@@ -121,14 +123,13 @@ namespace spdnet {
 #if defined(SPDNET_PLATFORM_WINDOWS)
 			std::shared_ptr<detail::iocp_recv_channel> recv_channel_;
 			std::shared_ptr<detail::iocp_send_channel> send_channel_;
-#if defined(SPDNET_USE_OPENSSL)
 			std::shared_ptr<detail::iocp_ssl_recv_channel> ssl_recv_channel_;
 			std::shared_ptr<detail::iocp_ssl_send_channel> ssl_send_channel_;
-			std::shared_ptr<detail::ssl_context> ssl_context_; 
-#endif
 #else
 			std::shared_ptr<detail::epoll_socket_channel> channel_;
+			std::shared_ptr<detail::epoll_ssl_channel> ssl_channel_;
 #endif
+			std::shared_ptr<detail::ssl_context> ssl_context_;
         };
 
     }

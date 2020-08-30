@@ -52,7 +52,8 @@ namespace spdnet {
             class iocp_ssl_recv_channel : public ssl_recv_channel {
             public:
                 iocp_ssl_recv_channel(std::shared_ptr<tcp_session> session, std::shared_ptr<io_impl_type> io_impl)
-                    : ssl_recv_channel(session, io_impl) {
+                    : ssl_recv_channel(session, io_impl) 
+                {
 
                 }
 

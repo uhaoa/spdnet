@@ -9,12 +9,12 @@
 namespace spdnet {
     namespace net {
         namespace detail {
-            class epoll_socket_channel : public channel {
+            class epoll_socket_channel : public socket_channel {
             public:
                 friend class epoll_impl;
 
                 epoll_socket_channel(std::shared_ptr<epoll_impl> impl, std::shared_ptr<tcp_session> session)
-                        : impl_(impl), session_(session) {
+                        : socket_channel(session , impl){
 
                 }
 
@@ -166,10 +166,6 @@ namespace spdnet {
                     if (force_close)
                         impl_->close_socket(session_);
                 }
-
-            private:
-                std::shared_ptr<epoll_impl> impl_;
-                std::shared_ptr<tcp_session> session_;
             };
 
         }

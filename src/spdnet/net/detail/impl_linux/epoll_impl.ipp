@@ -111,8 +111,18 @@ namespace spdnet {
 
             bool epoll_impl::on_socket_enter(std::shared_ptr<tcp_session> session) {
                 auto impl = shared_from_this();
-				session->channel_ = std::make_shared<epoll_socket_channel>(impl, session);
-                return link_channel(session->sock_fd(), session->channel_.get(), EPOLLET | EPOLLIN | EPOLLRDHUP);
+                if (session->ssl_context_ == nullptr) {
+                    session->channel_ = std::make_shared<epoll_socket_channel>(impl, session);
+                    return link_channel(session->sock_fd(), session->channel_.get(), EPOLLET | EPOLLIN | EPOLLRDHUP);
+                }
+                else {
+#if defined(SPDNET_USE_OPENSSL)
+                    session->ssl_channel_ = std::make_shared<epoll_ssl_channel>(impl, session);
+                    session->ssl_context_->try_start_ssl_handshake();
+                    return link_channel(session->sock_fd(), session->ssl_channel_.get(), EPOLLET | EPOLLIN | EPOLLRDHUP);
+#endif
+                }
+               
             }
 
 

@@ -4,20 +4,35 @@
 #include <system_error>
 #include <spdnet/base/noncopyable.h>
 #include <spdnet/base/platform.h>
+#if defined(SPDNET_PLATFORM_WINDOWS)
 #include <spdnet/net/detail/impl_win/iocp_impl.h>
 #include <spdnet/net/detail/impl_win/iocp_channel.h>
+#else
+#include <spdnet/net/detail/impl_linux/epoll_channel.h>
+#endif
 #include <spdnet/base/buffer_pool.h>
 #include <spdnet/net/tcp_session.h>
 
 namespace spdnet {
     namespace net {
         namespace detail {
-            class ssl_send_channel : public socket_channel {
+            class ssl_send_channel
+#if defined(SPDNET_PLATFORM_WINDOWS)
+				: public socket_channel
+#else
+				: virtual public socket_channel
+#endif
+
+            {
             public:
-                ssl_send_channel(std::shared_ptr<tcp_session> session, std::shared_ptr<io_impl_type> io_impl)
-                        : socket_channel(session, io_impl) {
+                ssl_send_channel() = default; 
+
+                ssl_send_channel(std::shared_ptr<tcp_session> session, std::shared_ptr<io_impl_type> io_impl) 
+                    :socket_channel(session, io_impl)
+                {
 
                 }
+#if defined(SPDNET_USE_OPENSSL)
 
                 void flush_buffer() {
                     if (!session_->ssl_context_->has_already_handshake()) {
@@ -87,14 +102,25 @@ namespace spdnet {
                 virtual void post_write_event() = 0;
             private:
                 spdnet::base::buffer buffer_; 
+#endif
             };
 
-            class ssl_recv_channel : public socket_channel {
+            class ssl_recv_channel 
+#if defined(SPDNET_PLATFORM_WINDOWS)
+                : public socket_channel
+#else
+                : virtual public socket_channel
+#endif
+            {
             public:
+                ssl_recv_channel() = default;
+
                 ssl_recv_channel(std::shared_ptr<tcp_session> session, std::shared_ptr<io_impl_type> io_impl)
-                    : socket_channel(session, io_impl) {
+					: socket_channel(session, io_impl)
+                {
 
                 }
+#if defined(SPDNET_USE_OPENSSL)
                 void do_recv() {
                     assert(session_->ssl_context_ != nullptr);
                     {
@@ -147,7 +173,8 @@ namespace spdnet {
                     }
                 }
 
-                virtual void start_recv() = 0;
+                virtual void start_recv() {};
+#endif
             };
         }
     }
