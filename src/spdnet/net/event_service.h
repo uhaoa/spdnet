@@ -11,7 +11,7 @@
 #include <spdnet/base/platform.h>
 #include <spdnet/net/service_thread.h>
 #include <spdnet/net/env_init.h>
-
+#include <spdnet/net/ssl_env.h>
 namespace spdnet {
     namespace net {
         class event_service : public base::noncopyable {
@@ -23,7 +23,7 @@ namespace spdnet {
 
             void
             add_tcp_session(sock_t fd, bool is_server_side, const tcp_enter_callback &enter_callback,
-                            std::shared_ptr<service_thread> thread = nullptr);
+                            std::shared_ptr<service_thread> thread = nullptr , std::shared_ptr<ssl_environment> ssl_env = nullptr);
 
             void run_thread(size_t thread_num);
 

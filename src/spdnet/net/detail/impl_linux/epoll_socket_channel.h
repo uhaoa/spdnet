@@ -154,19 +154,10 @@ namespace spdnet {
 
                         if (SPDNET_PREDICT_FALSE(
                                 recv_len >= (int) recv_buffer.get_capacity()/* + (int)(sizeof(stack_buffer))*/)) {
-                            size_t grow_len = 0;
-                            if (recv_buffer.get_capacity() * 2 <= session_->max_recv_buffer_size_)
-                                grow_len = recv_buffer.get_capacity();
-                            else
-                                grow_len = session_->max_recv_buffer_size_ - recv_buffer.get_capacity();
-
-                            if (grow_len > 0)
-                                recv_buffer.grow(grow_len);
+                            recv_buffer.adjust_capacity(session_->max_recv_buffer_size_);
                         }
 
-                        if (SPDNET_PREDICT_FALSE(
-                                recv_buffer.get_write_valid_count() == 0 || recv_buffer.get_length() == 0))
-                            recv_buffer.adjust_to_head();
+                        recv_buffer.try_adjust_to_head(); 
 
                         if (recv_len < static_cast<int>(try_recv_len))
                             break;

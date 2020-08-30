@@ -58,7 +58,7 @@ namespace spdnet {
             auto &&success_notify = [client_fd, enter, thread, &this_ref, cancel_token]() {
                 // try lock
                 if (cancel_token->exchange(true)) { return; }
-                this_ref.service_.add_tcp_session(client_fd, false, enter, thread);
+                this_ref.service_.add_tcp_session(client_fd, false, enter, thread , this_ref.ssl_env_);
                 this_ref.recycle_context(client_fd, thread);
                 cancel_token->exchange(false);
             };

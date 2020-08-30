@@ -18,6 +18,8 @@
 #include <spdnet/net/detail/impl_win/iocp_accept_channel.h>
 #endif
 
+#include <spdnet/net/ssl_env.h>
+
 namespace spdnet {
     namespace net {
         class event_service;
@@ -37,6 +39,10 @@ namespace spdnet {
 
             void stop();
 
+            void setup_ssl_env(std::shared_ptr<ssl_environment> env)
+            {
+                ssl_env_ = env; 
+            }
         private:
             sock_t create_listen_socket(const end_point &addr);
 
@@ -47,6 +53,7 @@ namespace spdnet {
             std::shared_ptr<service_thread> listen_thread_;
             std::shared_ptr<bool> run_listen_;
             std::shared_ptr<detail::accept_channel_impl> accept_channel_;
+            std::shared_ptr<ssl_environment> ssl_env_; 
         };
 
 

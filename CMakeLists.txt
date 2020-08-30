@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 2.6)
 
 project(spdnet)
 
+find_library(OPENSSL NAMES ssl crypto)
+if(OPENSSL)
+add_definitions(-DSPDNET_USE_OPENSSL)
+endif()
 
 if (WIN32)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++latest")

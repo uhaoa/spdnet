@@ -26,8 +26,9 @@ namespace spdnet {
             class iocp_impl : public spdnet::base::noncopyable, public std::enable_shared_from_this<iocp_impl> {
             public:
                 friend class iocp_recv_channel;
-
                 friend class iocp_send_channel;
+                friend class iocp_ssl_recv_channel;
+                friend class iocp_ssl_send_channel;
 
                 explicit iocp_impl(std::shared_ptr<task_executor> task_executor,
                                           std::shared_ptr<channel_collector> channel_collector);

@@ -23,12 +23,13 @@ namespace spdnet {
         void
         service_thread::on_tcp_session_enter(sock_t fd, std::shared_ptr<tcp_session> tcp_session,
                                              const tcp_enter_callback &enter_callback) {
+            tcp_session_mgr::instance().add(fd, tcp_session);
+
             if (!io_impl_->on_socket_enter(tcp_session)) {
                 return;
             }
             if (nullptr != enter_callback)
                 enter_callback(tcp_session);
-			tcp_session_mgr::instance().add(fd, std::move(tcp_session));
         }
 
         void service_thread::run(std::shared_ptr<bool> is_run) {

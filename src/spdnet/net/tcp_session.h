@@ -9,6 +9,8 @@
 #include <spdnet/base/spin_lock.h>
 #include <spdnet/base/platform.h>
 #include <spdnet/net/socket_ops.h>
+#include <spdnet/net/detail/ssl/ssl_context.h>
+#include <spdnet/net/ssl_env.h>
 
 namespace spdnet {
     namespace net {
@@ -19,6 +21,8 @@ namespace spdnet {
 			using io_impl_type = iocp_impl; 
 			class iocp_recv_channel; 
 			class iocp_send_channel; 
+			class iocp_ssl_recv_channel;
+			class iocp_ssl_send_channel;
 #else	
 			using io_impl_type = epoll_impl;
 			class epoll_socket_channel;
@@ -33,6 +37,8 @@ namespace spdnet {
 			friend class detail::iocp_impl;
 			friend class detail::iocp_recv_channel;
 			friend class detail::iocp_send_channel; 
+			friend class detail::iocp_ssl_recv_channel;
+			friend class detail::iocp_ssl_send_channel;
 #else
 			friend class detail::epoll_impl;
 			friend class detail::epoll_socket_channel;
@@ -76,6 +82,9 @@ namespace spdnet {
 		private:
 			void close();
 
+			bool init_ssl(std::shared_ptr<ssl_environment> ssl_env);
+
+			bool exec_data_callback(spdnet::base::buffer& data_buf);
 			struct send_packet {
 				send_packet(spdnet::base::buffer* buf, tcp_send_complete_callback&& callback)
 					: buffer_(buf), callback_(std::move(callback)) {}
@@ -112,6 +121,11 @@ namespace spdnet {
 #if defined(SPDNET_PLATFORM_WINDOWS)
 			std::shared_ptr<detail::iocp_recv_channel> recv_channel_;
 			std::shared_ptr<detail::iocp_send_channel> send_channel_;
+#if defined(SPDNET_USE_OPENSSL)
+			std::shared_ptr<detail::iocp_ssl_recv_channel> ssl_recv_channel_;
+			std::shared_ptr<detail::iocp_ssl_send_channel> ssl_send_channel_;
+			std::shared_ptr<detail::ssl_context> ssl_context_; 
+#endif
 #else
 			std::shared_ptr<detail::epoll_socket_channel> channel_;
 #endif

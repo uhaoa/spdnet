@@ -10,14 +10,21 @@
 #include <spdnet/net/detail/impl_win/iocp_impl.h>
 #include <spdnet/net/detail/impl_win/iocp_send_channel.h>
 #include <spdnet/net/detail/impl_win/iocp_recv_channel.h>
+#ifdef SPDNET_USE_OPENSSL
+#include <spdnet/net/detail/ssl/iocp_ssl_channel.h>
+#endif
 #else
 #include <spdnet/net/detail/impl_linux/epoll_impl.h>
 #endif
 
+#include <spdnet/net/ssl_env.h>
+
 namespace spdnet {
     namespace net {
         tcp_session::tcp_session(sock_t fd, bool is_server_side, std::shared_ptr<detail::io_impl_type> io_impl, std::shared_ptr<task_executor> executor)
-			: fd_(fd), is_server_side_(is_server_side) , io_impl_(io_impl), executor_(executor) {
+			: fd_(fd), is_server_side_(is_server_side) , io_impl_(io_impl), executor_(executor) 
+        {
+
         }
 
         std::shared_ptr<tcp_session>
@@ -39,6 +46,42 @@ namespace spdnet {
 
 			disconnect_callback_ = std::move(callback);
 		}
+
+        bool tcp_session::init_ssl(std::shared_ptr<ssl_environment> ssl_env)
+        {
+#if defined(SPDNET_USE_OPENSSL)
+			ssl_context_ = std::make_shared<detail::ssl_context>(fd_);
+			if (is_server_side_) {
+				if (!ssl_context_->init_server_side(ssl_env->get_ssl_ctx())) {
+                    return false; 
+				}
+			}
+			else {
+				if (!ssl_context_->init_client_side()) {
+                    return false; 
+				}
+			}
+#endif
+
+            return true; 
+        }
+
+        bool tcp_session::exec_data_callback(spdnet::base::buffer& data_buf)
+        {
+			if (nullptr != data_callback_)
+			{
+				size_t len = data_callback_(data_buf.get_data_ptr(), data_buf.get_length());
+				assert(len <= data_buf.get_length());
+				if (len <= data_buf.get_length()) {
+                    data_buf.remove_length(len);
+				}
+				else {
+                    return false; 
+				}
+			}
+
+            return true; 
+        }
 
         void tcp_session::send(const char *data, size_t len, tcp_send_complete_callback &&callback) {
             if (len <= 0)

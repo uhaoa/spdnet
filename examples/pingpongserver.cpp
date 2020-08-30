@@ -3,6 +3,7 @@
 #include <spdnet/net/event_service.h>
 #include <spdnet/net/acceptor.h>
 #include <atomic>
+#include <spdnet/net/ssl_env.h>
 //#include <gperftools/profiler.h>
 
 std::atomic_llong total_recv_size = ATOMIC_VAR_INIT(0);
@@ -29,10 +30,17 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "usage : <port> <thread num>\n");
         exit(-1);
     }
+#if defined(SPDNET_USE_OPENSSL)
+    auto ssl_env = std::make_shared<spdnet::net::ssl_environment>();
+    ssl_env->init_ssl("server.crt", "server.key"); 
+#endif
     ///signal(SIGUSR1, gprofStartAndStop);
     spdnet::net::event_service service;
     service.run_thread(atoi(argv[2]));
     spdnet::net::tcp_acceptor acceptor(service);
+#if defined(SPDNET_USE_OPENSSL)
+    acceptor.setup_ssl_env(ssl_env); 
+#endif
     acceptor.start(spdnet::net::end_point::ipv4("0.0.0.0", atoi(argv[1])),
                    [](std::shared_ptr<spdnet::net::tcp_session> session) {
                        total_client_num++;

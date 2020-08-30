@@ -44,30 +44,14 @@ namespace spdnet {
                         auto &recv_buffer = session_->recv_buffer_;
                         auto post_len = recv_buffer.get_write_valid_count();
                         recv_buffer.add_write_pos(bytes_transferred);
-                        if (nullptr != session_->data_callback_) {
-                            size_t len = session_->data_callback_(recv_buffer.get_data_ptr(), recv_buffer.get_length());
-                            assert(len <= recv_buffer.get_length());
-                            if (len <= recv_buffer.get_length()) {
-                                recv_buffer.remove_length(len);
-                            } else {
-                                force_close = true;
-                            }
-                        }
-
+						if (!session_->exec_data_callback(recv_buffer)) {
+							force_close = true;
+						}
                         if (post_len == bytes_transferred) {
-                            size_t grow_len = 0;
-                            if (recv_buffer.get_capacity() * 2 <= session_->max_recv_buffer_size_)
-                                grow_len = recv_buffer.get_capacity();
-                            else
-                                grow_len = session_->max_recv_buffer_size_ - recv_buffer.get_capacity();
-
-                            if (grow_len > 0)
-                                recv_buffer.grow(grow_len);
+                            recv_buffer.adjust_capacity(session_->max_recv_buffer_size_); 
                         }
 
-                        if (SPDNET_PREDICT_FALSE(
-                                recv_buffer.get_write_valid_count() == 0 || recv_buffer.get_length() == 0))
-                            recv_buffer.adjust_to_head();
+                        recv_buffer.try_adjust_to_head();
                     }
 
 

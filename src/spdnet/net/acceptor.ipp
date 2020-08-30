@@ -34,17 +34,18 @@ namespace spdnet {
             }
             socket_ops::socket_non_block(listen_fd_);
             auto &service = service_;
+            auto ssl_env = ssl_env_;
 #if defined(SPDNET_PLATFORM_WINDOWS)
-            accept_channel_ = std::make_shared<detail::accept_channel_impl>(listen_fd_, addr, [&service, enter_cb](sock_t new_socket) {
-                service.add_tcp_session(new_socket, true, enter_cb);
+            accept_channel_ = std::make_shared<detail::accept_channel_impl>(listen_fd_, addr, [&service, enter_cb , ssl_env](sock_t new_socket) {
+                service.add_tcp_session(new_socket, true, enter_cb ,nullptr ,  ssl_env);
 
                 });
 #else
             accept_channel_ = std::make_shared<detail::accept_channel_impl>(listen_fd_,
-                                                                            [&service, enter_cb](sock_t new_socket) {
+                                                                            [&service, enter_cb , ssl_env](sock_t new_socket) {
                                                                                 service.add_tcp_session(new_socket,
                                                                                                         true,
-                                                                                                        enter_cb);
+                                                                                                        enter_cb , nullptr , ssl_env);
                                                                             });
 #endif
             run_listen_ = std::make_shared<bool>(true);

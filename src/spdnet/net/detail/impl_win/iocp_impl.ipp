@@ -10,6 +10,9 @@
 #include <spdnet/net/detail/impl_win/iocp_wakeup_channel.h>
 #include <spdnet/net/detail/impl_win/iocp_recv_channel.h>
 #include <spdnet/net/detail/impl_win/iocp_send_channel.h>
+#if defined(SPDNET_USE_OPENSSL)
+#include <spdnet/net/detail/ssl/iocp_ssl_channel.h>
+#endif
 #include <spdnet/net/task_executor.h>
 #include <spdnet/net/tcp_session.h>
 #include <spdnet/net/channel_collector.h>
@@ -38,9 +41,24 @@ namespace spdnet {
                     }
                 }
                 auto impl = shared_from_this();
+#if defined(SPDNET_USE_OPENSSL)
+                if (session->ssl_context_ == nullptr) {
+					session->recv_channel_ = std::make_shared<iocp_recv_channel>(session, impl);
+					session->send_channel_ = std::make_shared<iocp_send_channel>(session, impl);
+					session->recv_channel_->start_recv();
+                }
+                else {
+					session->ssl_recv_channel_ = std::make_shared<iocp_ssl_recv_channel>(session, impl);
+					session->ssl_send_channel_ = std::make_shared<iocp_ssl_send_channel>(session, impl);
+					session->ssl_recv_channel_->start_recv();
+
+                    session->ssl_context_->try_start_ssl_handshake(); 
+                }
+#else 
 				session->recv_channel_ = std::make_shared<iocp_recv_channel>(session, impl);
 				session->send_channel_ = std::make_shared<iocp_send_channel>(session, impl);
 				session->recv_channel_->start_recv();
+#endif
                 return true;
             }
 
@@ -118,7 +136,14 @@ namespace spdnet {
             void iocp_impl::post_flush(tcp_session * session) {
                 task_executor_->post([session, this]() {
                     if (session->is_can_write_) {
-						session->send_channel_->flush_buffer();
+#if defined(SPDNET_USE_OPENSSL)
+                        if (session->ssl_context_ == nullptr)
+						    session->send_channel_->flush_buffer();
+                        else
+                            session->ssl_send_channel_->flush_buffer();
+#else
+                        session->send_channel_->flush_buffer();
+#endif
                     }
                 }, false);
             }

@@ -79,16 +79,6 @@ namespace spdnet {
                 data_ = new_data;
             }
 
-            void adjust_to_head() {
-                size_t len;
-                if (read_pos_ <= 0)
-                    return;
-                len = get_length();
-                if (len > 0)
-                    memmove(data_, data_ + read_pos_, len);
-                read_pos_ = 0;
-                write_pos_ = len;
-            }
 
             void add_write_pos(size_t value) {
                 size_t temp = write_pos_ + value;
@@ -120,7 +110,33 @@ namespace spdnet {
                 return next_;
             }
 
+            void adjust_capacity(size_t max_size) {
+				size_t grow_len = 0;
+				if (get_capacity() * 2 <= max_size)
+					grow_len = get_capacity();
+				else
+					grow_len = max_size - get_capacity();
+
+				if (grow_len > 0)
+					grow(grow_len);
+            }
+
+            void try_adjust_to_head() {
+                if (get_write_valid_count() == 0 || get_length() == 0) {
+                    adjust_to_head();
+                }
+            }
         private:
+			void adjust_to_head() {
+				size_t len;
+				if (read_pos_ <= 0)
+					return;
+				len = get_length();
+				if (len > 0)
+					memmove(data_, data_ + read_pos_, len);
+				read_pos_ = 0;
+				write_pos_ = len;
+			}
 
             void init() {
                 read_pos_ = 0;
