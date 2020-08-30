@@ -17,12 +17,12 @@ namespace spdnet {
 		namespace detail {
 			class iocp_impl;
 			class epoll_impl; 
+			class ssl_recv_channel;
+			class ssl_send_channel;
 #ifdef SPDNET_PLATFORM_WINDOWS
 			using io_impl_type = iocp_impl; 
 			class iocp_recv_channel; 
 			class iocp_send_channel; 
-			class iocp_ssl_recv_channel;
-			class iocp_ssl_send_channel;
 #else	
 			using io_impl_type = epoll_impl;
 			class epoll_socket_channel;
@@ -33,12 +33,12 @@ namespace spdnet {
         public:
             friend class service_thread;
             friend class event_service;
+			friend class detail::ssl_recv_channel;
+			friend class detail::ssl_send_channel;
 #ifdef SPDNET_PLATFORM_WINDOWS
 			friend class detail::iocp_impl;
 			friend class detail::iocp_recv_channel;
 			friend class detail::iocp_send_channel; 
-			friend class detail::iocp_ssl_recv_channel;
-			friend class detail::iocp_ssl_send_channel;
 #else
 			friend class detail::epoll_impl;
 			friend class detail::epoll_socket_channel;
@@ -49,7 +49,7 @@ namespace spdnet {
         public:
             tcp_session(sock_t fd, bool is_server_side, std::shared_ptr<detail::io_impl_type> io_impl, std::shared_ptr<task_executor> executor);
 
-            ~tcp_session() = default;
+			~tcp_session(); 
 
             void post_shutdown();
 

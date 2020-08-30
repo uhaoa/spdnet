@@ -92,7 +92,6 @@ namespace spdnet {
                 if (SSL_CTX_use_certificate_chain_file(ssl_ctx_,
                     certificate.c_str()) <= 0)
                 {
-                    ERR_print_errors_fp(stdout);
                     SSL_CTX_free(ssl_ctx_);
                     ssl_ctx_ = nullptr;
                     return false;
@@ -102,7 +101,6 @@ namespace spdnet {
                     private_key.c_str(),
                     SSL_FILETYPE_PEM) <= 0)
                 {
-                    ERR_print_errors_fp(stdout);
                     SSL_CTX_free(ssl_ctx_);
                     ssl_ctx_ = nullptr;
                     return false;

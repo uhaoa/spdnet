@@ -57,7 +57,6 @@ namespace spdnet {
                     buffer_pool_.recycle_buffer(buffer);
                 }
 
-            private:
                 void close_socket(std::shared_ptr<tcp_session> session);
 
             private:

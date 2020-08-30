@@ -27,6 +27,12 @@ namespace spdnet {
 
         }
 
+        tcp_session::~tcp_session()
+        {
+            if (fd_ != invalid_socket)
+                socket_ops::close_socket(fd_);
+        }
+
         std::shared_ptr<tcp_session>
 		tcp_session::create(sock_t fd, bool is_server_side, std::shared_ptr<detail::io_impl_type> io_impl, std::shared_ptr<task_executor> executor){
             return std::make_shared<tcp_session>(fd, is_server_side, io_impl , executor);
@@ -133,6 +139,7 @@ namespace spdnet {
 			is_can_write_ = false;
 
 			socket_ops::close_socket(fd_);
+            fd_ = invalid_socket; 
 		}
     }
 }
