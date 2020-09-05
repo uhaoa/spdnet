@@ -75,7 +75,10 @@ namespace spdnet {
 
                 channel_collector_->put_channel(session->recv_channel_);
                 channel_collector_->put_channel(session->send_channel_);
-
+#if defined(SPDNET_USE_OPENSSL)
+				channel_collector_->put_channel(session->ssl_recv_channel_);
+				channel_collector_->put_channel(session->ssl_send_channel_);
+#endif
 				tcp_session_mgr::instance().remove(session->sock_fd());
 
 				session->close();

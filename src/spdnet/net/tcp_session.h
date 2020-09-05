@@ -23,6 +23,8 @@ namespace spdnet {
 			using io_impl_type = iocp_impl; 
 			class iocp_recv_channel; 
 			class iocp_send_channel; 
+			class iocp_ssl_recv_channel;
+			class iocp_ssl_send_channel;
 #else	
 			using io_impl_type = epoll_impl;
 			class epoll_socket_channel;

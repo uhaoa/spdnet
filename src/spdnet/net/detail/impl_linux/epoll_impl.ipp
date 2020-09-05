@@ -97,6 +97,9 @@ namespace spdnet {
 
                 // close_socket函数可能正在被channel调用 ， 将channel加入到待删除列表 ，是防止channel被立即释放引起crash
                 channel_collector_->put_channel(session->channel_);
+#if defined(SPDNET_USE_OPENSSL)
+                channel_collector_->put_channel(session->ssl_channel_);
+#endif
                 // cancel event
                 struct epoll_event ev{0, {nullptr}};
                 ::epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, session->sock_fd(), &ev);

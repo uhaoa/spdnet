@@ -19,7 +19,8 @@ namespace spdnet {
         class channel_collector : public spdnet::base::noncopyable {
         public:
             void put_channel(std::shared_ptr<detail::channel> channel) {
-                del_channel_list_.push_back(channel);
+                if (channel)
+                    del_channel_list_.push_back(channel);
             }
 
             void release_channel() {
