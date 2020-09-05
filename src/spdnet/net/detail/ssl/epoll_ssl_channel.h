@@ -15,8 +15,10 @@ namespace spdnet {
                 friend class epoll_impl;
 
                 epoll_ssl_channel(std::shared_ptr<epoll_impl> impl, std::shared_ptr<tcp_session> session)
-                        : socket_channel(session , impl) {
-
+                   // :ssl_recv_channel(session , impl) , ssl_send_channel(session , impl)
+                {
+                    io_impl_ = impl;
+                    session_ = session;
                 }
 
             private:
@@ -31,7 +33,7 @@ namespace spdnet {
                 }
 
                 void on_close() override {
-                    impl_->close_socket(session_);
+                    io_impl_->close_socket(session_);
                 }
 
                 void post_write_event() override
@@ -39,7 +41,7 @@ namespace spdnet {
 					struct epoll_event event { 0, { nullptr } };
 					event.events = EPOLLET | EPOLLIN | EPOLLOUT | EPOLLRDHUP;
 					event.data.ptr = this;
-                    ::epoll_ctl(impl_->epoll_fd(), EPOLL_CTL_MOD, session_->sock_fd(), &event);
+                    ::epoll_ctl(io_impl_->epoll_fd(), EPOLL_CTL_MOD, session_->sock_fd(), &event);
 
                 }
 
@@ -48,8 +50,11 @@ namespace spdnet {
 					struct epoll_event event { 0, { nullptr } };
 					event.events = EPOLLET | EPOLLIN | EPOLLRDHUP;
 					event.data.ptr = this;
-					::epoll_ctl(impl_->epoll_fd(), EPOLL_CTL_MOD, session_->sock_fd(), &event);
+					::epoll_ctl(io_impl_->epoll_fd(), EPOLL_CTL_MOD, session_->sock_fd(), &event);
                 }
+            private:
+              //  std::shared_ptr<ssl_recv_channel> recv_channel_;
+              //  std::shared_ptr<ssl_send_channel> send_channel_;
             };
 
         }

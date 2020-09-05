@@ -59,9 +59,14 @@ namespace spdnet {
                     int send_len = SSL_write(session_->ssl_context_->get_ssl(), buffer_.get_data_ptr(), buffer_.get_length());
                     if (send_len <= 0) {
 						if ((SSL_get_error(session_->ssl_context_->get_ssl(), send_len) != SSL_ERROR_WANT_WRITE) &&
-							(current_errno() != WSAEWOULDBLOCK))
+#if defined(SPDNET_PLATFORM_WINDOWS)
+							(current_errno() != WSAEWOULDBLOCK)
+#else
+                            (current_errno() != EWOULDBLOCK)
+#endif
+							)
 						{
-                            force_close = true; 
+                            force_close = true;
 						}
                     }
                     else {
@@ -143,7 +148,12 @@ namespace spdnet {
                             }
                             else if (ret_len < 0) {
 								if ((SSL_get_error(session_->ssl_context_->get_ssl(), ret_len) != SSL_ERROR_WANT_READ) &&
-									(current_errno() != WSAEWOULDBLOCK))
+#if defined(SPDNET_PLATFORM_WINDOWS)
+                                    (current_errno() != WSAEWOULDBLOCK)
+#else
+                                    (current_errno() != EWOULDBLOCK)
+#endif
+									)
 								{
                                     force_close = true;
 								}

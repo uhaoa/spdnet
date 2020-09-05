@@ -24,8 +24,9 @@ namespace spdnet {
 
 			class socket_channel : public channel {
 			public:
-				socket_channel(std::shared_ptr<tcp_session> session, std::shared_ptr<epoll_impl> io_impl)
-					: session_(session), io_impl_(io_impl)
+                socket_channel() = default;
+				socket_channel(std::shared_ptr<tcp_session> session, std::shared_ptr<epoll_impl> impl)
+					: session_(session), io_impl_(impl)
 				{
 
 				}

@@ -50,7 +50,7 @@ namespace spdnet {
                         const int send_len = ::writev(session_->sock_fd(), iov, static_cast<int>(cnt));
                         if (SPDNET_PREDICT_FALSE(send_len < 0)) {
                             if (errno == EAGAIN) {
-                                impl_->add_write_event(session_);
+                                io_impl_->add_write_event(session_);
 								session_->is_can_write_ = false;
                             } else {
                                 force_close = true;
@@ -64,13 +64,13 @@ namespace spdnet {
                                 if (SPDNET_PREDICT_TRUE(packet.buffer_->get_length() <= tmp_len)) {
                                     tmp_len -= packet.buffer_->get_length();
                                     packet.buffer_->clear();
-                                    impl_->recycle_buffer(packet.buffer_);
+                                    io_impl_->recycle_buffer(packet.buffer_);
                                     if (packet.callback_)
                                         packet.callback_();
                                     iter = session_->pending_packet_list_.erase(iter);
                                 } else {
                                     packet.buffer_->remove_length(tmp_len);
-                                    impl_->add_write_event(session_);
+                                    io_impl_->add_write_event(session_);
 									session_->is_can_write_ = false;
                                     break;
                                 }
@@ -80,13 +80,13 @@ namespace spdnet {
                     }
 
                     if (force_close) {
-                        impl_->close_socket(session_);
+                        io_impl_->close_socket(session_);
                     }
                 }
 
             private:
                 void on_send() override {
-                    impl_->cancel_write_event(session_);
+                    io_impl_->cancel_write_event(session_);
 					session_->is_can_write_ = true;
                     flush_buffer();
                 }
@@ -96,7 +96,7 @@ namespace spdnet {
                 }
 
                 void on_close() override {
-                    impl_->close_socket(session_);
+                    io_impl_->close_socket(session_);
                 }
 
                 void do_recv() {
@@ -164,7 +164,7 @@ namespace spdnet {
                     }
 
                     if (force_close)
-                        impl_->close_socket(session_);
+                        io_impl_->close_socket(session_);
                 }
             };
 

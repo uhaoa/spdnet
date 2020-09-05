@@ -1,14 +1,16 @@
 include_directories("${PROJECT_SOURCE_DIR}/src/")
 
+#include_directories("/usr/local/ssl/include")
+
 if (WIN32)
 set(LINK_LIBS "ws2_32")
 elseif (UNIX)
 set(LINK_LIBS "pthread")
 endif ()
 
-if(OPENSSL)
-set(LINK_LIBS "${LINK_LIBS} ssl crypto")
-endif() 
+if(SPDNET_USE_OPENSSL)
+	set(LINK_LIBS "${LINK_LIBS} -lssl -lcrypto -ldl")
+endif(SPDNET_USE_OPENSSL)
 
 if (UNIX)
     find_package(Threads REQUIRED)
@@ -30,5 +32,5 @@ add_executable(httpclient httpclient.cpp)
 target_link_libraries(httpclient ${LINK_LIBS})
 
 add_executable(httpserver httpserver.cpp)
-target_link_libraries(httpserver ${LINK_LIBS})
+target_link_libraries(httpserver -ldl ${LINK_LIBS})
 

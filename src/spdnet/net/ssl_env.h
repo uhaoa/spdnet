@@ -7,7 +7,7 @@
 #include <thread>
 #include <spdnet/base/singleton.h>
 #include <spdnet/base/platform.h>
-
+#include <spdnet/net/current_thread.h>
 #if defined(SPDNET_USE_OPENSSL)
 #ifdef  __cplusplus
 extern "C" {

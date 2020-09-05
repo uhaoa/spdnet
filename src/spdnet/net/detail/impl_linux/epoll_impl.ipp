@@ -12,6 +12,10 @@
 #include <spdnet/net/tcp_session_mgr.h>
 #include <spdnet/net/tcp_session.h>
 #include <spdnet/net/detail/impl_linux/epoll_socket_channel.h>
+#if defined(SPDNET_USE_OPENSSL)
+#include <spdnet/net/detail/ssl/epoll_ssl_channel.h>
+#endif
+
 
 namespace spdnet {
     namespace net {

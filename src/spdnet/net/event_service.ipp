@@ -31,8 +31,7 @@ namespace spdnet {
                 thread = get_service_thread();
             std::shared_ptr<tcp_session> new_session = tcp_session::create(fd, is_server_side, thread->get_impl() , thread->get_executor());
             if (ssl_env != nullptr && !new_session->init_ssl(ssl_env)) {
-                // 临时处理 ，后续将此类错误信息通知用户。 
-                std::cout << "init_ssl error , is_server_side : " << new_session->is_server_side() ? "true" : false; 
+                std::cout << "init_ssl error , is_server_side : " << new_session->is_server_side() ? "true" : "false";
                 return; 
             }
             thread->get_executor()->post([thread, new_session, enter_callback]() {

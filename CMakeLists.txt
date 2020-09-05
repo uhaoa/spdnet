@@ -2,10 +2,16 @@ cmake_minimum_required(VERSION 2.6)
 
 project(spdnet)
 
-find_library(OPENSSL NAMES ssl crypto)
-if(OPENSSL)
-add_definitions(-DSPDNET_USE_OPENSSL)
-endif()
+#find_library(LIBSSL NAMES ssl crypto)
+
+#find_path(PATHSSL openssl/ssl.h)
+#if(LIBSSL AND PATHSSL)
+#add_definitions(-DSPDNET_USE_OPENSSL)
+#else ()
+#    message("not found openssl")
+#endif()
+
+
 
 if (WIN32)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++latest")
@@ -32,6 +38,11 @@ SET(INCLUDE_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/include")
 install(DIRECTORY src/spdnet
         DESTINATION "${INCLUDE_INSTALL_DIR}")
 
+
+option(SPDNET_USE_OPENSSL "with ssl" OFF)
+if(SPDNET_USE_OPENSSL)
+	add_definitions(-DSPDNET_USE_OPENSSL)
+endif(SPDNET_USE_OPENSSL)
 
 option(BUILD_EXAMPLES "build examples" ON)
 if (BUILD_EXAMPLES)
